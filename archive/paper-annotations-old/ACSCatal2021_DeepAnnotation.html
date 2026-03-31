@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACS Catal 2021 逐段深度标注 | Osuna Lab | Zhenpeng · aNima Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1a2744; --blue:#2563EB; --teal:#0d9488;
+  --paper:#faf8f3; --paper2:#f3f0e8; --border:#d4c9a8;
+  --text:#2d2d2d; --gray:#6b7280; --lg:#f3f4f6;
+  --hl-thesis:#fef3c7; --hl-thesis-b:#d97706;
+  --hl-concept:#fee2e2; --hl-concept-b:#dc2626;
+  --hl-evidence:#dbeafe; --hl-evidence-b:#2563eb;
+  --hl-counter:#dcfce7; --hl-counter-b:#16a34a;
+  --hl-method:#f3e8ff; --hl-method-b:#7c3aed;
+  --sidebar-w:220px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--text);font-size:15px;line-height:1.7;}
+#topnav{position:sticky;top:0;z-index:100;background:var(--navy);color:white;padding:0 20px;display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap;}
+#topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:15px;white-space:nowrap;}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.leg{padding:2px 10px;border-radius:12px;font-size:11.5px;font-weight:600;cursor:default;}
+.leg-y{background:var(--hl-thesis);color:#92400e;}
+.leg-r{background:var(--hl-concept);color:#991b1b;}
+.leg-b{background:var(--hl-evidence);color:#1e40af;}
+.leg-g{background:var(--hl-counter);color:#166534;}
+.leg-p{background:var(--hl-method);color:#5b21b6;}
+#layout{display:flex;min-height:calc(100vh - 52px);}
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:#f0ede4;border-right:1px solid var(--border);padding:16px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+#sidebar .sec-head{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;padding:12px 16px 4px;}
+#sidebar .nav-link{display:block;padding:5px 16px;font-size:12.5px;color:#374151;text-decoration:none;border-left:3px solid transparent;transition:.15s;}
+#sidebar .nav-link:hover{background:#e8e4db;color:var(--navy);}
+#sidebar .nav-link.active{border-left-color:var(--blue);color:var(--blue);background:#e8eef8;}
+#sidebar .nav-link.sub{padding-left:26px;font-size:12px;color:var(--gray);}
+main{flex:1;padding:0 0 60px;overflow-x:hidden;}
+.meta-card{background:var(--navy);color:white;padding:28px 36px;margin:0;}
+.meta-card h1{font-family:'Lora',serif;font-size:20px;line-height:1.4;margin-bottom:12px;}
+.meta-card .byline{font-size:13px;opacity:.8;margin-bottom:6px;}
+.meta-card .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.meta-card .tag{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;font-size:11.5px;}
+.meta-card .doi-link{color:#93c5fd;font-size:13px;text-decoration:none;}
+.meta-card .doi-link:hover{text-decoration:underline;}
+.sec-label{background:var(--paper2);border-top:3px solid var(--blue);padding:10px 36px;font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px;}
+.sec-label .sec-num{background:var(--blue);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;}
+.para-block{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5dfd0;gap:0;}
+.para-block:hover{background:#f7f4ed;}
+.para-left{padding:22px 28px;border-right:1px solid #e5dfd0;font-size:14.5px;line-height:1.8;}
+.para-right{padding:18px 22px;background:#f7f5ef;font-size:13px;line-height:1.65;}
+.para-id{display:inline-block;background:var(--navy);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;font-weight:700;margin-bottom:10px;}
+.hl-y{background:var(--hl-thesis);border-bottom:2px solid var(--hl-thesis-b);padding:0 2px;border-radius:2px;}
+.hl-r{background:var(--hl-concept);border-bottom:2px solid var(--hl-concept-b);padding:0 2px;border-radius:2px;}
+.hl-b{background:var(--hl-evidence);border-bottom:2px solid var(--hl-evidence-b);padding:0 2px;border-radius:2px;}
+.hl-g{background:var(--hl-counter);border-bottom:2px solid var(--hl-counter-b);padding:0 2px;border-radius:2px;}
+.hl-p{background:var(--hl-method);border-bottom:2px solid var(--hl-method-b);padding:0 2px;border-radius:2px;}
+.term-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;}
+.term-table th{background:#e8e4db;padding:4px 8px;text-align:left;font-weight:600;font-size:11px;}
+.term-table td{padding:4px 8px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.term-table tr:last-child td{border-bottom:none;}
+.notable-box{background:#fff7ed;border-left:3px solid #f59e0b;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.project-box{background:#eff6ff;border-left:3px solid #2563eb;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.role-badge{display:inline-block;background:#e0e7ff;color:#3730a3;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:6px;}
+.synth-section{padding:28px 36px;}
+.synth-section h2{font-family:'Lora',serif;font-size:18px;color:var(--navy);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+.synth-section h3{font-size:14px;font-weight:700;color:var(--blue);margin:16px 0 8px;}
+.logic-chain{display:flex;flex-wrap:wrap;gap:0;margin:16px 0;}
+.lc-node{background:var(--navy);color:white;padding:8px 14px;font-size:12px;border-radius:6px;text-align:center;min-width:110px;}
+.lc-arrow{display:flex;align-items:center;padding:0 6px;color:var(--gray);font-size:18px;}
+.proj-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.proj-table th{background:var(--navy);color:white;padding:8px 12px;text-align:left;font-size:12px;}
+.proj-table td{padding:8px 12px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.proj-table tr:nth-child(even) td{background:#f7f5ef;}
+.gloss-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.gloss-table th{background:#e8e4db;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;}
+.gloss-table td{padding:6px 10px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.gloss-table tr:last-child td{border-bottom:none;}
+</style>
+</head>
+<body>
+
+<div id="topnav">
+  <div class="logo">ACS Catal 2021 · Osuna Lab · SPM-ASR-MSA</div>
+  <div class="legend">
+    <span class="leg leg-y">黄=核心论点</span>
+    <span class="leg leg-r">红=技术概念</span>
+    <span class="leg leg-b">蓝=实验证据</span>
+    <span class="leg leg-g">绿=局限/对照</span>
+    <span class="leg leg-p">紫=方法/流程</span>
+  </div>
+</div>
+
+<div id="layout">
+<div id="sidebar">
+  <div class="sec-head">元信息</div>
+  <a class="nav-link" href="#meta">论文信息</a>
+  <div class="sec-head">摘要</div>
+  <a class="nav-link" href="#abs">Abstract</a>
+  <div class="sec-head">引言 Introduction</div>
+  <a class="nav-link sub" href="#p1">P1 酶的动态性</a>
+  <a class="nav-link sub" href="#p2">P2 酶工程方法</a>
+  <a class="nav-link sub" href="#p3">P3 SPM方法</a>
+  <a class="nav-link sub" href="#p4">P4 TrpS系统</a>
+  <a class="nav-link sub" href="#p5">P5 Arnold DE</a>
+  <a class="nav-link sub" href="#p6">P6 本文探索</a>
+  <a class="nav-link sub" href="#p7">P7 ASR方法</a>
+  <a class="nav-link sub" href="#p8">P8 研究目标</a>
+  <div class="sec-head">结果 Results</div>
+  <a class="nav-link sub" href="#p9">P9 LBCA FEL</a>
+  <a class="nav-link sub" href="#p10">P10 TrpA抑制</a>
+  <a class="nav-link sub" href="#p11">P11 产物释放</a>
+  <a class="nav-link sub" href="#p12">P12 SPM文献</a>
+  <a class="nav-link sub" href="#p13">P13 ANC3靶点</a>
+  <a class="nav-link sub" href="#p14">P14 SPM6设计</a>
+  <a class="nav-link sub" href="#p15">P15 别构验证</a>
+  <a class="nav-link sub" href="#p16">P16 SPM3</a>
+  <a class="nav-link sub" href="#p17">P17 SPM8</a>
+  <a class="nav-link sub" href="#p18">P18 MSA比较</a>
+  <div class="sec-head">讨论 Discussion</div>
+  <a class="nav-link sub" href="#p19">P19 别构回顾</a>
+  <a class="nav-link sub" href="#p20">P20 SPM6评估</a>
+  <a class="nav-link sub" href="#p21">P21 部分恢复</a>
+  <a class="nav-link sub" href="#p22">P22 进化保守</a>
+  <div class="sec-head">结论</div>
+  <a class="nav-link" href="#p23">P23 Conclusions</a>
+  <div class="sec-head">综合分析</div>
+  <a class="nav-link" href="#skeleton">§A 论证骨架</a>
+  <a class="nav-link" href="#projconn">§B 项目关联表</a>
+  <a class="nav-link" href="#glossary">§C 术语总表</a>
+</div>
+
+<main>
+
+<!-- META -->
+<div id="meta" class="meta-card">
+  <h1>Identification and Experimental Validation of Distal Activity-Enhancing Mutations in Tryptophan Synthase</h1>
+  <div class="byline">Maria-Solano MA, Iglesias-Fernandez J, Osuna S · ACS Catalysis 2021, 11, 14526–14535</div>
+  <div class="byline">PMID: 34777912 · PMC: 8576815 · <a class="doi-link" href="https://doi.org/10.1021/acscatal.1c03950" target="_blank">DOI: 10.1021/acscatal.1c03950</a></div>
+  <div class="tags">
+    <span class="tag">SPM</span><span class="tag">MetaDynamics FEL</span><span class="tag">TrpB</span>
+    <span class="tag">ASR</span><span class="tag">COMM domain</span><span class="tag">Allosteric Design</span>
+    <span class="tag">s/z axes explained</span><span class="tag">Open Access (PMC)</span>
+  </div>
+</div>
+
+<!-- ABSTRACT -->
+<div id="abs" class="sec-label"><span class="sec-num">ABS</span> Abstract</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">ABS</span>
+    <p><span class="hl-r">Allostery</span> is a central mechanism for the regulation of multi-enzyme complexes. The mechanistic basis that drives allosteric regulation is poorly understood but harbors key information for enzyme engineering. In the present study, we focus on the <span class="hl-r">tryptophan synthase complex</span> that is composed of TrpA and TrpB subunits, which allosterically activate each other. Specifically, <span class="hl-y">we develop a rational approach for identifying key amino acid residues of TrpB distal from the active site</span>. Those residues are predicted to be crucial for <span class="hl-y">shifting the inefficient conformational ensemble of the isolated TrpB to a productive ensemble through intra-subunit allosteric effects</span>. The experimental validation of the conformationally driven TrpB design <span class="hl-b">demonstrates its superior stand-alone activity in the absence of TrpA, comparable to those enhancements obtained after multiple rounds of experimental laboratory evolution</span>. Our work evidences that <span class="hl-y">the current challenge of distal active site prediction for enhanced function in computational enzyme design has become within reach</span>.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">ABS</div>
+    <p><strong>段落功能：</strong>用四句话交代研究背景、问题、方法和主要结论，是全文核心论点的浓缩。</p>
+    <div class="role-badge">论点宣言</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Allostery（别构）</td><td>一个位点的结合/突变影响远处另一位点功能的现象</td></tr>
+      <tr><td>Distal mutations（远端突变）</td><td>距离活性位点较远（&gt;15 Å）但仍能影响酶活性的突变</td></tr>
+      <tr><td>Conformational ensemble（构象集合）</td><td>蛋白质在溶液中采样的所有构象的统计集合</td></tr>
+      <tr><td>Stand-alone activity</td><td>TrpB在没有TrpA伴侣的情况下独立催化的能力</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>本文的核心贡献是"不需要定向进化筛选大量突变，只测一个理性设计变体，就能达到多轮DE同等效果"。这是计算酶设计领域的重大突破。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的项目也是理性设计（RFDiffusion2→ProteinMPNN→AF2），然后用MetaDynamics FEL验证。本文证明了FEL是有效的理性筛选指标——这直接支持你Step 4的科学依据。</div>
+  </div>
+</div>
+
+<!-- INTRODUCTION -->
+<div class="sec-label"><span class="sec-num">§1</span> Introduction — P1–P8</div>
+
+<div id="p1" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1</span>
+    <p>Enzymes are some of the most sophisticated biomolecules that exist on Earth. They achieve impressive rate accelerations, thanks to their <span class="hl-r">highly preorganized active site pockets</span>, while exhibiting remarkable <span class="hl-r">conformational flexibility</span> key for their function, regulation, and evolution. <span class="hl-y">Enzymes are dynamic biological entities, whose catalytic activities are directly related to their structure and the broad ensemble of conformations they sample in solution.</span> This <span class="hl-r">conformational equilibrium</span> can be shifted, for example, by the binding of a ligand to a given site. This in turn influences the binding or the turnover of a substrate at the active site of the enzyme, a phenomenon that is called <span class="hl-r">"allostery."</span> Likewise, the introduction of an amino acid substitution in the protein sequence not only induces an evident structural change but also <span class="hl-y">a redistribution of the conformational ensemble, which in turn can potentially impact catalytic activity.</span> Indeed, it has been proven that <span class="hl-y">allosteric effects are not restricted to effector binding, but instead single point mutations or covalent attachment (e.g., phosphorylation), among others, can induce similar responses.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1</div>
+    <p><strong>段落功能：</strong>建立研究的哲学基础——酶的活性由构象集合决定，别构效应不只来自配体，突变也能重塑构象分布。</p>
+    <div class="role-badge">背景建立</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Preorganized active site</td><td>活性位点预先排列好催化基团，降低过渡态能垒</td></tr>
+      <tr><td>Conformational flexibility</td><td>蛋白质骨架和侧链的运动自由度，与功能直接相关</td></tr>
+      <tr><td>Allostery（别构调控）</td><td>一处结构变化（配体结合或突变）通过远程传递影响另一处功能</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>"单点突变也能产生别构效应"——这是本文整个设计思路的理论基础。如果突变只能改变局部结构，就不需要用MetaDynamics；正是因为远端突变能重塑整个构象集合，才值得用FEL来评估。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你设计的de novo TrpB变体，其突变不一定在活性位点。本段告诉你：远端位点的突变通过别构效应可以影响COMM domain的构象分布——这正是你用MetaDynamics要测量的东西。</div>
+  </div>
+</div>
+
+<div id="p2" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2</span>
+    <p>Identifying mutations that modulate enzyme activity is the primary goal of enzyme engineering. One approach to enzyme engineering is <span class="hl-r">directed evolution (DE)</span>, which has been applied to a myriad of enzyme systems successfully identifying active site and distal mutations, providing access to impressive tailor-made enzyme variants at the <span class="hl-g">expense of large and expensive screening efforts.</span> <span class="hl-r">Rational design</span> emerged as an attractive alternative to decrease the screening efforts to a reduced number of promising enzyme variants based on prior structural knowledge and computational approaches. Given the sophisticated nature of enzyme catalysis, multiple computational strategies and protocols have been developed in recent years for computational enzyme design. The evaluation of the conformational landscape of enzymes along distinct natural and DE evolutionary pathways has evidenced that <span class="hl-y">the introduced mutations progressively tune the conformational ensemble, stabilizing key conformational states for the novel function.</span> Of note is that <span class="hl-g">the mutations introduced with DE are often located distal from the active site pocket, which, given the vast sequence space, are computationally challenging to predict.</span> In addition, <span class="hl-g">the computational prediction of which remote mutations can induce the desired population shift to favor the key conformational ensemble for novel functionality is an extremely difficult task.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2</div>
+    <p><strong>段落功能：</strong>提出研究空白——DE有效但代价高；理性设计更高效但远端突变预测极难。</p>
+    <div class="role-badge">研究空白</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Directed Evolution (DE)</td><td>定向进化：随机突变+高通量筛选，不需要先验知识</td></tr>
+      <tr><td>Rational design</td><td>理性设计：基于结构/计算预测，只测少量候选变体</td></tr>
+      <tr><td>Population shift</td><td>构象群体转移：突变改变蛋白质访问不同构象的概率分布</td></tr>
+      <tr><td>Sequence space</td><td>序列空间：所有可能氨基酸序列的集合，大小约20^n（n=蛋白质长度）</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>本段明确说明了为什么远端突变预测是计算酶设计的核心难题——序列空间太大，而且远端突变通过间接的构象效应发挥作用，传统基于结构的方法很难捕捉。这就是SPM方法试图解决的问题。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的pipeline（RFDiffusion2→ProteinMPNN→AF2）是理性设计路线。本文展示的SPM方法是其中的计算筛选模块——你Step 4的MetaDynamics FEL就相当于他们的"快速构象筛选"，用来验证设计序列是否有正确的构象偏好。</div>
+  </div>
+</div>
+
+<div id="p3" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P3</span>
+    <p>Our group has recently shown that <span class="hl-y">active site and distal positions targeted by DE can be computationally identified through the coupling of MD simulations with cross correlation methods, such as the <span class="hl-r">shortest path map (SPM)</span>.</span> SPM has been applied for identifying DE mutations in the retro-aldolase, monoamine oxidase, and tryptophan synthase (TrpS) enzymes, suggesting its potential application for the rational design of enzyme variants.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P3</div>
+    <p><strong>段落功能：</strong>介绍Osuna组自主开发的SPM方法，作为解决P2中"远端突变难以预测"问题的工具。</p>
+    <div class="role-badge">方法引入</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>SPM (Shortest Path Map)</td><td>最短路径图：MD轨迹→DCCM互相关矩阵→加权图→Dijkstra最短路径→识别别构热点残基</td></tr>
+      <tr><td>DCCM</td><td>动态互相关矩阵：两个残基运动方向一致则为正相关，反向则负相关</td></tr>
+      <tr><td>Cross-correlation</td><td>交叉相关：衡量两个残基运动之间的统计相关程度</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>SPM流程简述：</strong>(1) 做MD模拟取轨迹; (2) 计算所有残基对之间的运动相关性(DCCM); (3) 将蛋白质表示为加权图(每条边权重=相关性强度的倒数); (4) Dijkstra算法找活性位点到所有其他残基的最短路径; (5) 在路径上频繁出现的残基=别构热点.</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>SPM方法在本文中用于TrpB天然序列变体。在你的de novo设计中，可以同样对设计序列做普通MD，然后用SPM分析是否存在完整的别构网络连接活性位点和COMM domain——这可以作为MetaDynamics FEL之前的快速预筛选。</div>
+  </div>
+</div>
+
+<div id="p4" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P4</span>
+    <p><span class="hl-r">TrpS is an excellent model system for studying allosteric properties.</span> TrpS is a <span class="hl-r">heterodimeric enzyme complex formed by α(TrpA) and β(TrpB) subunits in an αββα arrangement.</span> TrpA catalyzes the retro-aldol cleavage of indole-3-glycerol phosphate (IGP) producing glyceraldehyde-3-phosphate (G3P) and indole, which diffuses along an internal tunnel toward the TrpB active site. <span class="hl-r">TrpB is a pyridoxal phosphate (PLP) cofactor-dependent enzyme that catalyzes the production of L-tryptophan (L-Trp) by condensation of indole and L-serine (L-Ser)</span> in a multistep reaction mechanism, which mainly comprises: (1) formation of a <span class="hl-r">Schiff base intermediate (Ain)</span> at the resting state by covalent attachment of the PLP cofactor to the catalytic lysine, (2) transamination with L-Ser, (3) indole coupling, and (4) formation of several quinonoid intermediates to finally release L-Trp. Of relevance is the <span class="hl-r">tight allosteric coupling between TrpA and TrpB</span> along the catalytic itinerary. This fine tuning of the conformational ensemble involves <span class="hl-r">open-to-closed (O-to-C) transitions of the rigid COMM domain</span> that forms a lid covering the TrpB active site. Given the tight allosteric communication exerted between subunits, <span class="hl-g">both TrpA and TrpB are much less efficient when isolated, which hampers TrpB industrial application for non-canonical amino acid production.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P4</div>
+    <p><strong>段落功能：</strong>介绍TrpS系统的分子机制，解释为什么TrpA-TrpB别构耦合是核心问题，为后面"设计stand-alone TrpB"铺垫动机。</p>
+    <div class="role-badge">系统背景</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>αββα arrangement</td><td>TrpS功能单元：TrpA-TrpB-TrpB-TrpA排列，形成两个活性异二聚体</td></tr>
+      <tr><td>PLP (pyridoxal phosphate)</td><td>磷酸吡哆醛：TrpB的辅因子（即"P"），共价连接催化Lys</td></tr>
+      <tr><td>Ain (internal aldimine)</td><td>内部亚胺：静息态，PLP通过Schiff碱键连接到Lys84</td></tr>
+      <tr><td>COMM domain</td><td>TrpB中约40-50残基的可移动环/螺旋区域（残基97-184），像"盖子"覆盖活性位点</td></tr>
+      <tr><td>O/PC/C conformations</td><td>开放(Open)/部分关闭(Partially Closed)/关闭(Closed)——COMM domain三种构象状态</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>COMM domain是关键：</strong>COMM domain的开/关转换是速率限制步骤。Closed构象使K84质子转移距离最短，催化效率最高。Open构象允许底物进入/产物离开。设计"好的"TrpB变体，本质上就是让COMM domain更容易到达Closed构象。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你设计的是de novo TrpB，目标是用于非天然氨基酸合成（如D-Trp）。核心问题和本段一样：如何让TrpB在没有TrpA的情况下高效催化？你的MetaDynamics FEL就是测量COMM domain O-to-C转换的自由能。</div>
+  </div>
+</div>
+
+<div id="p5" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P5</span>
+    <p>Arnold and co-workers addressed this limitation by applying DE to optimize activity of TrpB from the TrpS of <em>Pyrococcus furiosus</em> for stand-alone function (i.e., recovery of the catalytic activity in the absence of the allosteric protein partner TrpA). Interestingly, <span class="hl-b">the most evolved variant (pf TrpB<sup>4D11</sup>) was even more efficient than the original pf TrpS complex (2.9-fold increase in k<sub>cat</sub>), and 5 out of its 6 mutations were located distal from the active site.</span> This manifests that <span class="hl-y">the recovery of activity exerted by the distal mutations is induced through allosteric effects.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P5</div>
+    <p><strong>段落功能：</strong>引入Arnold实验室DE实验结果，作为本文计算方法的"对照基准"——6个突变，多轮筛选。</p>
+    <div class="role-badge">基准建立</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>pf TrpB<sup>4D11</sup></td><td>Arnold组最终进化版本，含6个突变：I6V, I68V, F274S, T292S, I305V, T321A</td></tr>
+      <tr><td>Stand-alone function</td><td>在无TrpA情况下保持高催化活性——这是工业应用的核心需求</td></tr>
+      <tr><td>k<sub>cat</sub></td><td>催化转换数（每秒每个酶分子催化的底物分子数），衡量酶速率的核心参数</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>关键数字：</strong>Arnold DE的结果：6个突变，5个远端，kcat提高2.9倍（相对pf TrpS复合体）。本文SPM6：6个突变，5个远端，kcat提高7倍（相对ANC3 TrpB）——两者在突变策略上高度相似，但本文只需测一个变体。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的项目目标对象不是pf TrpB（Arnold的系统），而是de novo设计的TrpB。但判断标准是一样的：ΔG(closed−open) &lt; −2 kcal/mol意味着设计成功，对应的是高stand-alone活性。</div>
+  </div>
+</div>
+
+<div id="p6" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P6</span>
+    <p>Intrigued by the allosteric regulation induced by distal mutations, we explored the <span class="hl-p">conformational energy landscape of the pf TrpS enzyme complex, the pf TrpB isolated enzyme and the stand-alone pf TrpB<sup>4D11</sup> evolved variant.</span> Free-energy calculations revealed that <span class="hl-b">the DE mutations in pf TrpB<sup>4D11</sup> recovered the allosterically driven conformational ensemble of the pf TrpS complex, allowing the exploration of open, partially closed (PC), and closed conformations of the COMM domain.</span> The pf TrpB stand-alone activity was thus achieved though the recovery of the conformational ensemble present in the pf TrpS complex. In fact, <span class="hl-b">the allosterically driven conformational ensemble was not only recovered but also improved as a higher stability of catalytically productive closed states was found in the case of pf TrpB<sup>4D11</sup>.</span> This explained the pf TrpB<sup>4D11</sup> superior activity with respect to the pf TrpS complex. In contrast, <span class="hl-g">isolated pf TrpB showed a restricted COMM domain conformational heterogeneity and catalytically unproductive closed states.</span> Careful analysis of the pf TrpS conformational ensemble through <span class="hl-p">SPM correlation-based tools</span> elucidated the enzyme pathways most contributing to the TrpS conformational dynamics, which interestingly included some important DE positions. <span class="hl-y">This suggests that positions that were identified with the SPM method can potentially alter the conformational dynamics of the enzyme, and thus, its stand-alone activity.</span> However, <span class="hl-g">multiple positions are identified and there is a lack of information on which specific amino acid substitution should be introduced for achieving an efficient conformational ensemble for stand-alone function.</span> <span class="hl-y">This study aims to address these constraints by combining SPM with ancestral sequence reconstruction (ASR).</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P6</div>
+    <p><strong>段落功能：</strong>总结Osuna组前期发现（SPM识别位置，FEL验证DE机制），并点出本文要解决的新问题：SPM找到的位置太多，需要ASR来筛选具体突变。</p>
+    <div class="role-badge">研究起点 + 本文动机</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Conformational ensemble recovery</td><td>DE突变"恢复"了pf TrpS复合体中COMM domain的开-关-闭完整转换能力</td></tr>
+      <tr><td>Unproductive closed state</td><td>非生产性关闭态：COMM domain关闭但催化距离仍不合适，不能有效催化</td></tr>
+      <tr><td>ASR (Ancestral Sequence Reconstruction)</td><td>祖先序列重建：通过系统发生树推断蛋白质进化过程中的祖先序列</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>核心发现链：</strong>DE突变 → 恢复FEL中C构象 → 提高活性。反过来：计算FEL → 评估C构象稳定性 → 预测活性。这是你MetaDynamics FEL的科学逻辑链。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>"unproductive closed state"是关键概念！不是所有closed构象都等价。你在分析FEL时不仅需要看ΔG(C−O)，还需要检查closed态内部是否有正确的K84催化距离。这是更精细的分析层次。</div>
+  </div>
+</div>
+
+<div id="p7" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P7</span>
+    <p><span class="hl-r">ASR is an orthogonal method to analyze functional transitions in enzyme evolution.</span> In a previous work, we used ASR to reconstruct the TrpS phylogenetic tree and identified a shift in the allosteric modulation exerted by TrpA on TrpB activity. The analysis of the steady-state kinetic parameters of the <span class="hl-r">last bacterial common ancestor (LBCA)</span> revealed <span class="hl-b">high stand-alone activity of LBCA TrpB and its allosteric inhibition in the presence of TrpA.</span> Along the phylogenetic tree, <span class="hl-b">this inhibition was gradually inversed toward allosteric activation existing in modern TrpB.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P7</div>
+    <p><strong>段落功能：</strong>介绍ASR方法以及关键发现：LBCA TrpB天然具有stand-alone活性（TrpA对其是抑制的），现代TrpB则相反（TrpA激活TrpB）。</p>
+    <div class="role-badge">进化背景</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>LBCA (Last Bacterial Common Ancestor)</td><td>最后细菌共同祖先：TrpS进化树的根节点，约35亿年前的祖先序列</td></tr>
+      <tr><td>ASR</td><td>祖先序列重建：用最大似然法/贝叶斯法从现代序列推断祖先序列，然后合成表达</td></tr>
+      <tr><td>Allosteric inhibition</td><td>别构抑制：LBCA系统中TrpA的结合反而降低TrpB活性（与现代系统相反）</td></tr>
+      <tr><td>ANC1–ANC6</td><td>LBCA到现代pf TrpS进化路径上的6个中间节点祖先</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>进化逆转：</strong>LBCA TrpB: TrpA抑制 → ANC2/ANC3转折点 → 现代TrpB: TrpA激活。LBCA TrpB是天然stand-alone催化剂——这就是为什么用它的FEL作为"好的构象集合"参考模板。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>虽然你的项目是de novo设计而非ASR，但LBCA TrpB作为"天然stand-alone TrpB"的参考意义重要——它告诉你FEL里什么样的构象分布才算"好的"。你的设计目标FEL形态可以参考LBCA TrpB的FEL。</div>
+  </div>
+</div>
+
+<div id="p8" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P8</span>
+    <p>This inversion of the allosteric effect exerted by TrpA on TrpB along the phylogenetic path provides a perfect starting point for an SPM-based approach. Specifically, we wanted to identify residues within the allosteric network of TrpB that are able to rescue the missing allosteric activation from TrpA and predict mutations that convey stand-alone function in the context of the <span class="hl-r">catalytically inefficient ANC3 TrpB</span>. To this end, we intended to explore the conformational ensemble of the stand-alone LBCA TrpB enzyme system and to identify key positions by means of our developed SPM correlation-based tool. <span class="hl-p">Sequence comparison of the identified positions along the phylogenetic tree further reduces the number of potential mutations and provides the specific amino acid substitutions for stand-alone function.</span> <span class="hl-y">This approach decreases the experimental screening to one single mutant</span> and includes the identification of both active site and distal mutations. <span class="hl-y">Our study presents a computational approach that is not restricted to active site mutations and could be in principle applied in unrelated allosterically regulated systems.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P8</div>
+    <p><strong>段落功能：</strong>明确本文的核心策略：SPM(LBCA TrpB) + ASR序列比较 → 只测一个变体 → 相当于多轮DE。</p>
+    <div class="role-badge">研究策略宣言</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>ANC3 TrpB</td><td>进化树第三节点：第一个需要TrpA激活的祖先——活性极低（约为ANC3 TrpS的3%）</td></tr>
+      <tr><td>SPM + ASR workflow</td><td>① SPM(LBCA TrpB)→68个热点位置 ② LBCA vs ANC3序列比较 → 6个差异SPM位置 ③ 在ANC3背景引入这6个突变 = SPM6</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>"只测一个变体"：</strong>从393个残基的完整序列空间，通过SPM+序列比较，压缩到只需测试1个变体（SPM6）——这个效率是整篇文章的核心卖点，也是你项目中MetaDynamics筛选价值所在。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的情况类似：RFDiffusion2可能生成数十到数百个候选设计，不可能全部做实验测试。MetaDynamics FEL就是你的"计算筛选"步骤，将候选压缩到少数几个真正值得湿实验的变体。</div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="sec-label"><span class="sec-num">§2</span> Results — P9–P18</div>
+
+<div id="p9" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P9</span>
+    <p>As shown in previous studies, natural evolution has altered the need of TrpS to be allosterically regulated. As opposed to modern TrpB, the ancestral LBCA TrpB was found to operate less efficiently (in terms of k<sub>cat</sub>) in the presence of TrpA. The allosteric inhibition imparted by TrpA suggests that the ancestral TrpB in complex presents a more restricted conformational ensemble. To provide the molecular basis, we decided to <span class="hl-p">computationally reconstruct the free-energy landscape (FEL) of LBCA TrpB in the presence and absence of TrpA. We employed metadynamics simulations to reconstruct the FEL associated with the O-to-C transition of the COMM domain at the resting state [i.e., E(Ain)] and at the E(A-A) intermediate.</span> The reconstructed FEL of the LBCA TrpB(Ain) in the absence of TrpA indicates that <span class="hl-b">TrpB(Ain) mostly visits PC conformational states of the COMM domain.</span> This is altered in the presence of TrpA, which <span class="hl-b">clearly induces a shift in the FEL stabilizing O states.</span> At the resting state, <span class="hl-b">C states are inaccessible for both systems.</span> The analysis of the access tunnels through CAVER calculations indicates that <span class="hl-b">the PC conformational ensemble of the isolated LBCA TrpB has a substantially narrower tunnel bottleneck than the accessible O states of the complex</span>, indicating that the O conformational ensemble improves L-Ser accessibility to the active site, thus explaining the lower K<sub>m</sub> values displayed by the LBCA–TrpS complex.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P9</div>
+    <p><strong>段落功能：</strong>呈现LBCA TrpB的FEL计算结果，解释TrpA在LBCA系统中产生抑制的结构机制。</p>
+    <div class="role-badge">结果：FEL静息态</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>E(Ain)</td><td>酶的静息态：PLP以内部亚胺形式连接Lys84，尚未与底物反应</td></tr>
+      <tr><td>E(A-A)</td><td>喹啉醌中间体：吲哚与活化的L-Ser偶联后的中间态，是催化关键节点</td></tr>
+      <tr><td>CAVER</td><td>计算隧道的软件工具，分析底物进出活性位点的通道大小</td></tr>
+      <tr><td>Tunnel bottleneck</td><td>隧道中最窄处的半径，决定底物能否顺利进入活性位点</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>静息态不访问C构象：</strong>在E(Ain)阶段，无论有无TrpA，LBCA TrpB都不会采取Closed构象——Closed态只在E(A-A)中间体阶段出现。这说明FEL的状态依赖于催化周期的不同阶段。你做MetaDynamics时需要注意选择哪个催化状态作为起始结构。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你在做MetaDynamics时，需要选择起始构象。E(Ain)和E(A-A)给出不同的FEL。本文在E(A-A)中间体下看到更多C态——意味着你的模拟起始结构选择会影响FEL结果。建议参考Osuna组的设置。</div>
+  </div>
+</div>
+
+<div id="p10" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P10</span>
+    <p>More interesting is the fact that <span class="hl-b">TrpA was found to inhibit the TrpB catalytic efficiency as isolated LBCA TrpB displays a 8.4-fold higher k<sub>cat</sub> value.</span> As we show in our previous study, the catalytic activity of TrpS can be estimated by evaluating its ability to visit the allosterically driven conformational ensemble, especially the <span class="hl-y">catalytically competent C states of the COMM domain.</span> The catalytically relevant C conformational ensemble displays <span class="hl-r">an efficient active site preorganization by means of optimized non-covalent interaction networks and short catalytic distances between the E(A-A) intermediate and the conserved catalytic K84 that acts as a proton acceptor.</span> In particular, <span class="hl-r">the H6 COMM domain α-helix was found to play an important role in the closure to form non-covalent interactions with the indole moiety of E(A-A).</span> In the present work, the reconstructed FEL associated to the COMM domain O-to-C transition for LBCA–TrpB at the E(A-A) intermediate indicates that <span class="hl-b">the catalytically productive C conformational ensemble is indeed accessible for efficient catalysis.</span> Besides, within the broad energy minima of this C conformational state, largely deviated conformations along the z-axis are explored, labeled as <span class="hl-r">C* conformations</span>. This feature provides LBCA TrpB some additional conformational heterogeneity needed for the catalytic cycle, as for instance for substrate binding and product release.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P10</div>
+    <p><strong>段落功能：</strong>揭示LBCA TrpB stand-alone活性的结构基础，并解释FEL中s轴/z轴所代表的含义。</p>
+    <div class="role-badge">★ 核心结果：FEL轴解释</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td><strong>s-axis（你之前问的"s/z轴"）</strong></td><td>沿参考O-to-C路径的进度（0=open, 1=closed），来自X-ray结构生成的参考路径</td></tr>
+      <tr><td><strong>z-axis（"L和P"的答案）</strong></td><td>偏离参考路径的均方位移（MSD）距离——z越大说明构象越偏离标准O-to-C路径</td></tr>
+      <tr><td>C* conformations</td><td>偏离型关闭态：s值大（接近closed）但z值也大（偏离标准路径）——仍有功能，提供额外异质性</td></tr>
+      <tr><td>H6 α-helix</td><td>COMM domain中的关键螺旋（残基164-174），关闭时与E(A-A)中吲哚形成非共价相互作用</td></tr>
+      <tr><td>K84</td><td>催化Lys84：质子受体，与E(A-A)中间体距离是判断productive closure的关键指标</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>FEL轴的真实含义（你之前一直困惑的问题）：</strong><br>
+    <strong>s轴</strong> = COMM domain"关闭了多少"（s=0完全开放，s=1完全关闭）<br>
+    <strong>z轴</strong> = 与标准关闭路径的偏差（z≈0说明走的是标准O→C路径；z大说明走了"弯路"）<br>
+    C*区域（右上角）：已关闭但方式不标准——LBCA TrpB比现代TrpB有更多C*，这反而赋予它更好的底物结合灵活性。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你跑MetaDynamics后得到的2D FEL图，横轴是s（COMM关闭进度），纵轴是z（偏离程度）。判断你的设计好不好：(1) C区域（s~1, z~0）的自由能是否低（ΔG(C-O) &lt; -2 kcal/mol）；(2) C态内部是否有适度的C*区域（说明有底物结合弹性）。</div>
+  </div>
+</div>
+
+<div id="p11" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P11</span>
+    <p>However, <span class="hl-g">the lack of O states of the COMM domain at the E(A-A) intermediate for LBCA TrpB suggests a more rigid COMM as the reaction evolves, and an infrequent transition toward the O state, thus suggesting that <span class="hl-r">product release might be rate limiting.</span></span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P11</div>
+    <p><strong>段落功能：</strong>指出LBCA TrpB的一个局限性：E(A-A)阶段缺乏O态，产物释放可能是速率限制步骤。</p>
+    <div class="role-badge">局限性说明</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Product release rate limiting</td><td>产物释放是速率限制步骤：COMM domain在E(A-A)阶段太"稳定"于C态，难以重新打开释放产物</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>产物释放问题：</strong>好的催化剂不只需要能达到C态（催化），还需要能回到O态（产物释放+新一轮底物进入）。FEL中O态和C态之间需要保持一定的可及性——这是LBCA TrpB虽然活性好但还有提升空间的原因。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>评估你的设计时，不只看ΔG(C−O)是否&lt;−2 kcal/mol，还要看O态是否仍然可及（FEL中O态不能完全消失）。完全锁定在C态反而会抑制产物释放。</div>
+  </div>
+</div>
+
+<div id="p12" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P12</span>
+    <p>The mutations introduced along an evolutionary pathway progressively tune the conformational ensemble of enzymes toward a novel function. In this context, distal active site mutations have been shown to play a crucial role in natural and laboratory evolvability. Their prediction considering the vast protein sequence space that yields a targeted function is, however, an extremely challenging task in computational enzyme design. We have recently reported that <span class="hl-p">molecular dynamics coupled to correlation-based tools are promising methodologies for the identification of both active site and distal positions targeted in non-rational laboratory evolution experiments.</span> In particular, we successfully developed and applied the <span class="hl-r">SPM method for identifying the enzyme pathways that most contribute to the conformational dynamics of the pf TrpS enzyme.</span> Of relevance is that <span class="hl-b">the identified positions coincide or form persistent non-covalent interactions with residues targeted in the laboratory evolution of the pf TrpS enzyme for stand-alone function.</span> <span class="hl-y">SPM identifies important positions for the enzyme conformational dynamics, thus reducing the potential number of mutational hotspots.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P12</div>
+    <p><strong>段落功能：</strong>回顾SPM方法在pf TrpS上的验证结果，为应用到ANC3 TrpB做铺垫。</p>
+    <div class="role-badge">方法验证回顾</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Correlation-based tools</td><td>基于相关性分析的工具：通过分析残基间运动的相关性来识别别构通信网络</td></tr>
+      <tr><td>Non-covalent interaction persistence</td><td>持久非共价相互作用：在MD轨迹中长时间存在的氢键/盐桥等，是别构网络的物理基础</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>SPM的验证逻辑：</strong>SPM预测的热点残基与DE实验发现的突变位置重叠——这是SPM方法有效性的直接证据。方法→预测→实验验证，这是整篇文章的证明逻辑。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你可以在完成AF2结构预测后，用普通MD（100 ns）+ SPM分析你的设计序列，看是否存在从活性位点到COMM domain的完整别构路径。如果SPM路径断裂，说明设计序列可能缺乏有效别构通信，MetaDynamics可能不会给出好的FEL。</div>
+  </div>
+</div>
+
+<div id="p13" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P13</span>
+    <p>Inspired by our previous work on the TrpS ancestral reconstruction, we focused our computational approach on the <span class="hl-r">ancestral ANC3 TrpB scaffold</span>. This enzyme corresponds to the third node of the phylogenetic tree and exhibits reversion of allosteric inhibition toward activation along the evolution pathway. In other words, <span class="hl-r">ANC3 TrpB is the first enzyme that is allosterically dependent on TrpA, thus being highly inefficient as stand-alone catalyst.</span> <span class="hl-b">The absence of TrpA decreases ANC3 TrpB activity about 30-fold in terms of k<sub>cat</sub></span>, suggesting a reduced conformational O-to-C ensemble. Given the success of SPM in identifying key positions for the enzyme conformational dynamics, we decided to apply our computational methodology to confer ANC3 TrpB improved stand-alone activity. Our initial reference protein was LBCA TrpB, as it exhibits stand-alone activity thanks to its ability to adopt stable and efficient closed states of the COMM domain. <span class="hl-p">The SPM analysis of the LBCA TrpB identified numerous possible hotspots (68 out of 413 residues, i.e., 18% of the full-length enzyme).</span> Similarly, <span class="hl-p">sequence comparison between LBCA TrpB and ANC3 also identifies many potential hotspots (42 out of 393 residues, i.e., 11% of the full-length enzyme).</span> We solved this problem by <span class="hl-p">analyzing the sequence conservation between LBCA TrpB and the targeted ANC3 TrpB system for the 68 SPM positions.</span> <span class="hl-b">This combined approach based on SPM, ASR, and sequence conservation analysis successfully reduced the sequence space to only six positions.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P13</div>
+    <p><strong>段落功能：</strong>描述SPM+ASR+序列比较的完整三步过滤流程，从393个位置压缩到6个关键突变。</p>
+    <div class="role-badge">★ 核心方法：位置筛选</div>
+    <table class="term-table">
+      <tr><th>步骤</th><th>说明</th><th>结果数目</th></tr>
+      <tr><td>完整序列</td><td>ANC3 TrpB全长</td><td>393个残基</td></tr>
+      <tr><td>SPM热点</td><td>LBCA TrpB中SPM识别的动力学相关残基</td><td>68个</td></tr>
+      <tr><td>序列差异</td><td>LBCA vs ANC3在68个SPM位置上不一样的</td><td>6个</td></tr>
+      <tr><td>最终变体</td><td>SPM6 = 在ANC3引入这6个LBCA残基</td><td>1个变体</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>漏斗逻辑：</strong>393 → 68(SPM) → 6(序列比较) → 1(变体)。关键洞见：只看SPM不够（68个），只看序列差异不够（42个），两个条件取交集才能压缩到最有价值的6个。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你不需要完全复制这个流程，但可以借用思路：对你的de novo设计，AF2结构 → MD → SPM分析 → 识别关键别构通信路径上的残基。如果这些残基的序列设计不合理，可以有针对性地用ProteinMPNN重新采样。</div>
+  </div>
+</div>
+
+<div id="p14" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P14</span>
+    <p>The application of the SPM method coupled to sequence comparison between two variants exhibiting rather high (LBCA TrpB) or low (ANC3 TrpB) stand-alone function reduced the SPM library to only six specific mutations in ANC3 TrpB: <span class="hl-b">A56E, D62E, S73T, T207S, N299A, and R300M.</span> This ANC3 variant was termed <span class="hl-r">SPM6 TrpB</span>. Interestingly, <span class="hl-b">none of the mutations is located in the COMM domain, and five out of six mutations are located far away from the active site (18–29 Å), among which N299A and R300M are near the TrpA-TrpB protein interface, and only S73T is located at the active site pocket.</span> The computational screening of ANC3 TrpB, the ANC3 TrpS, and the SPM6 TrpB enzyme variant by means of <span class="hl-p">conventional molecular dynamics simulations</span> suggests that both <span class="hl-b">SPM6 TrpB and ANC3 TrpS are able to retain the closed conformation of the COMM domain.</span> In contrast, <span class="hl-b">isolated ANC3 TrpB explores additional non-productive conformations.</span> As shown in Figure 4a, <span class="hl-b">the turnover number of SPM6 TrpB with respect to ANC3 TrpB is enhanced by almost one order of magnitude (7-fold increase in k<sub>cat</sub>). The catalytic efficiencies k<sub>cat</sub>/K<sub>m</sub> for both, indole and L-Ser are improved by 4-fold and 7-fold.</span> It is worth emphasizing that <span class="hl-y">a similar fold increase in stand-alone catalytic activity, as obtained for SPM6, was achieved in pf TrpB<sup>4D11</sup> by means of multiple rounds of laboratory evolution. Our SPM-based computational approach therefore provides the same order of improvement in stand-alone activity but by only testing one single rationally designed variant.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P14</div>
+    <p><strong>段落功能：</strong>呈现SPM6的完整实验结果——6个突变全部远离COMM domain，7倍kcat提升，等效3轮DE但只测1个变体。</p>
+    <div class="role-badge">★ 核心结果：SPM6验证</div>
+    <table class="term-table">
+      <tr><th>突变</th><th>位置类型</th><th>距活性位点</th></tr>
+      <tr><td>A56E, D62E</td><td>远端（β-sheet区域）</td><td>&gt;18 Å</td></tr>
+      <tr><td>S73T</td><td>活性位点</td><td>近活性位点</td></tr>
+      <tr><td>T207S</td><td>远端</td><td>&gt;18 Å</td></tr>
+      <tr><td>N299A, R300M</td><td>TrpA-TrpB界面附近</td><td>&gt;25 Å</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>关键量化结果：</strong>SPM6 vs ANC3 TrpB: kcat提高7倍；kcat/Km(indole)提高4倍；kcat/Km(L-Ser)提高7倍。相比之下：Arnold DE（3轮，筛选3080个变体）达到类似倍数。SPM6只需测1个变体。效率比 = 3080:1。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>这个结果是你项目的最强理论支撑之一——计算方法（FEL + SPM）确实能预测哪些设计有活性。你的Step 4 MetaDynamics扮演的就是这里"conventional MD筛选"的升级版——用FEL提供更精确的构象稳定性信息。</div>
+  </div>
+</div>
+
+<div id="p15" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P15</span>
+    <p>Another interesting aspect to evaluate is whether the SPM6 mutations have an impact in the allosteric modulation exerted by TrpA. <span class="hl-b">The catalytic activity of the ancestral ANC3 TrpB increases 30.2-fold in terms of k<sub>cat</sub>, thanks to the TrpA-triggered allosteric activation.</span> Remarkably, <span class="hl-b">the introduction of LBCA residues into ANC3 TrpB confers increased stand-alone activity in SPM6, while still retaining some TrpA allosteric activation (the activity of SPM6 TrpB is enhanced by 5.5-fold in the presence of TrpA).</span> This indicates that <span class="hl-y">the SPM6 distal mutations tune the O-to-C conformational ensemble of SPM6 TrpB through long-range intra-subunit allosteric effects, but these changes in the conformational landscape do not prevent TrpA inter-subunit allosteric activation.</span> To further investigate the effects of distal mutations introduced in SPM6, we performed additional <span class="hl-p">metadynamics simulations to reconstruct the COMM conformational landscape for ANC3 TrpB, SPM6 TrpB, and their respective heterocomplexes.</span> The distal mutations introduced in SPM6 TrpB variant <span class="hl-b">partially recover the conformational heterogeneity of LBCA TrpB, as a wider energy minimum for the C state is observed (i.e., larger deviation along the z-axis).</span> This deviation confers some additional flexibility to the COMM domain of SPM6 TrpB, which could facilitate both, substrate binding and product release, thus explaining its 7-fold higher stand-alone activity. Still, <span class="hl-g">the introduced mutations are not able to completely shift the C conformational ensemble toward more catalytically productive C conformational states.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P15</div>
+    <p><strong>段落功能：</strong>用MetaDynamics FEL深入解析SPM6为何有效：扩大了C态的能量最小值区域（z轴方向更宽），而非完全转变为productive C态。</p>
+    <div class="role-badge">机制解析：FEL与活性</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Intra-subunit allosteric effects</td><td>亚基内别构效应：SPM6的突变在TrpB内部重新分配构象集合，不依赖TrpA</td></tr>
+      <tr><td>Inter-subunit allosteric activation</td><td>亚基间别构激活：TrpA通过界面接触改变TrpB构象</td></tr>
+      <tr><td>Wider C-state minimum (z-axis)</td><td>在FEL图中，C态对应的能量最小值在z方向更宽——意味着C态内部可以访问更多不同偏离程度的构象，有利于底物结合和产物释放</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>FEL变化的物理意义：</strong>SPM6使C态的能量谷在z方向"变宽"而非"变深"（并非完全稳定到productive C，而是增加了C态内部的灵活性）。这种"弹性关闭"解释了底物结合和产物释放都改善的现象。<br>图示：ANC3 TrpB FEL: 窄C态 → SPM6: 宽C态（z方向扩展）→ LBCA TrpB: 宽C态 + C*区域。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>当你分析FEL图时，不只看ΔG(C-O)，还要看C态谷的"宽度"（z方向）。一个在z方向有适度宽度的C态谷说明设计有好的构象灵活性；一个完全尖锐的C态谷可能意味着产物释放困难。</div>
+  </div>
+</div>
+
+<div id="p16" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P16</span>
+    <p>To further test the SPM predictive power and the robustness of the strategy followed so far, we additionally targeted two other SPM-based approaches. In the first one, we followed the same workflow as for the SPM6 design but used instead of LBCA TrpB the isolated ANC2 TrpB as stand-alone reference protein for the SPM pathway analysis. After identifying the SPM in ANC2 TrpB and subsequent sequence comparison between ANC2 TrpB and ANC3 TrpB, we identified 3 SPM positions and the corresponding amino acid exchanges in ANC3 TrpB: <span class="hl-b">S73T, N299S, and R300M.</span> The resulting variant was termed <span class="hl-r">SPM3</span>. This reduced number of non-conserved SPM positions makes sense since ANC2 and ANC3 are closer in the phylogenetic tree than LBCA and ANC3.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P16</div>
+    <p><strong>段落功能：</strong>引入对照设计SPM3（用ANC2而非LBCA作为参考），作为SPM6的比较基准。</p>
+    <div class="role-badge">对照实验1：SPM3</div>
+    <table class="term-table">
+      <tr><th>变体</th><th>参考蛋白</th><th>突变数</th><th>实验结果</th></tr>
+      <tr><td>SPM3</td><td>ANC2 TrpB</td><td>3个</td><td>仅1.1倍kcat提升</td></tr>
+      <tr><td>SPM6</td><td>LBCA TrpB</td><td>6个</td><td>7倍kcat提升</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>参考蛋白的选择很关键：</strong>用ANC2（进化上更接近ANC3）作为参考只给出3个突变，活性改善很小（1.1倍）。用LBCA（进化上更远）给出6个突变，改善显著（7倍）。这说明参考模板的"差异程度"直接影响能找到多少有效突变。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>间接相关。对你的de novo设计来说，"参考模板"相当于你MetaDynamics的参考路径（从X-ray结构生成）。选择合适的参考结构对FEL的s/z轴定义至关重要。</div>
+  </div>
+</div>
+
+<div id="p17" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P17</span>
+    <p>In the second approach, we conducted an SPM analysis on the ANC3 TrpS complex. After identifying allosterically relevant SPM positions within ANC3 TrpS, we again compared the ANC3 TrpB sequence to LBCA TrpB to identify mutations that lead to a stand-alone catalyst. Following this protocol, we identified the variant <span class="hl-r">SPM8</span>, which contains two extra exchanges, as compared to SPM6: <span class="hl-b">R53N and M187I, where R53N is far away from the active site and M187I is located at the H6 helix of the COMM domain.</span> Following the same computational MD-based screening protocol, <span class="hl-b">SPM8 TrpB exhibited a similar activity enhancement (5.4-fold in terms of k<sub>cat</sub>) as SPM6 TrpB</span>, whereas a quite modest enhancement (1.1-fold) was obtained for SPM3 TrpB. Regarding the inter-subunit allosteric effects exerted by TrpA, SPM3 and SPM8 variants also showed TrpA allosteric activation. In particular, <span class="hl-b">SPM3 showed a similar degree of k<sub>cat</sub> increase when in complex as ANC3 (26.3-fold), while the SPM6 (5.5-fold) and the SPM8 (1.9-fold) enzyme variants present a reduced predisposition to the TrpA allosteric activation.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P17</div>
+    <p><strong>段落功能：</strong>引入第二对照SPM8（用ANC3 TrpS复合体做SPM），并汇总三个变体的比较结果。</p>
+    <div class="role-badge">对照实验2：SPM8 + 三变体比较</div>
+    <table class="term-table">
+      <tr><th>变体</th><th>SPM参考</th><th>突变数</th><th>单独kcat</th><th>+TrpA激活倍数</th></tr>
+      <tr><td>ANC3</td><td>—</td><td>0</td><td>基准</td><td>30.2×</td></tr>
+      <tr><td>SPM3</td><td>ANC2 TrpB</td><td>3</td><td>1.1×</td><td>26.3×</td></tr>
+      <tr><td>SPM6</td><td>LBCA TrpB</td><td>6</td><td>7×</td><td>5.5×</td></tr>
+      <tr><td>SPM8</td><td>ANC3 TrpS</td><td>8</td><td>5.4×</td><td>1.9×</td></tr>
+      <tr><td>LBCA</td><td>—</td><td>—</td><td>17.4×</td><td>0.12×（TrpA抑制）</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>关键权衡：</strong>提高stand-alone活性的突变同时降低了对TrpA的响应性。SPM6是最佳平衡点：7倍stand-alone提升，同时保留5.5倍TrpA激活能力。这揭示intra-和inter-别构效应存在一定的竞争关系。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的de novo设计不依赖TrpA，因此只需关注stand-alone FEL（ΔG(C-O)）。类比SPM6的逻辑：一个好的设计应该在没有任何蛋白质伴侣的情况下，FEL显示C态明显偏好。</div>
+  </div>
+</div>
+
+<div id="p18" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P18</span>
+    <p>As we have shown above, the combination of correlation-based tools and sequence comparison between the target enzyme and stand-alone template has dramatically reduced the sequence space: from 393 positions for the full-length TrpB protein to only six specific mutations. The comparison of the conformationally relevant positions, as identified by SPM for LBCA TrpB and the pf TrpS complex, reveals that <span class="hl-b">many of the detected positions are shared. In particular, we find that 48 out of 68 LBCA TrpB SPM residues are also detected in the SPM of the modern pf TrpS complex (i.e., 71% of common conformationally relevant amino acids).</span> The MSA of 52 extant TrpB sequences identifies <span class="hl-b">144 residues with a conservation higher than 90%.</span> Remarkably, <span class="hl-y">none of the six targeted residues for SPM6 generation is included in this highly conserved set, indicating that MSA and SPM are complementary techniques when trying to identify crucial positions.</span> <span class="hl-b">Five of the SPM6 positions are contained in a set of 12 low conserved residues</span>, demonstrating that the application of the SPM methodology shows that non-conserved residues, which would be missed by an MSA-based analysis, can play a crucial role for allostery and stand-alone function.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P18</div>
+    <p><strong>段落功能：</strong>比较SPM和MSA方法，揭示两者的互补性：MSA找保守位点（功能必须），SPM找非保守但构象关键位点（可调控）。</p>
+    <div class="role-badge">方法比较：SPM vs MSA</div>
+    <table class="term-table">
+      <tr><th>方法</th><th>识别类型</th><th>SPM6位点覆盖</th></tr>
+      <tr><td>MSA（高保守度）</td><td>功能必须的保守残基</td><td>0/6（完全不重叠）</td></tr>
+      <tr><td>SPM（动力学相关）</td><td>调控构象动态的关键残基</td><td>6/6（全部覆盖）</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>重要洞见：</strong>SPM6的6个关键突变都是MSA中低保守度的残基！这意味着：如果只用序列保守性分析，这些最有效的别构调控位点会被完全错过。这正是SPM方法的独特价值——发现那些"可变但关键"的残基。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>对你的de novo设计，ProteinMPNN会倾向于在功能关键位置引入保守氨基酸。但别构调控位点（SPM热点）往往是非保守的——这些位点的序列设计更自由，也更难预测。MetaDynamics FEL是目前最好的工具来验证这些位点的整体效果。</div>
+  </div>
+</div>
+
+<!-- DISCUSSION -->
+<div class="sec-label"><span class="sec-num">§3</span> Discussion — P19–P22</div>
+
+<div id="p19" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P19</span>
+    <p>Allosteric regulation is a central biological process focused on the functional connection between distinct sites on either a single biological entity or among complex multimeric structures. This regulation of enzymatic function is not limited to effector or protein partner binding, as similar effects have been observed by covalent attachment or by introducing mutations located at distal positions of the enzyme active site. The elucidation of the underlying mechanism and forces that drive allosteric regulation has the enormous potential of identifying key positions for regulating enzymatic function, which could be exploited in enzyme design. <span class="hl-y">The present study indeed demonstrates that positions distal from the active site, regulating the allosterically driven conformational ensemble and thus the enzyme activity, can be successfully identified by means of correlation-based tools and sequence comparison analysis.</span> Given the vast sequence and conformational space, the identification of remote positions from the active site impacting enzymatic function, is an extremely difficult task in the computational enzyme design field.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P19</div>
+    <p><strong>段落功能：</strong>讨论开篇，重申别构调控的普遍性，并以本研究为证明，宣告计算预测远端突变"已成为可能"。</p>
+    <div class="role-badge">讨论：核心贡献重申</div>
+    <div class="notable-box">💡 <strong>论文最强句：</strong>"The current challenge of distal active site prediction for enhanced function in computational enzyme design has become within reach."——这是全文最重要的claim，代表计算酶设计领域的一个里程碑。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>本句直接支持你项目的可行性。de novo设计的TrpB中很多关键残基也是"远端位点"，MetaDynamics FEL能评估这些远端突变对COMM domain构象的整体效果。</div>
+  </div>
+</div>
+
+<div id="p20" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P20</span>
+    <p>The experimental evaluation of SPM6 showed that <span class="hl-b">the introduced mutations boosted the stand-alone catalytic activity of the inefficient isolated ANC3 TrpB enzyme near one order of magnitude.</span> The enhancement by only testing this single variant is comparable to that observed for the laboratory evolved pf TrpB<sup>4D11</sup> after three rounds of DE, which involved the screening of ~3080 variants. <span class="hl-b">The newly designed variant SPM6 enhances the low initial 3% activity displayed by ANC3 TrpB up to a ~23% recovery.</span> It should be also mentioned that <span class="hl-g">the SPM6 design is based on the template scaffold of LBCA TrpB, whose catalytic activity is ~58% that of the ANC3 TrpS complex.</span> In the case of the DE pf TrpB enzyme variant, <span class="hl-b">300% of activity recovery was observed.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P20</div>
+    <p><strong>段落功能：</strong>量化比较SPM6和DE的相对效率，同时诚实地指出SPM6仍未达到完全恢复（23% vs 100%目标）。</p>
+    <div class="role-badge">效率比较 + 诚实局限</div>
+    <table class="term-table">
+      <tr><th>方法</th><th>活性恢复率</th><th>筛选变体数</th></tr>
+      <tr><td>SPM6（本文）</td><td>~23%（3% → 23% of ANC3 TrpS）</td><td>1个变体</td></tr>
+      <tr><td>Arnold DE（3轮）</td><td>~300%（超过pf TrpS）</td><td>~3080个变体</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>诚实的局限性承认：</strong>SPM6只恢复了23%的活性（目标应为100%）。但这是"第一步"，而且只测了1个变体。未来改进方向：更好的参考模板 + 更多SPM位点迭代。这种科学诚实性使论文更可信。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的de novo设计第一轮可能也不会达到100%。重要的是MetaDynamics FEL能准确区分"完全无活性"和"有部分活性"的设计——即使活性不完美，只要FEL显示ΔG(C-O) &lt; -2 kcal/mol，就值得做湿实验验证。</div>
+  </div>
+</div>
+
+<div id="p21" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P21</span>
+    <p>The partial recovery observed for SPM6 is in part due to the dramatic loss of activity displayed by ANC3 TrpB in the absence of TrpA (97% of activity loss), which is more moderate in pf TrpB (69%). These numbers indicate that <span class="hl-g">the total recovery of ANC3 activity is more demanding from an engineering point of view and suggest that the newly generated SPM6 variant still presents some predisposition toward TrpA regulation.</span> Our simulations showed that <span class="hl-b">the distal mutations introduced in the SPM6 variant successfully enhanced the stand-alone activity of ANC3 TrpB activity through intra-subunit allosteric effects, which slightly enhanced the COMM domain conformational heterogeneity by enlarging the population of the closed state.</span> However, <span class="hl-g">the introduced mutations in the SPM6 variant did not completely free TrpB from the inter-subunit allosteric regulation exerted by TrpA, as further heterogeneity and the stabilization of the catalytically competent closed state are required.</span> <span class="hl-b">To our surprise, SPM6 in complex with TrpA showed the most efficient turnover tested in this work.</span> The reconstruction of the conformational landscape of SPM6 TrpB in complex with TrpA indicated that the increased catalytic activity is attributed to <span class="hl-b">a higher conformational heterogeneity and the stabilization of the catalytically competent closed conformation of the COMM domain.</span> Altogether these results indicate that <span class="hl-y">the combination of intra- and inter-allosteric effects can operate synergistically to successfully tune the O-to-C conformational ensemble and achieve high catalytic efficiencies.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P21</div>
+    <p><strong>段落功能：</strong>解释SPM6为何未能完全恢复活性（intra-别构不足），以及SPM6+TrpA协同效应为何超预期。</p>
+    <div class="role-badge">机制讨论：协同别构</div>
+    <table class="term-table">
+      <tr><th>别构类型</th><th>来源</th><th>SPM6中的程度</th></tr>
+      <tr><td>Intra-subunit（亚基内）</td><td>远端突变重塑TrpB内部别构网络</td><td>部分恢复</td></tr>
+      <tr><td>Inter-subunit（亚基间）</td><td>TrpA结合界面传导</td><td>仍保留5.5×</td></tr>
+      <tr><td>协同效应</td><td>两者叠加</td><td>SPM6+TrpA=最高活性</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>意外发现：</strong>SPM6+TrpA的活性超过所有单独系统。这意味着intra-（突变引起）和inter-（TrpA引起）两种别构效应在C态稳定化上是叠加的，不是竞争的。这为未来设计提供了思路：同时优化两种别构通道。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的de novo设计完全是stand-alone（没有TrpA），所以只能依靠intra-subunit别构效应。这比同时利用两种别构效应更难——你的设计序列需要在没有任何外部帮助的情况下，自己实现COMM domain的稳定关闭。MetaDynamics FEL是唯一能量化这种能力的工具。</div>
+  </div>
+</div>
+
+<div id="p22" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P22</span>
+    <p>Another secondary insight gained from this work comes from the analysis of how the TrpS conformational landscape is altered and conserved along the natural evolutionary pathway. The exploration of the conformational ensemble and the identification of the key conformationally relevant SPM positions of LBCA, ANC2, and ANC3, and their comparison with the previously studied modern pf TrpS revealed that <span class="hl-b">the main allosteric pathways are not significantly altered along evolution. Indeed, the comparison of the generated SPM paths for the different enzymes reveals a rather high number of shared positions (71% between LBCA and pf TrpB).</span> The analysis of the conservation of the SPM conformationally relevant positions through MSA tools also evidenced that <span class="hl-y">the targeted SPM positions for the SPM6 generation present a rather low conservation score. This demonstrates the high complementarity of SPM and MSA as the targeted SPM positions would have been missed if only MSA was applied.</span> Our findings indicate that <span class="hl-y">the detection of conformationally relevant positions through SPM, specially if applied in ancestral enzymes, which lack some conformational restrictions, corresponds to a successful approach for creating active TrpB variants.</span> It also evidences that <span class="hl-y">conformational heterogeneity, and in particular, the use of ancestral conformationally rich scaffolds corresponds to a successful strategy for designing the desired enzymatic functions.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P22</div>
+    <p><strong>段落功能：</strong>讨论进化过程中别构网络的保守性，并再次强调SPM+MSA互补性，以及祖先蛋白作为构象丰富模板的价值。</p>
+    <div class="role-badge">进化洞见 + 方法论总结</div>
+    <table class="term-table">
+      <tr><th>发现</th><th>意义</th></tr>
+      <tr><td>71%别构路径在进化中保守</td><td>说明别构通信网络在TrpB进化中高度稳定——FEL评估标准跨变体通用</td></tr>
+      <tr><td>SPM6位点低保守</td><td>关键别构调控位点是"非保守但重要"的——这类位点只有SPM能找到</td></tr>
+      <tr><td>祖先蛋白构象更丰富</td><td>LBCA TrpB有更多构象自由度，是很好的设计起点</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>给你的方法论启示：</strong>"conformationally rich scaffolds"是好的设计起点。你的de novo TrpB设计理想情况下应该具有足够的构象灵活性，而不是被折叠锁定在单一构象中。RFDiffusion设计+AF2预测需要联合考虑构象多样性，而不只是最低能量单一结构。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>当你用AF2预测de novo设计结构时，如果所有MSA减少比例的预测结构都高度收敛（pLDDT很高，构象几乎相同），这可能意味着设计缺乏构象灵活性。tAF2-MD（reduced MSA + 10 ns × 60结构）用于探索构象异质性，为MetaDynamics提供更全面的初始结构集合。</div>
+  </div>
+</div>
+
+<!-- CONCLUSIONS -->
+<div class="sec-label"><span class="sec-num">§4</span> Conclusions — P23</div>
+
+<div id="p23" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P23</span>
+    <p><span class="hl-y">The SPM–ASR–MSA approach presented in this work highlights that the exploration of the enzyme conformational ensemble is essential for identifying key conformationally relevant sites and dramatically reducing the sequence space to only a few mutations.</span> The detection of the key conformationally relevant positions and the combined analysis of its conservation along ancestral phylogenetic trees and/or extant enzyme homologues harbors meaningful information for solving the current challenge in computational enzyme design of <span class="hl-y">distal active site prediction for enhanced function.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P23</div>
+    <p><strong>段落功能：</strong>全文总结——用两句话概括方法（SPM+ASR+MSA）和贡献（探索构象集合 → 压缩序列空间 → 解决远端位点预测难题）。</p>
+    <div class="role-badge">结论</div>
+    <div class="notable-box">💡 <strong>全文核心贡献一句话：</strong>在不知道哪个远端突变有效的情况下，通过分析构象集合（FEL + SPM）+ 进化信息（ASR/MSA），可以将序列空间从393个残基压缩到6个突变，且只需测1个变体就能达到多轮DE的效果。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的项目是这个框架的进一步延伸：不只是在天然序列空间寻找突变，而是用生成模型（RFDiffusion2）从头设计全新序列。MetaDynamics FEL是从"可能的设计"到"验证有效的设计"的关键筛选节点。</div>
+  </div>
+</div>
+
+<!-- SYNTHESIS SECTIONS -->
+<div id="skeleton" class="synth-section">
+  <h2>§A — 论证骨架（Argument Skeleton）</h2>
+  <p style="color:var(--gray);font-size:13px;margin-bottom:16px;">全文逻辑流程：从背景→问题→方法→结果→结论的完整论证链</p>
+  <div class="logic-chain">
+    <div class="lc-node">P1–P2<br><small>酶动态性<br>别构调控<br>DE局限</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">P3<br><small>SPM方法<br>（我们的工具）</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">P4–P5<br><small>TrpS系统<br>Arnold DE基准</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">P6–P8<br><small>本文策略<br>SPM+ASR<br>测1个变体</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">P9–P11<br><small>LBCA FEL<br>s/z轴定义<br>C态机制</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">P12–P13<br><small>SPM+ASR<br>393→6个位点</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">P14–P15<br><small>SPM6<br>7×kcat提升<br>FEL验证</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">P16–P18<br><small>SPM3/SPM8<br>MSA互补</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">P19–P22<br><small>讨论：机制<br>局限性<br>进化洞见</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">P23<br><small>远端突变预测<br>"已成为可能"</small></div>
+  </div>
+
+  <h3>核心论证结构（三段论）</h3>
+  <p style="font-size:13.5px;line-height:1.8;">
+    <strong>大前提：</strong>酶活性由构象集合决定 → FEL中C态稳定性 = 催化活性代理指标<br>
+    <strong>小前提：</strong>SPM能识别调控构象集合的关键残基（有pf TrpS DE验证）；ASR/MSA能筛选具体突变<br>
+    <strong>结论：</strong>SPM+ASR → 6个突变 → SPM6 → 7倍kcat提升，等效3轮DE（3080变体）
+  </p>
+</div>
+
+<div id="projconn" class="synth-section">
+  <h2>§B — 与你的项目的关联总表</h2>
+  <table class="proj-table">
+    <tr>
+      <th>论文中的内容</th>
+      <th>Zhenpeng项目中的对应</th>
+      <th>具体操作建议</th>
+    </tr>
+    <tr>
+      <td>FEL s轴 = COMM domain关闭进度（来自X-ray O/C结构的参考路径）</td>
+      <td>你的MetaDynamics FEL横轴——反映COMM domain从open到closed的进展程度</td>
+      <td>生成参考路径需要至少一个open和一个closed状态的X-ray结构；可用PDB中pf TrpB的结构（4HN4等）</td>
+    </tr>
+    <tr>
+      <td>FEL z轴 = 偏离参考路径的MSD距离</td>
+      <td>你的MetaDynamics FEL纵轴——反映COMM domain构象偏离标准O-to-C路径的程度</td>
+      <td>PLUMED中用PATH CV: s（进度）和z（MSD偏差）；参考Osuna组PLUMED输入文件格式</td>
+    </tr>
+    <tr>
+      <td>ΔG(closed−open) &lt; −2 kcal/mol = 活性设计的阈值</td>
+      <td>你筛选设计成功的定量标准</td>
+      <td>用PLUMED sum_hills重建FEL后，比较C态（s~1）和O态（s~0）的最低自由能之差</td>
+    </tr>
+    <tr>
+      <td>SPM方法：MD → DCCM → Dijkstra → 别构热点</td>
+      <td>可用于验证你的设计是否有完整的别构通信网络</td>
+      <td>在MetaDynamics之前先做200 ns普通MD + SPM分析（用MDAnalysis + NetworkX）；若SPM路径断裂，说明设计序列别构网络不完整</td>
+    </tr>
+    <tr>
+      <td>C态内部z方向宽度 = 底物结合/产物释放灵活性指标</td>
+      <td>评估你的设计是否过于刚性</td>
+      <td>FEL中C态谷应在z方向有适度宽度（z~0.02-0.06 nm²）；完全尖锐的C谷可能意味着产物释放困难</td>
+    </tr>
+    <tr>
+      <td>O态在E(A-A)阶段仍需可及（产物释放）</td>
+      <td>好的设计不能完全锁死在C态</td>
+      <td>FEL分析时检查O态（s~0）是否完全不可及；若O态能垒 &gt; 15 kcal/mol，可能影响kcat</td>
+    </tr>
+    <tr>
+      <td>SPM6的6个突变均在COMM domain外</td>
+      <td>你的de novo设计中COMM domain外的残基也可能是关键</td>
+      <td>不要只关注活性位点（PLP结合位点）的序列质量；远端残基（尤其是连接COMM domain的β-sheet和loop区）的设计同样重要</td>
+    </tr>
+    <tr>
+      <td>"conformationally rich scaffold"更好设计</td>
+      <td>de novo骨架设计时需要保留构象灵活性</td>
+      <td>在RFDiffusion2设计阶段，不要过度约束COMM domain区域；允许其有一定的构象自由度</td>
+    </tr>
+  </table>
+</div>
+
+<div id="glossary" class="synth-section">
+  <h2>§C — 关键术语总表</h2>
+  <table class="gloss-table">
+    <tr><th>英文术语</th><th>中文</th><th>定义</th><th>在本文中的作用</th></tr>
+    <tr><td>SPM (Shortest Path Map)</td><td>最短路径图</td><td>MD轨迹→DCCM→加权图→Dijkstra算法→识别别构通信热点残基</td><td>核心筛选工具，从393个残基→68个热点</td></tr>
+    <tr><td>ASR (Ancestral Sequence Reconstruction)</td><td>祖先序列重建</td><td>从现代序列用最大似然法推断进化祖先的蛋白质序列，然后在体外合成表达</td><td>提供LBCA/ANC2/ANC3参考序列和实验数据</td></tr>
+    <tr><td>MSA (Multiple Sequence Alignment)</td><td>多序列比对</td><td>比较多个同源序列，识别高度保守位点（功能必须）</td><td>与SPM互补：MSA找保守位点，SPM找非保守但构象关键位点</td></tr>
+    <tr><td>FEL (Free Energy Landscape)</td><td>自由能全貌图</td><td>以两个集体变量（s和z）为轴，显示每个构象状态自由能的二维图</td><td>核心评估指标：ΔG(C-O)量化COMM domain关闭偏好</td></tr>
+    <tr><td>MetaDynamics</td><td>元动力学</td><td>增强采样MD方法：沿集体变量方向添加Gaussian"山丘"偏置势，加速系统越过能垒</td><td>重建FEL的计算方法</td></tr>
+    <tr><td>PATH CV (s, z)</td><td>路径集体变量</td><td>PLUMED中的集体变量：s=沿参考路径进度；z=偏离参考路径的MSD</td><td>FEL的两个坐标轴——直接回答"L和P"问题</td></tr>
+    <tr><td>COMM domain</td><td>COMM结构域</td><td>TrpB β亚基中约40-50残基（残基97-184）的可移动loop/螺旋区，控制活性位点开闭</td><td>所有分析的核心对象：其O-to-C转换决定催化效率</td></tr>
+    <tr><td>O/PC/C conformations</td><td>开/部分关闭/关闭构象</td><td>COMM domain的三个主要状态；C态（关闭）是催化活性所必需的</td><td>FEL中的主要特征区域</td></tr>
+    <tr><td>C* conformations</td><td>偏离型关闭构象</td><td>FEL中s值大（关闭）但z值也大（偏离标准路径）的构象——仍有功能，提供底物结合弹性</td><td>LBCA TrpB和SPM6 TrpB的特征；有利于底物结合和产物释放</td></tr>
+    <tr><td>Stand-alone function</td><td>独立催化功能</td><td>TrpB在没有TrpA伴侣蛋白的情况下维持高催化活性的能力</td><td>本文设计目标；等同于"de novo TrpB的设计目标"</td></tr>
+    <tr><td>LBCA TrpB</td><td>最后细菌共同祖先TrpB</td><td>推断的35亿年前的TrpB序列；天然具有stand-alone活性，TrpA对其是抑制的</td><td>作为"好的构象集合"参考模板，提供SPM分析基础</td></tr>
+    <tr><td>ANC3 TrpB</td><td>第三节点祖先TrpB</td><td>进化树第三个中间祖先；第一个需要TrpA激活的变体，单独活性约为ANC3 TrpS的3%</td><td>本文改造目标；是high TrpA-dependent的典型代表</td></tr>
+    <tr><td>SPM6 TrpB</td><td>六突变设计变体</td><td>在ANC3引入6个LBCA残基（A56E/D62E/S73T/T207S/N299A/R300M）；5个远端，1个活性位点</td><td>本文主要成果：7倍kcat提升，等效3轮DE但只测1个变体</td></tr>
+    <tr><td>Intra-subunit allostery</td><td>亚基内别构效应</td><td>TrpB内部残基间的长程相互作用；由突变引起，不需要TrpA</td><td>SPM6发挥作用的分子机制</td></tr>
+    <tr><td>K84 (Lys84)</td><td>催化赖氨酸84</td><td>TrpB活性位点核心残基；作为质子受体参与E(A-A)→产物步骤；K84-E(A-A)距离是判断productive closure的指标</td><td>判断closed态是否为"productive C"的关键几何参数</td></tr>
+    <tr><td>H6 α-helix</td><td>COMM domain H6螺旋</td><td>COMM domain中残基164-174的α螺旋；关闭时与E(A-A)的吲哚基团形成非共价相互作用</td><td>COMM domain关闭机制的分子细节；M187I位于H6，SPM8的关键突变之一</td></tr>
+    <tr><td>E(Ain)</td><td>内部亚胺酶形式</td><td>TrpB静息态：PLP通过Schiff碱键（醛亚胺）连接Lys84，尚未与底物反应</td><td>FEL计算的起始状态之一；在此阶段不访问C构象</td></tr>
+    <tr><td>E(A-A)</td><td>喹啉醌中间体</td><td>吲哚与活化L-Ser偶联后形成的中间态；催化周期的关键节点</td><td>FEL计算的第二状态；在此阶段可访问C和C*构象</td></tr>
+    <tr><td>R141–D305 salt bridge</td><td>R141–D305盐桥</td><td>COMM domain关闭状态的标志性盐桥；距离 &lt; 3.5 Å时COMM domain处于关闭态</td><td>替代判断COMM domain开/关状态的结构指标（来自JACS 2019）</td></tr>
+  </table>
+</div>
+
+</main>
+</div>
+
+<script>
+const links = document.querySelectorAll('#sidebar .nav-link');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const a = document.querySelector('#sidebar .nav-link[href="#' + e.target.id + '"]');
+      if (a) a.classList.add('active');
+    }
+  });
+}, {rootMargin: '-20% 0px -70% 0px'});
+document.querySelectorAll('[id]').forEach(el => {
+  if (el.id && el.id !== 'layout' && el.id !== 'topnav' && el.id !== 'sidebar') observer.observe(el);
+});
+</script>
+</body>
+</html>

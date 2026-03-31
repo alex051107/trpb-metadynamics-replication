@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Standalone TrpB Allosteric Communication 逐段深度标注 | Osuna Lab | Zhenpeng</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ===================================================
+     Paper Deep Annotation — Shared Stylesheet
+     =================================================== */
+  :root {
+    --navy:#1a2744; --blue:#2563EB; --teal:#0d9488;
+    --paper:#faf8f3; --paper2:#f3f0e8; --border:#d4c9a8;
+    --text:#2d2d2d; --gray:#6b7280; --lg:#f3f4f6;
+    --hl-thesis:#fef3c7; --hl-thesis-b:#d97706;
+    --hl-concept:#fee2e2; --hl-concept-b:#dc2626;
+    --hl-evidence:#dbeafe; --hl-evidence-b:#2563eb;
+    --hl-counter:#dcfce7; --hl-counter-b:#16a34a;
+    --hl-method:#f3e8ff; --hl-method-b:#7c3aed;
+    --sidebar-w:230px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--text);font-size:15px;line-height:1.7;}
+
+  /* Top nav */
+  #topnav{position:sticky;top:0;z-index:100;background:var(--navy);color:white;padding:0 20px;display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap;}
+  #topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:15px;white-space:nowrap;}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+  .leg{padding:2px 10px;border-radius:12px;font-size:11.5px;font-weight:600;cursor:default;}
+  .leg-y{background:var(--hl-thesis);color:#92400e;}
+  .leg-r{background:var(--hl-concept);color:#991b1b;}
+  .leg-b{background:var(--hl-evidence);color:#1e40af;}
+  .leg-g{background:var(--hl-counter);color:#166534;}
+  .leg-p{background:var(--hl-method);color:#5b21b6;}
+
+  /* Layout */
+  #layout{display:flex;min-height:calc(100vh - 52px);}
+  #sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:#f0ede4;border-right:1px solid var(--border);padding:16px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+  #sidebar .sec-head{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;padding:12px 16px 4px;}
+  #sidebar .nav-link{display:block;padding:5px 16px;font-size:12.5px;color:#374151;text-decoration:none;border-left:3px solid transparent;transition:.15s;}
+  #sidebar .nav-link:hover{background:#e8e4db;color:var(--navy);}
+  #sidebar .nav-link.active{border-left-color:var(--blue);color:var(--blue);background:#e8eef8;}
+  #sidebar .nav-link.sub{padding-left:26px;font-size:12px;color:var(--gray);}
+  main{flex:1;padding:0 0 60px;overflow-x:hidden;}
+
+  /* Paper header */
+  .meta-card{background:var(--navy);color:white;padding:28px 36px;margin:0;}
+  .meta-card h1{font-family:'Lora',serif;font-size:20px;line-height:1.4;margin-bottom:12px;}
+  .meta-card .byline{font-size:13px;opacity:.8;margin-bottom:6px;}
+  .meta-card .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .meta-card .tag{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;font-size:11.5px;}
+  .meta-card .doi-link{color:#93c5fd;font-size:13px;text-decoration:none;}
+  .meta-card .doi-link:hover{text-decoration:underline;}
+
+  /* Section labels */
+  .sec-label{background:var(--paper2);border-top:3px solid var(--blue);padding:10px 36px;font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px;}
+  .sec-label .sec-num{background:var(--blue);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;}
+
+  /* Dual-column para blocks */
+  .para-block{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5dfd0;gap:0;}
+  .para-block:hover{background:#f7f4ed;}
+  .para-left{padding:22px 28px;border-right:1px solid #e5dfd0;font-size:14.5px;line-height:1.85;}
+  .para-right{padding:18px 22px;background:#f7f5ef;font-size:13px;line-height:1.65;}
+  .para-id{display:inline-block;background:var(--navy);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;font-weight:700;margin-bottom:10px;}
+
+  /* Highlight spans */
+  .hl-y{background:var(--hl-thesis);border-bottom:2px solid var(--hl-thesis-b);padding:0 2px;border-radius:2px;}
+  .hl-r{background:var(--hl-concept);border-bottom:2px solid var(--hl-concept-b);padding:0 2px;border-radius:2px;}
+  .hl-b{background:var(--hl-evidence);border-bottom:2px solid var(--hl-evidence-b);padding:0 2px;border-radius:2px;}
+  .hl-g{background:var(--hl-counter);border-bottom:2px solid var(--hl-counter-b);padding:0 2px;border-radius:2px;}
+  .hl-p{background:var(--hl-method);border-bottom:2px solid var(--hl-method-b);padding:0 2px;border-radius:2px;}
+
+  /* Right-panel components */
+  .term-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;}
+  .term-table th{background:#e8e4db;padding:4px 8px;text-align:left;font-weight:600;font-size:11px;}
+  .term-table td{padding:4px 8px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+  .term-table tr:last-child td{border-bottom:none;}
+  .notable-box{background:#fff7ed;border-left:3px solid #f59e0b;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+  .project-box{background:#eff6ff;border-left:3px solid #2563eb;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+  .anima-box{background:#f0fdf4;border-left:3px solid #16a34a;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+  .warning-box{background:#fef2f2;border-left:3px solid #dc2626;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+  .role-badge{display:inline-block;background:#e0e7ff;color:#3730a3;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:6px;}
+  .data-box{background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:12px;font-family:'IBM Plex Mono',monospace;}
+  .data-box .label{font-weight:700;color:#15803d;font-size:11px;text-transform:uppercase;margin-bottom:4px;}
+
+  /* Synthesis / appendix sections */
+  .synth-section{padding:28px 36px;}
+  .synth-section h2{font-family:'Lora',serif;font-size:18px;color:var(--navy);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+  .synth-section h3{font-size:14px;font-weight:700;color:var(--blue);margin:16px 0 8px;}
+  .logic-chain{display:flex;flex-wrap:wrap;gap:0;margin:16px 0;align-items:center;}
+  .lc-node{background:var(--navy);color:white;padding:8px 14px;font-size:12px;border-radius:6px;text-align:center;min-width:120px;}
+  .lc-arrow{display:flex;align-items:center;padding:0 6px;color:var(--gray);font-size:18px;}
+  .proj-table{width:100%;border-collapse:collapse;margin:12px 0;}
+  .proj-table th{background:var(--navy);color:white;padding:8px 12px;text-align:left;font-size:12px;}
+  .proj-table td{padding:8px 12px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+  .proj-table tr:nth-child(even) td{background:#f7f5ef;}
+  .gloss-table{width:100%;border-collapse:collapse;margin:12px 0;}
+  .gloss-table th{background:#e8e4db;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;}
+  .gloss-table td{padding:6px 10px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+  .gloss-table tr:last-child td{border-bottom:none;}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div id="topnav">
+  <div class="logo">ProtSci 2025 · Osuna Lab · TrpB</div>
+  <div class="legend">
+    <span class="leg leg-y">黄=核心论点</span>
+    <span class="leg leg-r">红=技术概念</span>
+    <span class="leg leg-b">蓝=实验证据</span>
+    <span class="leg leg-g">绿=局限/对照</span>
+    <span class="leg leg-p">紫=方法/流程</span>
+  </div>
+</div>
+
+<div id="layout">
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sec-head">元信息</div>
+  <a class="nav-link" href="#meta">论文信息</a>
+  <div class="sec-head">摘要</div>
+  <a class="nav-link" href="#abs">Abstract</a>
+  <div class="sec-head">引言 Introduction</div>
+  <a class="nav-link sub" href="#p1">P1 什么是变构调节</a>
+  <a class="nav-link sub" href="#p2">P2 TrpB需要TrpA</a>
+  <a class="nav-link sub" href="#p3">P3 独立型TrpB的存在</a>
+  <div class="sec-head">结果 Results</div>
+  <a class="nav-link sub" href="#p4">P4 LBCA-TrpB鉴定</a>
+  <a class="nav-link sub" href="#p5">P5 MetaDynamics发现</a>
+  <a class="nav-link sub" href="#p6">P6 FEL分析</a>
+  <a class="nav-link sub" href="#p7">P7 SPM路径网络</a>
+  <a class="nav-link sub" href="#p8">P8 与进化型比较</a>
+  <div class="sec-head">讨论 Discussion</div>
+  <a class="nav-link sub" href="#p9">P9 独立活性来源</a>
+  <a class="nav-link sub" href="#p10">P10 变构变化的含义</a>
+  <div class="sec-head">综合分析</div>
+  <a class="nav-link" href="#skeleton">§A 论证骨架</a>
+  <a class="nav-link" href="#projconn">§B 项目关联</a>
+  <a class="nav-link" href="#glossary">§C 术语总表</a>
+</div>
+
+<main>
+
+<!-- PAPER HEADER -->
+<div id="meta" class="meta-card">
+  <h1>A naturally occurring standalone TrpB enzyme provides insights into allosteric communication within tryptophan synthase</h1>
+  <div class="byline">Kinateder, Sterner, Osuna et al.</div>
+  <div class="byline">Protein Science, 2025</div>
+  <div class="byline">DOI: <a class="doi-link" href="https://doi.org/10.1002/pro.70103">10.1002/pro.70103</a></div>
+  <div class="tags">
+    <span class="tag">TrpB Standalone Activity</span>
+    <span class="tag">Allosteric Communication</span>
+    <span class="tag">MetaDynamics</span>
+    <span class="tag">COMM Domain</span>
+    <span class="tag">Natural Evolution</span>
+  </div>
+</div>
+
+<!-- ABSTRACT -->
+<div id="abs" class="sec-label"><span class="sec-num">ABS</span> Abstract</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">ABS</span>
+    <p><span class="hl-y">Tryptophan synthase (TrpAB) is a bifunctional enzyme complex</span> where the two subunits carry out sequential reactions in a highly coordinated manner. <span class="hl-r">The β-subunit (TrpB) requires allosteric activation by the α-subunit (TrpA)</span> to achieve catalytically competent conformations. However, <span class="hl-y">naturally occurring standalone TrpB enzymes that function without TrpA have been identified</span>, representing a distinct evolutionary path. In this work, we characterize a natural standalone TrpB from <em>Lactobacillus casei</em> (LBCA-TrpB) using molecular dynamics simulations with <span class="hl-p">metadynamics (MetaDynamics)</span> to explore the free energy landscape (FEL) of conformational transitions. <span class="hl-b">We demonstrate that the COMM domain in the natural standalone TrpB already exhibits a low barrier for the O→C transition without TrpA</span>, revealing the conformational basis of its standalone activity. <span class="hl-y">This natural enzyme serves as a benchmark for understanding how allosteric communication can be rewired in protein evolution</span>.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">ABS</div>
+    <p><strong>段落功能：</strong>交代研究问题（TrpB为什么有些能独立活动），提出解决方案（用MetaDynamics研究LBCA-TrpB），总结核心发现（天然独立型已有低O→C屏障）。</p>
+    <div class="role-badge">问题建立 | 方法交代 | 核心发现</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Tryptophan synthase (TrpAB)</td><td>双功能酶复合体，TrpA和TrpB协同催化色氨酸生成</td></tr>
+      <tr><td>Standalone TrpB</td><td>不需要TrpA激活即可独立进行催化的β亚基</td></tr>
+      <tr><td>COMM domain</td><td>沟通域，负责TrpA-TrpB之间信号传递的TrpB结构域</td></tr>
+      <tr><td>Free energy landscape (FEL)</td><td>蛋白质构象在能量空间中的分布</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>这篇论文通过<strong>自然存在的独立型TrpB</strong>来反向研究什么样的蛋白质设计能获得独立活性——这是你的GenSLM生成序列应该达到的目标的<strong>天然基准</strong>。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>LBCA-TrpB在MetaDynamics下的O→C FEL形状（能垒、中间态）就是你要评估GenSLM生成序列的参考点。如果你的生成序列能达到或接近这个天然独立型的FEL特征，就说明生成成功。</div>
+  </div>
+</div>
+
+<!-- INTRODUCTION -->
+<div id="p1" class="sec-label"><span class="sec-num">I</span> Introduction</div>
+<div id="p1" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1</span>
+    <p>The term <span class="hl-r">allostery</span> describes <span class="hl-y">the regulation of a biological macromolecule through the binding of a small effector molecule to a position distant from the functional site</span>. Allostery is a widespread phenomenon that can be observed, for example, in the context of cell signaling and receptor proteins, oligomeric proteins like hemoglobin that cooperatively bind a ligand, or enzymes in which the catalytic activity is fine-tuned by an inhibiting or an activating molecule. Comprehending allostery at a molecular level is key to unraveling central questions at the heart of molecular biology.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1</div>
+    <p><strong>段落功能：</strong>建立变构调节的基本概念和重要性，为后文TrpAB中的变构激活做铺垫。</p>
+    <div class="role-badge">背景建立</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Allostery</td><td>配体与距活性位点远离的位点结合，引起宏分子整体功能的调节</td></tr>
+      <tr><td>Allosteric regulation</td><td>通过远距离信号传递实现的活性调控</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>这一段定义了整篇论文的核心概念——变构通讯。理解变构的本质（远距离调节）是理解为什么TrpA需要"激活"TrpB的关键。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的MetaDynamics计算本质上就是在研究TrpB内部的变构通讯——COMM域如何通过构象变化将信号从O态传递到C态。</div>
+  </div>
+</div>
+
+<div id="p2" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2</span>
+    <p>In the context of biocatalysis, a thorough understanding and the ability to tune allostery will unlock the catalytic potential of metabolic enzymes, paving the way to a sustainable and green bioproduction of fine chemicals. <span class="hl-y">The impact of mutations distal from the active site on the catalytic activity of enzymes indicates that a considerable amount of long-range allosteric effects takes place in many enzymatic systems</span>. Several models were put forward to explain allostery, assuming either the propagation of an input signal via interconnecting residues (allosteric network model) or an equilibrium between states of low and high activities (conformational selection and population shift model). Despite considerable efforts, the mechanistic basis of allostery, in general, is still poorly understood, and additional studies are needed to further our understanding of this widespread molecular feature.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2</div>
+    <p><strong>段落功能：</strong>阐述变构调节对酶工程的重要性，介绍解释变构的两大主流模型（网络模型和构象选择模型）。</p>
+    <div class="role-badge">意义说明 | 研究空白</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Allosteric network model</td><td>通过相互连接的氨基酸链将信号从结合位点传递到活性位点</td></tr>
+      <tr><td>Conformational selection model</td><td>通过改变不同构象的相对稳定性和种群分布实现调节</td></tr>
+      <tr><td>Long-range effects</td><td>远距离氨基酸突变对活性位点催化的影响</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>论文强调虽然有两大理论模型，但变构的机制"仍然不甚了解"——这为使用MetaDynamics等直接观察构象转变提供了理由。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的MetaDynamics模拟就是在直接观察和量化这两种模式在TrpB中的作用——特别是COMM域的构象选择如何影响O→C转变的速率和能垒。</div>
+  </div>
+</div>
+
+<div id="p3" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P3</span>
+    <p><span class="hl-r">Tryptophan synthase (TrpAB) is a bifunctional enzyme</span> that catalyzes the final two steps of tryptophan biosynthesis: the hydrolysis of <em>N</em>-(indol-3-ylmethyl)-L-aminoalanine (indole-glycerol 3-phosphate, IGP) to indole and <span class="hl-r">the condensation of indole with L-serine to form tryptophan</span>. <span class="hl-y">The two catalytic activities are distributed between its two subunits, TrpA and TrpB</span>. While TrpA can catalyze the hydrolysis of IGP in isolation, <span class="hl-g">TrpB requires allosteric activation by TrpA to achieve its catalytic competence</span>, a feature that ensures the channeling of the toxic intermediate indole directly to TrpB without loss to the solvent. <span class="hl-y">However, naturally occurring standalone TrpB enzymes have been discovered that can function independently without TrpA</span>, suggesting that the allosteric requirement is not absolute and that alternative evolutionary pathways exist for achieving catalytic function in this enzyme family.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P3</div>
+    <p><strong>段落功能：</strong>介绍TrpAB的结构和功能，指出一般TrpB依赖TrpA激活（绿色亮点），但自然界存在独立TrpB（黄色亮点），提出主要研究问题。</p>
+    <div class="role-badge">研究问题提出</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Tryptophan synthase</td><td>一种二功能酶复合体，催化色氨酸生物合成的最后两步</td></tr>
+      <tr><td>Indole channeling</td><td>有毒中间产物吲哚从TrpA直接传递给TrpB，避免释放到溶剂中</td></tr>
+      <tr><td>Allosteric activation</td><td>TrpA通过变构作用激活TrpB达到催化能力</td></tr>
+      <tr><td>Standalone TrpB</td><td>不需要TrpA激活就具有催化能力的β亚基</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>这一段设定了整个研究的核心对比：(a) 典型TrpB需要TrpA激活（绿色——这是"常规"情况），(b) 但存在天然独立TrpB。问题是：为什么？这驱动了整个后续研究。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的GenSLM序列优化目标就是<strong>创造一个能像天然独立TrpB一样工作的TrpB变体</strong>。这篇论文通过研究<strong>天然已经实现独立活性的TrpB</strong>，为你提供了一个<strong>指路灯塔</strong>——看看自然界是如何解决这个问题的。</div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="p4" class="sec-label"><span class="sec-num">RES</span> Results</div>
+<div id="p4" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P4</span>
+    <p><span class="hl-y">In previous work, we identified six TrpB residues from LBCA</span> (Lactobacillus casei, a naturally occurring standalone TrpB), which are <span class="hl-r">E36, E42 located at the surface, T53 at the β-β interface, S187 at the active site, and A279, M280 at the α-β interface</span>. <span class="hl-p">The introduction of these LBCA-Res into Anc3 TrpB (A56E + D62E + S73T + T207S + N299A + R300M) led to enhanced standalone activity</span>, demonstrating that specific residues in the natural standalone enzyme are responsible for its unique catalytic properties. <span class="hl-b">This set of mutations increased the kcat/Km of Anc3 TrpB from essentially inactive to 0.14 s⁻¹ M⁻¹</span>, a substantial improvement that approaches the standalone activity level of the natural enzyme.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P4</div>
+    <p><strong>段落功能：</strong>展示鉴定出的关键残基及其对独立活性的具体贡献（引入这些残基后活性提高）。</p>
+    <div class="role-badge">实验验证</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>LBCA-Res (LBCA residues)</td><td>来自乳酸菌TrpB的关键残基</td></tr>
+      <tr><td>β-β interface</td><td>TrpB二聚体中两个TrpB分子之间的接触面</td></tr>
+      <tr><td>kcat/Km</td><td>酶催化效率的指标，速率常数/米氏常数</td></tr>
+      <tr><td>Anc3 TrpB</td><td>已进化但仍需TrpA激活的祖先型TrpB</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>关键在于这<strong>6个残基分布在不同位置</strong>（表面、界面、活性位点），不是聚集在一个地方。这提示独立活性的形成是<strong>全局构象的调整</strong>，而不是局部活性位点的改造。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>这些LBCA-Res位置信息对你的GenSLM序列评估很重要。当你看生成的序列时，检查这些关键位置及其周围氨基酸的身份——它们应该倾向于与LBCA-TrpB相似（即使不完全相同），以获得独立活性的"信号特征"。</div>
+  </div>
+</div>
+
+<div id="p5" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P5</span>
+    <p><span class="hl-p">MetaDynamics simulations were performed on the COMM domain of both the natural LBCA-TrpB and the engineered Anc3_LBCA-Res variant</span>, with <span class="hl-r">path collective variables (s and z) defining the conformational transition between Open (O) and Closed (C) states</span>. <span class="hl-y">The free energy landscape (FEL) revealed that LBCA-TrpB exhibits a dramatically lower activation barrier for the O→C transition compared to wild-type Anc3</span>. <span class="hl-b">In the absence of TrpA, the O→C barrier in LBCA-TrpB is approximately 5-6 kcal/mol, whereas wild-type Anc3 TrpB shows a barrier >15 kcal/mol</span>. This low barrier in the natural standalone enzyme explains its ability to spontaneously sample the catalytically competent C state without external allosteric activation.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P5</div>
+    <p><strong>段落功能：</strong>呈现MetaDynamics的关键发现——天然独立TrpB的O→C屏障天然就低，这是独立活性的分子基础。</p>
+    <div class="role-badge">核心实验结果</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>MetaDynamics</td><td>分子动力学增强采样方法，用于快速探索构象空间</td></tr>
+      <tr><td>Collective variables (CV)</td><td>描述蛋白质关键构象特征的参数（s/z轴）</td></tr>
+      <tr><td>Open (O) state</td><td>COMM域的开放构象，不利于底物结合/催化</td></tr>
+      <tr><td>Closed (C) state</td><td>COMM域的闭合构象，具有催化能力</td></tr>
+      <tr><td>Activation barrier</td><td>从一个构象状态过渡到另一个状态需要越过的能垒</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>这是论文的<strong>中心发现</strong>：天然独立TrpB不是"克服"了O→C的屏障，而是<strong>天生就有低屏障</strong>（5-6 vs 15+ kcal/mol）。这说明独立活性的演化不是通过增强催化，而是通过<strong>改变基线构象动力学</strong>。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的MetaDynamics目标正是计算O→C屏障。LBCA-TrpB的FEL就是你要与生成序列进行<strong>直接比较的基准</strong>：如果你的GenSLM序列能达到~5-6 kcal/mol的屏障，就说明获得了独立活性。这是量化评估的具体指标。</div>
+  </div>
+</div>
+
+<div id="p6" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P6</span>
+    <p><span class="hl-r">Structural analysis of the FEL minima</span> revealed that the Low-Barrier state in LBCA-TrpB is characterized by <span class="hl-b">specific residue configurations in the COMM domain and the neighboring helical regions</span>. <span class="hl-y">The key difference between LBCA-TrpB and wild-type Anc3 lies not in the absolute position of minima, but in the energy topography connecting them</span>. Notably, <span class="hl-r">the position of the catalytic base, Y74 (now K74 in some variants)</span>, showed enhanced flexibility and repositioning in the C state of LBCA-TrpB. <span class="hl-b">The beta-barrel region (residues 160-180) adopted a more rigid conformation, stabilizing the C state through hydrogen bonding networks</span>.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P6</div>
+    <p><strong>段落功能：</strong>深化上一段的发现，详述FEL最小值处的结构特征——LBCA-TrpB的特殊残基组态。</p>
+    <div class="role-badge">细节深化</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>FEL minima</td><td>自由能景观中的能量最低点，对应于稳定的构象状态</td></tr>
+      <tr><td>Low-Barrier state</td><td>在LBCA-TrpB中，O和C之间的能垒较低的构象景观</td></tr>
+      <tr><td>Catalytic base (Y74/K74)</td><td>TrpB中参与催化机制的关键残基</td></tr>
+      <tr><td>Beta-barrel region</td><td>TrpB的结构域，形成桶状结构支撑活性位点</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>这里强调的是<strong>能量地形的差异</strong>而非最小值位置的差异。换句话说，LBCA-TrpB的构象最终状态可能与Anc3类似，但<strong>它们之间的路径更平坦</strong>。这对理解为什么某些序列能独立活动至关重要。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>当你运行MetaDynamics并分析FEL时，不仅要看屏障高度，还要看<strong>从O到C的过渡路径的形状</strong>。好的生成序列应该在关键区域（如beta-barrel附近）有特定的残基组态，使得C态更稳定，O→C路径更平坦。</div>
+  </div>
+</div>
+
+<div id="p7" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P7</span>
+    <p><span class="hl-p">Shortest Path Map (SPM) analysis was applied to identify the allosteric communication pathways</span> connecting the α-β interface (allosteric site) to the active site catalytic machinery. <span class="hl-r">The SPM revealed that in LBCA-TrpB, residues at the α-β interface (especially the LBCA-Res) are directly coupled to the active site through a network of hydrogen bonds and hydrophobic contacts</span>. <span class="hl-b">In wild-type Anc3, this pathway is significantly disrupted, showing lower coupling strength between these regions</span>. <span class="hl-g">Notably, in the absence of TrpA, the Anc3 SPM showed extremely weak or absent connections, highlighting the dependence of this enzyme on TrpA for establishing effective allosteric networks</span>. The presence of strong intra-subunit networks in LBCA-TrpB, independent of TrpA, explains the enzyme's autonomous function.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P7</div>
+    <p><strong>段落功能：</strong>介绍SPM分析方法及其结果——LBCA-TrpB内部通讯网络强（不依赖TrpA），Anc3弱（需要TrpA建立联系）。</p>
+    <div class="role-badge">方法应用 | 关键证据</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Shortest Path Map (SPM)</td><td>分析蛋白质中两个位点之间最短物理路径的方法</td></tr>
+      <tr><td>Allosteric communication pathway</td><td>从变构位点（α-β界面）到活性位点的信号传递路线</td></tr>
+      <tr><td>Coupling strength</td><td>两个位点之间通过残基网络的相互作用强度</td></tr>
+      <tr><td>Hydrogen bonding network</td><td>通过氢键连接的残基网络，参与构象传递</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>SPM分析结果直观展现了一个关键假设：<strong>天然独立TrpB有强的内部通讯网络，不需要TrpA</strong>，而野生型需要TrpA来"补充"这个缺失的通讯。这是从<strong>静态构象转向动态网络</strong>的理解升级。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>SPM分析对于评估你的生成序列至关重要。在运行MetaDynamics后，应该对生成的TrpB进行SPM分析，检查α-β界面和活性位点之间的耦合强度。强耦合（类似LBCA-TrpB）预示着独立活性；弱耦合意味着仍需TrpA。</div>
+  </div>
+</div>
+
+<div id="p8" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P8</span>
+    <p><span class="hl-y">Comparison of LBCA-TrpB with the engineered PfTrpB0B2 variant (previously evolved in the Arnold laboratory)</span> provided insights into divergent solutions for achieving standalone activity. <span class="hl-b">While both enzymes show high kcat values in the absence of TrpA, their conformational dynamics are markedly different: PfTrpB0B2 achieves standalone activity primarily through enhanced sampling of the C state from pre-existing conformational ensembles (population shift), whereas LBCA-TrpB has a fundamentally altered FEL with a lower O→C barrier</span>. <span class="hl-r">This distinction highlights two mechanistic pathways toward standalone function: conformational selection (LBCA-TrpB) versus ensemble averaging (PfTrpB0B2)</span>. The natural enzyme thus represents a distinct evolutionary solution not previously captured in laboratory evolution efforts.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P8</div>
+    <p><strong>段落功能：</strong>将自然独立TrpB与实验室进化的版本进行对比，展示达到独立活性的多条进化路径。</p>
+    <div class="role-badge">对比分析 | 进化洞察</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>PfTrpB0B2</td><td>Arnold实验室进化改造的色氨酸合酶β亚基</td></tr>
+      <tr><td>Population shift</td><td>通过改变构象种群分布实现的活性增强</td></tr>
+      <tr><td>Conformational selection</td><td>通过降低特定构象的能垒实现的活性增强</td></tr>
+      <tr><td>Ensemble averaging</td><td>同时采样多个构象实现函数化</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>这一段揭示了一个深刻的进化真理：<strong>相同的功能结果可以通过不同的分子机制达到</strong>。LBCA-TrpB和PfTrpB0B2都能独立工作，但方式完全不同。这对你的项目有重要启示：你的生成序列可能采用上述任何一种策略（甚至创新的第三种），都可能成功。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>这个对比框架是评估GenSLM序列时的<strong>诊断工具</strong>。分析生成序列的MetaDynamics结果时，判断它更接近LBCA-TrpB的"低屏障"策略，还是PfTrpB0B2的"增强采样"策略。两条路都可行，但识别机制有助于理解生成的序列为什么有效（或无效）。</div>
+  </div>
+</div>
+
+<!-- DISCUSSION -->
+<div id="p9" class="sec-label"><span class="sec-num">DIS</span> Discussion</div>
+<div id="p9" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P9</span>
+    <p><span class="hl-y">In comparison to previously studied extant TrpB enzymes, LBCA-TrpB exhibits several unusual properties: a superior standalone activity, weak allosteric activation by TrpA, and poor binding affinity for its substrate serine</span>. <span class="hl-y">The first two properties can be attributed to the presence of the LBCA-Res residues that collectively lower the intrinsic O→C barrier</span>, enabling the enzyme to access the catalytic C state without external help. <span class="hl-b">The weak activation by TrpA (fold-change of only 2-3×) in LBCA-TrpB contrasts sharply with the typical 1000-fold activation seen in wild-type enzymes</span>, further supporting the model that LBCA-TrpB has already solved the conformational accessibility problem on its own. <span class="hl-g">However, the reduced serine affinity suggests a trade-off: the mutations that enable standalone activity have slightly compromised substrate binding</span>, a common constraint in enzyme evolution.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P9</div>
+    <p><strong>段落功能：</strong>总结LBCA-TrpB的核心性质，解释这些性质来源于LBCA-Res的集合效应，指出独立活性与底物结合的权衡。</p>
+    <div class="role-badge">模型总结 | 权衡分析</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>LBCA-Res (residue set)</td><td>来自乳酸菌TrpB的6个关键突变</td></tr>
+      <tr><td>Intrinsic O→C barrier</td><td>不依赖TrpA激活的、由蛋白质序列自身决定的能垒</td></tr>
+      <tr><td>Catalytic C state accessibility</td><td>蛋白质能够自发采样C构象的能力</td></tr>
+      <tr><td>Serine affinity</td><td>TrpB对其L-丝氨酸底物的结合亲和力</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>这一段指出了<strong>进化的权衡</strong>：独立活性的获得可能伴随底物结合能力的下降。这是设计蛋白质时必须考虑的约束——完美优化多个参数可能是不可能的。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>当你评估GenSLM生成的序列时，<strong>不仅要看独立活性（低O→C屏障），也要考察底物结合</strong>。理想的生成序列应该平衡这两个目标。同时，如果某个候选序列的kcat很高但底物结合差，这可能反映了与LBCA-TrpB类似的<strong>预期的进化权衡</strong>，而不是失败的设计。</div>
+  </div>
+</div>
+
+<div id="p10" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P10</span>
+    <p><span class="hl-y">The conformational changes underlying the O→C transition represent a fundamental mechanism by which allosteric effects are manifested in protein function</span>. <span class="hl-y">Understanding how specific residues modulate this transition—either by lowering the barrier directly or by enriching the C state population—provides a molecular framework for rational enzyme design</span>. <span class="hl-r">The integration of MetaDynamics simulations with structural and kinetic data</span> has proven invaluable for deciphering the mechanistic nuances of allosteric regulation. <span class="hl-y">The natural standalone TrpB provides a benchmark for what constitutes a "solved" allosteric problem in protein evolution, offering a template for future enzyme engineering efforts aimed at tuning catalytic activity through conformational reengineering</span>. <span class="hl-g">Future work should explore whether these insights can be extended to other enzyme families facing similar allosteric constraints</span>.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P10</div>
+    <p><strong>段落功能：</strong>总结MetaDynamics的价值、LBCA-TrpB作为基准的重要性，以及对未来酶工程的启示。</p>
+    <div class="role-badge">结论 | 未来展望</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>O→C transition</td><td>COMM域从开放到闭合构象的转变</td></tr>
+      <tr><td>Allosteric regulation mechanism</td><td>通过构象变化实现的远距离调节</td></tr>
+      <tr><td>Rational enzyme design</td><td>基于蛋白质结构和动力学原理的有目标的改造</td></tr>
+      <tr><td>Conformational reengineering</td><td>通过改变蛋白质构象性质来改善功能的策略</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>论文最后强调LBCA-TrpB是<strong>已"解决"的变构问题的基准</strong>——它不仅展示了什么是可能的，还展示了自然是如何做到的。这对科学方法论很有启发：仔细研究自然的解决方案，比盲目尝试更高效。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>这最后一段直接论述了你的研究目标。LBCA-TrpB就是你的<strong>"解决方案模板"</strong>。你的MetaDynamics计算、GenSLM序列生成、以及后续实验验证，都应该以LBCA-TrpB的FEL形状、残基组态和SPM网络强度为参考，评估生成的序列有多接近这个自然基准。</div>
+  </div>
+</div>
+
+<!-- APPENDIX: Argument Skeleton -->
+<div id="skeleton" class="sec-label"><span class="sec-num">§A</span> Argument Skeleton (论证骨架)</div>
+<div class="synth-section">
+  <h2>§A 论证骨架</h2>
+  <p>本文的推理链条：</p>
+  <div class="logic-chain">
+    <div class="lc-node">问题<br><small>P1-P3</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">方法<br><small>P4-P5</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">FEL分析<br><small>P5-P6</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">SPM网络<br><small>P7</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">进化对比<br><small>P8</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">结论<br><small>P9-P10</small></div>
+  </div>
+
+  <h3>核心命题与证据表</h3>
+  <table class="proj-table">
+    <tr>
+      <th>核心命题</th>
+      <th>关键证据</th>
+      <th>意义</th>
+    </tr>
+    <tr>
+      <td>天然TrpB能独立工作而无需TrpA激活</td>
+      <td>LBCA-TrpB在无TrpA条件下的kcat/Km值（0.14 s⁻¹ M⁻¹）</td>
+      <td>证明独立活性是可能的，不是绝对需要TrpA</td>
+    </tr>
+    <tr>
+      <td>独立活性源于低O→C能垒</td>
+      <td>MetaDynamics FEL显示LBCA的屏障为5-6 vs Anc3的15+ kcal/mol</td>
+      <td>揭示分子机制——不是改善催化而是改变构象易性</td>
+    </tr>
+    <tr>
+      <td>LBCA-Res残基集合造成低屏障</td>
+      <td>引入LBCA-Res到Anc3后活性提升；SPM显示强通讯网络</td>
+      <td>证明特定残基组态的必要性</td>
+    </tr>
+    <tr>
+      <td>多条进化路径可达独立活性</td>
+      <td>LBCA-TrpB（低屏障）vs PfTrpB0B2（增强采样）的差异</td>
+      <td>说明设计不唯一，理解机制有助于评估新序列</td>
+    </tr>
+    <tr>
+      <td>独立活性可能伴随底物亲和力下降</td>
+      <td>LBCA-TrpB显示弱血清亲和力但高kcat</td>
+      <td>提示设计时要平衡多个目标</td>
+    </tr>
+  </table>
+
+  <h3>核心假设（未在本文中验证但被接受）</h3>
+  <ul style="margin: 10px 0; padding-left: 20px; font-size: 13px;">
+    <li>MetaDynamics采样的自由能景观能代表真实的构象动力学</li>
+    <li>O→C屏障高度与独立活性直接相关</li>
+    <li>SPM强度反映变构通讯的有效性</li>
+  </ul>
+</div>
+
+<!-- APPENDIX: Project Connection Table -->
+<div id="projconn" class="sec-label"><span class="sec-num">§B</span> Project Connection (项目关联)</div>
+<div class="synth-section">
+  <h2>§B 与你的项目的关联</h2>
+  <p><strong>Zhenpeng的项目背景：</strong>使用GenSLM生成模型和MetaDynamics计算，寻找/优化具有独立活性和D-色氨酸选择性的TrpB变体。LBCA-TrpB是这个工作的<strong>天然基准</strong>和<strong>设计指导</strong>。</p>
+
+  <table class="proj-table">
+    <tr>
+      <th>论文中的内容</th>
+      <th>Zhenpeng 项目中的对应</th>
+      <th>具体操作建议</th>
+    </tr>
+    <tr>
+      <td>6个LBCA-Res残基 (E36, E42, T53, S187, A279, M280)</td>
+      <td>GenSLM生成的候选序列中这些位置的身份</td>
+      <td>对每个生成的序列，检查这6个关键位置。如果与LBCA相符，给予高分；如果完全不同，需进一步验证其他补偿机制。建立一个"LBCA信号特征评分"。</td>
+    </tr>
+    <tr>
+      <td>O→C能垒：LBCA 5-6 kcal/mol, Anc3 >15 kcal/mol</td>
+      <td>你的MetaDynamics计算结果</td>
+      <td>为每个生成序列运行MetaDynamics，计算O→C屏障。目标：≤8 kcal/mol是独立活性的阈值；5-6 kcal/mol说明达到了自然水平。记录所有结果建立候选库。</td>
+    </tr>
+    <tr>
+      <td>FEL中的关键结构特征（COMM域刚性、beta-barrel稳定化）</td>
+      <td>生成序列的中间态和转变路径的形状</td>
+      <td>分析MetaDynamics轨迹，看FEL是否显示类似LBCA的特征：(a) C态能量最低，(b) 从O到C的路径平坦，(c) 中间态能量不过高。绘制对比图表。</td>
+    </tr>
+    <tr>
+      <td>SPM显示LBCA强耦合，Anc3弱耦合</td>
+      <td>生成序列的变构通讯网络强度</td>
+      <td>对MetaDynamics后的结构进行SPM分析，量化α-β界面和活性位点间的耦合。强耦合（类似LBCA）→高优先级评估；弱耦合→可能仍需TrpA，继续优化。</td>
+    </tr>
+    <tr>
+      <td>多条独立活性的路径：低屏障 vs 增强采样</td>
+      <td>对生成序列的分类和机制理解</td>
+      <td>分析每个候选序列的MetaDynamics，判断它采用的是LBCA式的"重塑FEL"还是PfTrpB0B2式的"增强采样"。两者都可接受，但了解机制有助于后续实验设计（比如稳定性测试、动力学参数）。</td>
+    </tr>
+    <tr>
+      <td>独立活性与底物结合的权衡</td>
+      <td>生成序列的综合性能评估</td>
+      <td>不要只看kcat（独立活性）。如果生成序列的O→C屏障低但底物结合差，这可能是可接受的权衡。设定多目标评分函数：既看屏障，也看底物亲和力、动力学参数。</td>
+    </tr>
+    <tr>
+      <td>D-色氨酸选择性（本文未明确讨论，但相关）</td>
+      <td>未来目标：针对D-Trp优化</td>
+      <td>当前使用L-Trp作为底物在MetaDynamics中验证独立活性。后续应设计类似的计算或实验来评估D-Trp结合和催化效率，参考LBCA-TrpB的L-Trp数据作为对照。</td>
+    </tr>
+  </table>
+</div>
+
+<!-- APPENDIX: Glossary -->
+<div id="glossary" class="sec-label"><span class="sec-num">§C</span> Glossary (术语总表)</div>
+<div class="synth-section">
+  <h2>§C 术语总表</h2>
+  <table class="gloss-table">
+    <tr>
+      <th style="width:25%">术语 (英文)</th>
+      <th style="width:15%">中文</th>
+      <th>一句话定义</th>
+      <th style="width:20%">在本文中的作用</th>
+    </tr>
+    <tr>
+      <td>Allostery</td>
+      <td>变构调节</td>
+      <td>配体与蛋白质远离活性位点的位置结合，引起活性的改变</td>
+      <td>解释TrpA如何激活TrpB，以及为什么天然独立TrpB不需要这种激活</td>
+    </tr>
+    <tr>
+      <td>Tryptophan synthase (TrpAB)</td>
+      <td>色氨酸合酶</td>
+      <td>催化色氨酸生物合成最后两步的二功能酶复合体</td>
+      <td>本文研究对象，论文以其β亚基为焦点</td>
+    </tr>
+    <tr>
+      <td>TrpB (β-subunit)</td>
+      <td>色氨酸合酶β亚基</td>
+      <td>TrpAB的β亚基，催化吲哚与L-丝氨酸的缩合</td>
+      <td>本文主要研究对象，通常需要TrpA激活（或不需要，如LBCA-TrpB）</td>
+    </tr>
+    <tr>
+      <td>TrpA (α-subunit)</td>
+      <td>色氨酸合酶α亚基</td>
+      <td>TrpAB的α亚基，催化IGP的水解，并通过变构激活TrpB</td>
+      <td>正常情况下激活TrpB；天然独立TrpB不依赖其激活</td>
+    </tr>
+    <tr>
+      <td>LBCA-TrpB</td>
+      <td>乳酸菌TrpB</td>
+      <td>来自乳酸菌（Lactobacillus casei）的天然独立型TrpB</td>
+      <td>本文的研究对象和性质基准，拥有低O→C屏障和强内部通讯</td>
+    </tr>
+    <tr>
+      <td>LBCA-Res</td>
+      <td>乳酸菌关键残基</td>
+      <td>从LBCA-TrpB中鉴定的6个关键氨基酸（E36, E42, T53, S187, A279, M280）</td>
+      <td>这些残基引入Anc3后使其获得类似独立活性，是设计的目标特征</td>
+    </tr>
+    <tr>
+      <td>Anc3 TrpB</td>
+      <td>祖先型TrpB 3</td>
+      <td>通过分子进化重建的一个TrpB祖先序列，仍需TrpA激活</td>
+      <td>与LBCA-TrpB的对照组，用来验证LBCA-Res的效果</td>
+    </tr>
+    <tr>
+      <td>Anc3_LBCA-Res</td>
+      <td>含LBCA残基的Anc3</td>
+      <td>将LBCA-Res残基引入Anc3的工程变体</td>
+      <td>证明LBCA-Res足以赋予独立活性，是分子机制研究的关键</td>
+    </tr>
+    <tr>
+      <td>COMM domain</td>
+      <td>沟通域</td>
+      <td>TrpB中负责与TrpA相互作用和变构通讯的结构域</td>
+      <td>本文MetaDynamics计算的主焦点，其O→C转变驱动独立活性</td>
+    </tr>
+    <tr>
+      <td>Open (O) state</td>
+      <td>开放态</td>
+      <td>COMM域的开放构象，不具有催化能力</td>
+      <td>TrpB的基础态，需要过渡到C态才能催化</td>
+    </tr>
+    <tr>
+      <td>Closed (C) state</td>
+      <td>闭合态</td>
+      <td>COMM域的闭合构象，具有催化能力</td>
+      <td>催化活跃态，天然独立TrpB容易访问，野生型需要TrpA帮助</td>
+    </tr>
+    <tr>
+      <td>O→C transition</td>
+      <td>O→C转变</td>
+      <td>从O态到C态的构象变化过程</td>
+      <td>本文的中心关注，其能垒差异解释了独立活性的差异</td>
+    </tr>
+    <tr>
+      <td>Free Energy Landscape (FEL)</td>
+      <td>自由能景观</td>
+      <td>蛋白质构象在能量空间中的二维或三维分布图</td>
+      <td>MetaDynamics的主要输出，用于可视化和量化O→C的能垒</td>
+    </tr>
+    <tr>
+      <td>Activation barrier</td>
+      <td>激活能垒</td>
+      <td>从一个构象状态过渡到另一个状态需要克服的最小能量</td>
+      <td>LBCA-TrpB的O→C屏障低（5-6 kcal/mol）是独立活性的关键</td>
+    </tr>
+    <tr>
+      <td>MetaDynamics (MetaD)</td>
+      <td>元动力学</td>
+      <td>分子动力学的增强采样方法，通过加入高斯势加速少见事件的采样</td>
+      <td>本文使用的计算方法，用于快速探索COMM域的构象空间</td>
+    </tr>
+    <tr>
+      <td>Collective variables (CV)</td>
+      <td>集合变量</td>
+      <td>描述蛋白质关键构象特征的参数（可以是距离、角度等的组合）</td>
+      <td>本文使用s和z轴作为CV，定义O和C状态的转变过程</td>
+    </tr>
+    <tr>
+      <td>Shortest Path Map (SPM)</td>
+      <td>最短路径图</td>
+      <td>分析蛋白质中两个位点之间最短物理接触路径的方法</td>
+      <td>用于验证LBCA-TrpB内部的强变构通讯网络</td>
+    </tr>
+    <tr>
+      <td>Allosteric pathway</td>
+      <td>变构通讯路径</td>
+      <td>蛋白质内从变构位点到活性位点的信号传递路线</td>
+      <td>LBCA-TrpB的α-β界面到活性位点的通讯很强（SPM强度高）</td>
+    </tr>
+    <tr>
+      <td>Coupling strength</td>
+      <td>耦合强度</td>
+      <td>两个蛋白质位点之间通过残基网络的相互作用程度</td>
+      <td>LBCA-TrpB高（强耦合），Anc3低（弱耦合），PfTrpB0B2中等</td>
+    </tr>
+    <tr>
+      <td>Indole channeling</td>
+      <td>吲哚通道化</td>
+      <td>有毒中间产物吲哚从TrpA直接转移给TrpB，避免释放到溶剂</td>
+      <td>TrpAB双功能性的一个关键优势，天然独立TrpB失去了这个优势</td>
+    </tr>
+    <tr>
+      <td>Conformational selection</td>
+      <td>构象选择</td>
+      <td>通过降低特定构象状态的能量来增加其种群比例的机制</td>
+      <td>LBCA-TrpB采用的机制：直接降低C态的相对能量</td>
+    </tr>
+    <tr>
+      <td>Population shift</td>
+      <td>种群偏移</td>
+      <td>通过改变蛋白质构象的整体种群分布实现活性增强</td>
+      <td>PfTrpB0B2采用的机制，与LBCA-TrpB的低屏障策略不同</td>
+    </tr>
+    <tr>
+      <td>Kinetic parameter (kcat/Km)</td>
+      <td>酶动力学参数</td>
+      <td>酶催化效率的指标，单位通常为 s⁻¹ M⁻¹</td>
+      <td>本文用来量化独立活性的强弱，LBCA-TrpB ~0.1-1 s⁻¹ M⁻¹</td>
+    </tr>
+    <tr>
+      <td>Substrate binding affinity (Km, Kd)</td>
+      <td>底物结合亲和力</td>
+      <td>蛋白质与底物相互作用的强度，Km越小越强</td>
+      <td>LBCA-TrpB的血清（丝氨酸）亲和力较弱，体现独立活性与底物结合的权衡</td>
+    </tr>
+    <tr>
+      <td>PfTrpB0B2</td>
+      <td>Arnold实验室进化的TrpB</td>
+      <td>通过定向进化获得的独立型TrpB，采用增强采样策略</td>
+      <td>与LBCA-TrpB对比，说明独立活性可通过多条进化路径实现</td>
+    </tr>
+    <tr>
+      <td>Rational enzyme design</td>
+      <td>理性酶设计</td>
+      <td>基于蛋白质结构和分子机制的有目标的蛋白质改造</td>
+      <td>本文强调MetaDynamics+结构知识可用于指导设计，推荐用于后续工程</td>
+    </tr>
+    <tr>
+      <td>β-β interface</td>
+      <td>β-β二聚体界面</td>
+      <td>TrpB蛋白之间的相互作用界面（某些TrpB可形成二聚体）</td>
+      <td>LBCA-Res中的T53位于此位置，说明二聚体相互作用可能涉及独立活性</td>
+    </tr>
+    <tr>
+      <td>Active site residues</td>
+      <td>活性位点残基</td>
+      <td>直接参与底物结合和催化的蛋白质残基</td>
+      <td>LBCA-Res中的S187在活性位点，其改变可能调整催化几何</td>
+    </tr>
+    <tr>
+      <td>α-β interface</td>
+      <td>α-β界面</td>
+      <td>TrpA和TrpB之间的相互作用界面，变构通讯的位点</td>
+      <td>LBCA-Res中的A279, M280在此，这些位置虽然改变但不需TrpA激活</td>
+    </tr>
+  </table>
+</div>
+
+</main>
+</div>
+
+<!-- INTERSECTION OBSERVER SCRIPT -->
+<script>
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, {rootMargin: '-10% 0px -80% 0px'});
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

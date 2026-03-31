@@ -1,0 +1,68 @@
+# PLUMED input for alanine dipeptide well-tempered MetaDynamics
+# CVs: phi (ϕ) and psi (ψ) dihedral angles
+# GROMACS will pass the trajectory to PLUMED via the -plumed flag
+
+# ============================================================================
+# Collective Variables: Backbone Dihedrals
+# ============================================================================
+
+# Phi dihedral angle: C(-1) - N - CA - C
+# Atoms for Ace-Ala-Nme: 4 (O of ACE), 5 (N of ALA), 6 (CA of ALA), 7 (C of ALA)
+phi: TORSION ATOMS=4,5,6,7
+
+# Psi dihedral angle: N - CA - C - N(+1)
+# Atoms: 5 (N of ALA), 6 (CA of ALA), 7 (C of ALA), 10 (N of NME)
+psi: TORSION ATOMS=5,6,7,10
+
+# ============================================================================
+# Well-Tempered MetaDynamics
+# ============================================================================
+
+# METAD keyword options:
+#   ARG=phi,psi         — Collective variables
+#   PACE=500            — Deposit Gaussian hills every 500 steps
+#   HEIGHT=1.2          — Height of each Gaussian (kJ/mol)
+#   SIGMA=0.35,0.35     — Gaussian widths (radians, ≈ 20° each)
+#   FILE=HILLS          — Output file for Gaussian parameters
+#   BIASFACTOR=10       — Bias factor for well-tempered variant (> 1 = well-tempered)
+#   TEMP=300            — Simulation temperature (K)
+
+metad: METAD ARG=phi,psi \
+             PACE=500 \
+             HEIGHT=1.2 \
+             SIGMA=0.35,0.35 \
+             FILE=HILLS \
+             BIASFACTOR=10 \
+             TEMP=300
+
+# ============================================================================
+# Output: Collective Variables and Bias Potential
+# ============================================================================
+
+# PRINT writes selected values to COLVAR file every stride steps
+# This allows us to monitor the evolution of phi, psi, and the bias during the run
+
+PRINT ARG=phi,psi,metad.bias FILE=COLVAR STRIDE=100
+
+# ============================================================================
+# Notes
+# ============================================================================
+
+# 1. BIASFACTOR=10 ensures well-tempered MetaD behavior:
+#    - The bias potential builds slowly and "evens out" the landscape
+#    - Allows exploration of less populated regions
+#    - Results in converged free energy estimates after sufficient time
+
+# 2. HEIGHT=1.2 kJ/mol and SIGMA=0.35 rad are empirically chosen:
+#    - Should allow alanine dipeptide to explore both α and β regions
+#    - Keep Gaussians small enough for smooth FEL
+
+# 3. PACE=500 steps between hills:
+#    - At dt=0.002, this is 1 ps between deposits
+#    - Total 10 ns / 1 ps = 10,000 hills (reasonable for WT-MetaD)
+
+# 4. TEMP=300 must match the simulation temperature in run_metad.mdp
+
+# 5. Output files:
+#    - COLVAR: Time series of phi, psi, metad.bias (tab-separated)
+#    - HILLS: Parameters of each Gaussian (used by plumed sum_hills)

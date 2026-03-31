@@ -1,0 +1,26 @@
+source leaprc.protein.ff14SB
+source leaprc.gaff
+source leaprc.water.tip3p
+
+# This template is executed from replication/scripts by build_system_tleap.sh.
+# AIN is treated as a polymer-linked residue, not as a detached ligand.
+AIN = loadmol2 ../parameters/mol2/Ain_gaff.mol2
+set AIN head AIN.1.N
+set AIN tail AIN.1.C
+set AIN.1 connect0 AIN.1.N
+set AIN.1 connect1 AIN.1.C
+saveoff AIN ../systems/pftrps_ain/Ain_gaff.lib
+
+loadamberparams ../parameters/frcmod/Ain.frcmod
+loadoff ../systems/pftrps_ain/Ain_gaff.lib
+
+prot = loadpdb ../systems/pftrps_ain/5DVZ_chainA_prepared.pdb
+check prot
+
+solvatebox prot TIP3PBOX 10.0
+addions prot Na+ 0
+check prot
+
+saveamberparm prot ../systems/pftrps_ain/pftrps_ain.parm7 ../systems/pftrps_ain/pftrps_ain.inpcrd
+savepdb prot ../systems/pftrps_ain/pftrps_ain_leap.pdb
+quit

@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large files (don't commit to git)
+*.parm7
+*.inpcrd
+*.nc
+*.mdcrd
+*.xtc
+*.trr
+*.edr
+*.tpr
+*.gro
+*.cpt
+
+# Gaussian
+*.chk
+*.fchk
+
+# Temp
+*.swp
+*.swo
+*~
+/tmp/
+
+# Node
+node_modules/
+
+# Local session state (not for version control)
+.ccb/.codex-session
+.ccb/.claude-session
+.ccb/.gemini-session
+.ccb/.opencode-session
+.ccb/history/
+.ccb/tasks/
+
+# Claude Code local state
+.claude/settings.local.json
+.claude/statsig/
+.claude/todos/
+
+# Local session state (not for version control)
+.ccb/.codex-session
+.ccb/.claude-session
+.ccb/history/
+.ccb/tasks/
+
+# Claude Code local state
+.claude/settings.local.json
+.claude/statsig/
+.claude/todos/

@@ -1,0 +1,78 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║           TrpB Path CV Generator — Quick Reference (2026-03-28)             ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+WHAT THIS SCRIPT DOES:
+  Generate 15-frame reference path for TrpB COMM domain O→C transition
+  (Linear interpolation between 1WDW Open and 3CEP Closed structures)
+  → Outputs PLUMED PATH format file for PATHMSD collective variable
+
+INSTALLATION (Longleaf):
+  conda activate trpb-md
+  # MDAnalysis, BioPython already installed
+
+BASIC USAGE:
+  python generate_path_cv.py
+
+LONGLEAF EXAMPLE:
+  cd /work/users/l/i/liualex/AnimaLab/scripts
+  conda activate trpb-md
+  python generate_path_cv.py \
+    --pdb-dir /work/users/l/i/liualex/AnimaLab/structures \
+    --output-dir /work/users/l/i/liualex/AnimaLab/structures/path_frames
+
+OUTPUT FILES:
+  path_frames/
+  ├── frame_01.pdb through frame_15.pdb  (individual frames)
+  ├── path.pdb                             (PLUMED PATH format - USE THIS)
+  └── summary.txt                          (MSD statistics)
+
+KEY OUTPUT METRICS:
+  Mean MSD between frames: should be ~80 Å (paper value)
+  λ parameter: 2.3 / MSD ≈ 0.029 (set in PLUMED input)
+
+VALIDATION:
+  1. Check file count: ls path_frames/ | wc -l  (should be ≥17)
+  2. Count models: grep "^MODEL" path_frames/path.pdb | wc -l  (should be 15)
+  3. Check summary: cat path_frames/summary.txt | grep "Mean MSD"
+  4. Visual check: pymol frame_01.pdb frame_15.pdb  (01=open, 15=closed)
+
+PLUMED INPUT USAGE:
+  ca: GROUP ATOMS=1-192
+  path: PATHMSD REFERENCE=path.pdb ARG=ca LAMBDA=0.029
+  metad: METAD ARG=path SIGMA=0.1 HEIGHT=1.0 PACE=500
+
+REQUIREMENTS:
+  • MDAnalysis >= 2.5.0  (structure analysis)
+  • BioPython >= 1.83   (sequence alignment)
+  • numpy, requests
+  • Internet access for PDB download (or pre-downloaded 1WDW.pdb, 3CEP.pdb)
+
+PARAMETERS (hard-coded):
+  COMM domain: residues 97-184 (TrpB numbering)
+  Base region:  residues 282-305 (TrpB numbering)
+  Open state:   1WDW (P. furiosus)
+  Closed state: 3CEP (S. typhimurium)
+  Frames:       15 (linear interpolation)
+  λ scale:      2.3 (LAMBDA_SCALE / MSD)
+
+TROUBLESHOOTING:
+  • "ModuleNotFoundError": conda install -c conda-forge mdanalysis
+  • "Cannot locate 1WDW": Download from https://www.rcsb.org/structure/1WDW
+  • "No atoms selected": Check residue numbering in your PDB file
+  • Small MSD (4 Å vs 80 Å): Normal for linear interpolation, λ calculated accordingly
+
+NEXT STEPS AFTER GENERATION:
+  1. Copy path.pdb to AnimaLab/structures/
+  2. Include in plumed.dat with PATHMSD directive
+  3. Run GROMACS with PLUMED: gmx mdrun -plumed plumed.dat
+  4. Analyze colvar.dat for path CV evolution (s=1 at open, s=15 at closed)
+
+DOCUMENTATION:
+  • Full details: README_path_cv.md
+  • Script source: generate_path_cv.py (extensively commented)
+  • Reference: JACS 2019 ja9b03646, SI methods
+
+═══════════════════════════════════════════════════════════════════════════════
+Author: Zhenpeng Liu (liualex@ad.unc.edu)
+Project: TrpB MetaDynamics Replication, Anima Lab, Caltech

@@ -1,0 +1,100 @@
+campaign:
+  id: "osuna2019-benchmark"
+  mode: "benchmark_reproduction"
+  status: "protocol-draft"
+  research_question: "Can the project reproduce a literature-grounded TrpB conformational-sampling workflow with explicit artifact and sanity checks?"
+  downstream_consumer: "Calibration baseline for later pairwise and screening campaigns"
+
+papers:
+  primary_sources:
+    - title: "Deciphering the Allosterically Driven Conformational Ensemble in Tryptophan Synthase Evolution"
+      authors:
+        - "Maria-Solano, M. A."
+        - "Iglesias-Fernández, J."
+        - "Osuna, S."
+      journal: "JACS"
+      year: 2019
+      doi: "10.1021/jacs.9b03646"
+      pmid: "31356074"
+      role: "benchmark target"
+
+systems:
+  - name: "Pyrococcus furiosus TrpB"
+    role: "benchmark system"
+    sequence_source: "literature"
+    structure_source: "RCSB PDB"
+    confidence: "high"
+
+science:
+  conformational_process: "COMM-domain conformational transition"
+  reference_states:
+    - pdb_id: "5DVZ"
+      role: "primary closed / catalytically active reference"
+      confidence: "explicit"
+    - pdb_id: "5DW0"
+      role: "substrate-bound intermediate anchor"
+      confidence: "explicit"
+    - pdb_id: "7RNQ"
+      role: "possible extended-open reference"
+      confidence: "inferred"
+  cv_package:
+    primary: "path collective variable"
+    secondary: "perpendicular deviation coordinate"
+    scientific_risk: "A technically valid path setup may still be biologically wrong if endpoints do not capture the intended motion."
+  readouts:
+    - name: "free-energy basins across O / PC / C states"
+      type: "free_energy"
+      status: "draft"
+    - name: "productive closed-state geometry"
+      type: "structural criterion"
+      status: "draft"
+  productive_state_definition:
+    explicit_from_literature:
+      - "COMM-domain RMSD < 1.5 A from the closed reference for productive closure"
+      - "K82-to-Q2 distance near or below 3.6 A for productive proton transfer geometry"
+    project_hypotheses: []
+
+stack:
+  md_engine: "AMBER with PLUMED integration"
+  amber_version: "AMBER18 or nearby-era equivalent"
+  plumed_version: "PLUMED 2.4 or 2.5"
+  force_field: "ff14SB"
+  water_model: "TIP3P"
+  cofactor_parameterization: "PLP custom parameterization required"
+  environment: "draft"
+
+metadynamics:
+  scheme: "well-tempered metadynamics"
+  height_kj_per_mol: "0.4-0.6"
+  sigma: "0.05-0.15"
+  pace_steps: 500
+  bias_factor: "10-15"
+  grid_spacing: "0.05"
+  temperature_k: 300
+  timestep_fs: 2
+
+validation:
+  operational_checks:
+    - "plumed.dat, topology, coordinates, HILLS, CV trace, and run log exist"
+    - "no NaN or immediate divergence"
+    - "bias deposition occurs as expected"
+  scientific_checks:
+    - "observed basins are qualitatively plausible for the chosen reference logic"
+    - "productive-closure interpretation does not exceed the frozen benchmark criteria"
+  integration_checks:
+    - "benchmark conclusions are not reused as candidate-filter decisions without a new manifest"
+
+blockers:
+  - "Exact supplementary parameters may still require authoritative confirmation."
+  - "JACS 2019 SI (PLUMED input files) still needs to be downloaded and confirmed."
+  - "PLP cofactor AMBER parameterization source not yet confirmed (may be in SI, otherwise contact Osuna lab)."
+  - "This benchmark calibrates the workflow but does not by itself answer the generative-pipeline question."
+
+hpc:
+  cluster: "UNC Longleaf"
+  status: "available"
+  notes: "UNC Longleaf HPC account confirmed available as of 2026-03-26. Resolves prior HPC blocker."
+
+next_action:
+  - "Review which inferred parameters are acceptable for a first validation run."
+  - "Use this manifest as the calibration baseline before comparing novel sequences."

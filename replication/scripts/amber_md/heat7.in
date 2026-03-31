@@ -1,0 +1,29 @@
+PfTrpS(Ain) heating step 7; JACS 2019 SI Heating (50 ps NVT, 300->350 K, 10 kcal/mol/A^2 restraint)
+&cntrl
+  imin=0,
+  irest=1,
+  ntx=5,
+  nstlim=50000,
+  dt=0.001,
+  ntc=2,
+  ntf=2,
+  ntt=3,
+  gamma_ln=1.0,
+  temp0=350.0,
+  nmropt=1,
+  ntb=1,
+  ntp=0,
+  cut=8.0,
+  ntr=1,
+  restraint_wt=10.0,
+  restraintmask='!@H= & !:WAT & !:Na+',
+  ntpr=5000,
+  ntwx=5000,
+  ntwe=5000,
+  ntwr=50000,
+  ioutfm=1,
+/
+&wt
+  TYPE='TEMP0', ISTEP1=0, ISTEP2=50000, VALUE1=300.0, VALUE2=350.0,
+/
+&wt TYPE='END' /

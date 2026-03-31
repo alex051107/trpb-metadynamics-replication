@@ -1,0 +1,170 @@
+campaign:
+  id: "osuna2019-benchmark"
+  mode: "benchmark_reproduction"
+  status: "parameters-confirmed"
+  research_question: "Can the project reproduce a literature-grounded TrpB conformational-sampling workflow with explicit artifact and sanity checks?"
+  downstream_consumer: "Calibration baseline for later pairwise and screening campaigns"
+
+papers:
+  primary_sources:
+    - title: "Deciphering the Allosterically Driven Conformational Ensemble in Tryptophan Synthase Evolution"
+      authors:
+        - "Maria-Solano, M. A."
+        - "Iglesias-Fernández, J."
+        - "Osuna, S."
+      journal: "JACS"
+      year: 2019
+      doi: "10.1021/jacs.9b03646"
+      pmid: "31356074"
+      role: "benchmark target"
+
+systems:
+  - name: "Pyrococcus furiosus TrpB"
+    role: "benchmark system"
+    sequence_source: "literature"
+    structure_source: "RCSB PDB"
+    confidence: "high"
+
+science:
+  conformational_process: "COMM-domain conformational transition"
+  reference_states:
+    - pdb_id: "1WDW"
+      role: "starting structure (open PfTrpS); open endpoint for path CV"
+      confidence: "confirmed-SI"
+    - pdb_id: "3CEP"
+      role: "closed endpoint for path CV (StTrpS, Q analogue)"
+      confidence: "confirmed-SI"
+    - pdb_id: "5DVZ"
+      role: "PfTrpB open (Ain) — RMSD reference"
+      confidence: "explicit"
+    - pdb_id: "5DW0"
+      role: "PfTrpB PC (Aex1) — structural comparison"
+      confidence: "explicit"
+    - pdb_id: "5DW3"
+      role: "PfTrpB PC (L-Trp product) — structural comparison"
+      confidence: "explicit"
+  cv_package:
+    primary: "path collective variable"
+    secondary: "perpendicular deviation coordinate"
+    scientific_risk: "A technically valid path setup may still be biologically wrong if endpoints do not capture the intended motion."
+  readouts:
+    - name: "free-energy basins across O / PC / C states"
+      type: "free_energy"
+      status: "draft"
+    - name: "productive closed-state geometry"
+      type: "structural criterion"
+      status: "draft"
+  productive_state_definition:
+    explicit_from_literature:
+      - "COMM-domain RMSD < 1.5 A from the closed reference for productive closure"
+      - "K82-to-Q2 distance near or below 3.6 A for productive proton transfer geometry"
+    project_hypotheses: []
+
+stack:
+  # -- Original paper stack --
+  conventional_md_engine: "AMBER16"
+  metadynamics_md_engine: "GROMACS 5.1.2"
+  metadynamics_cv_engine: "PLUMED 2"
+  # -- Our replication stack --
+  replication_conventional_md: "AMBER 24p3 (pmemd.cuda) on UNC Longleaf — for system prep + 500 ns production"
+  replication_metadynamics_md: "GROMACS + PLUMED 2 on UNC Longleaf — strict replication of original protocol"
+  replication_plumed: "PLUMED 2.9 via conda-forge"
+  notes: "Decision (2026-03-27): strict replication — use GROMACS+PLUMED2 for MetaD, matching original paper exactly. GROMACS needs to be installed on Longleaf with PLUMED2 patch."
+  force_field: "ff14SB"
+  water_model: "TIP3P"
+  box_type: "cubic"
+  box_buffer: "10 Angstrom"
+  cofactor_parameterization:
+    method: "GAFF + RESP charges"
+    qm_level: "HF/6-31G(d)"
+    qm_software: "Gaussian09"
+    tool: "antechamber (AmberTools)"
+    intermediates: ["IGP", "G3P", "Ain", "Aex1", "A-A", "Q2"]
+  environment: "confirmed"
+
+conventional_md:
+  minimization:
+    stage1: "solvent + ions; solute restrained at 500 kcal/mol/A^2"
+    stage2: "unrestrained full system"
+  heating:
+    protocol: "7 × 50 ps steps, 0→350 K in 50 K increments"
+    ensemble: "NVT"
+    timestep_fs: 1
+    restraints_kcal_mol_A2: [210, 165, 125, 85, 45, 10]
+    thermostat: "Langevin"
+    bond_constraints: "SHAKE"
+  equilibration:
+    duration_ns: 2
+    ensemble: "NPT"
+    pressure_atm: 1
+    temperature_k: 350
+    timestep_fs: 2
+  production:
+    duration_ns: 500
+    ensemble: "NVT"
+    temperature_k: 350
+    timestep_fs: 2
+    electrostatics: "PME"
+    cutoff_angstrom: 8
+
+metadynamics:
+  scheme: "well-tempered metadynamics"
+  gaussian_height_kcal_mol: 0.15
+  gaussian_width: "adaptive (local FES properties)"
+  pace: "every 2 ps"
+  bias_factor: 10
+  temperature_k: 350
+  path_cv:
+    type: "path collective variable s(R) and z(R)"
+    num_frames: 15
+    open_endpoint: "PDB 1WDW"
+    closed_endpoint: "PDB 3CEP"
+    atoms: "Calpha of COMM domain (97-184) + base region (282-305)"
+    lambda: "2.3 / mean_square_displacement_between_frames (MSD=80)"
+    state_O: "s(R) = 1-5"
+    state_PC: "s(R) = 5-10"
+    state_C: "s(R) = 10-15"
+  multiple_walkers:
+    num_walkers: 10
+    time_per_walker_ns: "50-100"
+    total_per_system_ns: "500-1000"
+    starting_configs: "10 snapshots from initial MetaD run covering all conformational space"
+  convergence: "monitor energy differences between O and C minima over time (Figures S4, S5)"
+
+validation:
+  operational_checks:
+    - "plumed.dat, topology, coordinates, HILLS, CV trace, and run log exist"
+    - "no NaN or immediate divergence"
+    - "bias deposition occurs as expected"
+  scientific_checks:
+    - "observed basins are qualitatively plausible for the chosen reference logic"
+    - "productive-closure interpretation does not exceed the frozen benchmark criteria"
+  integration_checks:
+    - "benchmark conclusions are not reused as candidate-filter decisions without a new manifest"
+
+blockers:
+  - severity: "resolved"
+    item: "JACS 2019 SI downloaded and all MetaDynamics parameters extracted (2026-03-27)."
+  - severity: "actionable"
+    item: "PLP cofactor parameterization: method confirmed (GAFF+RESP at HF/6-31G(d) via Gaussian09), but actual parameter files (mol2/frcmod) not provided in SI. Must regenerate from scratch or request from Osuna lab."
+  - severity: "actionable"
+    item: "GROMACS not yet installed on Longleaf. Need conda install or compile with PLUMED2 patch. Decision: strict replication with GROMACS+PLUMED2."
+  - severity: "info"
+    item: "This benchmark calibrates the workflow but does not by itself answer the generative-pipeline question."
+
+hpc:
+  cluster: "UNC Longleaf"
+  status: "available"
+  notes: "UNC Longleaf HPC account confirmed available as of 2026-03-26. Resolves prior HPC blocker."
+
+next_action:
+  - "Generate PLP/intermediate GAFF+RESP parameters using antechamber (start with Ain from 1WDW)."
+  - "Build 15-frame O→C reference path: linear interpolation of Cα (res 97-184 + 282-305) between 1WDW and 3CEP."
+  - "Run toy MetaD test on Longleaf (alanine dipeptide) to validate AMBER+PLUMED2 chain."
+  - "Prepare PfTrpS(Ain) system: solvate, minimize, heat, equilibrate, then launch 500 ns conventional MD."
+  - "Use this manifest as the calibration baseline before comparing novel sequences."
+
+parameters_source:
+  file: "replication/parameters/JACS2019_MetaDynamics_Parameters.md"
+  extracted_from: "ja9b03646_si_001.pdf"
+  date: "2026-03-27"

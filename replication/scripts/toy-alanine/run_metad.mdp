@@ -1,0 +1,140 @@
+; GROMACS MD parameters for alanine dipeptide MetaDynamics production run
+; Runtime: 10 ns (5M steps, dt=0.002 ps)
+; Ensemble: NVT (constant volume, constant temperature)
+; Temperature: 300 K
+; Output: metad.trr (trajectory), metad.edr (energy), metad.log (text output)
+
+; ============================================================================
+; Integration
+; ============================================================================
+
+integrator          = md                    ; Leap-frog integrator
+dt                  = 0.002                 ; 2 fs timestep (in ps)
+nsteps              = 5000000               ; 5M steps = 10 ns total
+
+; ============================================================================
+; Output Control
+; ============================================================================
+
+nstlog              = 100                   ; Write energy to log every 100 steps (0.2 ps)
+nstcalcenergy       = 100                   ; Calculate energy every 100 steps
+nstenergy           = 100                   ; Write energy to edr every 100 steps
+nstxout             = 5000                  ; Write trajectory every 5000 steps (10 ps)
+nstvout             = 5000                  ; Write velocities every 5000 steps
+nstfout             = 0                     ; Don't write forces
+nstxtcout           = 500                   ; Write XTC every 500 steps (1 ps) [lighter format]
+
+; ============================================================================
+; Neighbor Searching and Cutoffs
+; ============================================================================
+
+cutoff-scheme       = verlet                ; Verlet cutoff scheme (faster, modern)
+nstlist             = 20                    ; Rebuild neighbor list every 20 steps
+rlist               = 1.0                   ; Neighbor list cutoff (nm)
+
+coulombtype         = pme                   ; Particle Mesh Ewald for long-range electrostatics
+rcoulomb            = 1.0                   ; Coulomb cutoff (nm)
+
+vdwtype             = cut-off               ; Cut-off for van der Waals
+rvdw                = 1.0                   ; VdW cutoff (nm)
+
+pbc                 = xyz                   ; Apply periodic boundary conditions (xyz)
+
+; Dispersion correction for proper pressure & energy
+DispCorr            = EnerPres              ; Energy and Pressure correction
+
+; ============================================================================
+; Temperature Control (NVT Ensemble)
+; ============================================================================
+
+tcoupl              = v-rescale             ; Velocity rescale thermostat (stochastic)
+nsttcouple          = 10                    ; Apply thermostat every 10 steps
+tau_t               = 0.1                   ; Thermostat time constant (ps)
+tc-grps             = System                ; One group: entire system
+ref_t               = 300                   ; Reference temperature (K)
+
+; ============================================================================
+; Pressure Control (None for NVT)
+; ============================================================================
+
+pcoupl              = no                    ; No pressure coupling (constant volume)
+
+; ============================================================================
+; Constraints
+; ============================================================================
+
+constraints         = h-bonds               ; Constrain bonds to hydrogen
+constraint_algorithm = lincs                ; Linear Constraint Solver
+lincs_iter          = 1                     ; Number of LINCS iterations
+lincs_order         = 4                     ; Order of LINCS expansion
+continuation        = yes                   ; Don't reset constraints
+
+; ============================================================================
+; Electrostatics and PME
+; ============================================================================
+
+fourier_nx          = 0                     ; Auto-determine grid size
+fourier_ny          = 0
+fourier_nz          = 0
+fourier_spacing     = 0.16                  ; Grid spacing for PME (nm)
+pme_order           = 4                     ; PME interpolation order
+
+; ============================================================================
+; PLUMED Interface
+; ============================================================================
+
+; PLUMED communication happens via the plumed_metad.dat file
+; GROMACS will be run with: gmx mdrun -deffnm metad -plumed plumed_metad.dat
+; This line is not needed here; it's a runtime flag only.
+
+; ============================================================================
+; Initial Conditions
+; ============================================================================
+
+gen_vel             = no                    ; Do not generate velocities
+; (velocities come from equilibration checkpoint)
+continuation        = yes                   ; This is a continuation from equilibration
+
+; ============================================================================
+; Free Energy Calculation (for reference/analysis)
+; ============================================================================
+
+free_energy         = no                    ; Not using GROMACS free energy module
+; (using PLUMED's MetaD instead)
+
+; ============================================================================
+; Output File Names
+; ============================================================================
+
+; Filenames are controlled by gmx mdrun -deffnm metad:
+; metad.tpr  — Input (topology + parameters)
+; metad.trr  — Full trajectory (positions + velocities + forces)
+; metad.xtc  — Compressed trajectory (positions only)
+; metad.edr  — Energy file
+; metad.log  — Text log
+; metad.cpt  — Checkpoint (restart file)
+
+; ============================================================================
+; Notes
+; ============================================================================
+
+; 1. This is a PRODUCTION RUN (not equilibration)
+;    - Velocities are continued from the equilibration phase
+;    - System should be at desired T and P already
+
+; 2. NVT ensemble chosen because:
+;    - Alanine dipeptide is small (~3 nm³)
+;    - Pressure fluctuations are less critical
+;    - More stable for MetaD sampling
+
+; 3. PLUMED will apply bias potential based on phi/psi angles
+;    - The bias is NOT included in GROMACS energy terms
+;    - PLUMED modifies atomic forces at runtime
+
+; 4. Timestep dt=0.002 ps is standard for AMBER FF with H constraints
+;    - Allows up to 10 fs for ~1 ns/day performance on CPU
+
+; 5. Output stride trade-offs:
+;    - nstxout=5000: Trajectory written every 10 ps (5 GB total for 10 ns)
+;    - nstxtcout=500: Lighter XTC every 1 ps (50 MB, good for analysis)
+;    - nstenergy=100: Energy every 0.2 ps (monitor simulation quality)

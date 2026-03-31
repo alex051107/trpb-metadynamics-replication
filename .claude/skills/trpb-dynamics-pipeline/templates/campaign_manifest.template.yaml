@@ -1,0 +1,109 @@
+campaign:
+  id: "draft-campaign"
+  mode: "mechanism_comparison" # benchmark_reproduction | mechanism_comparison | physics_filter | surrogate_bootstrap
+  status: "draft"
+  research_question: "What dynamics-derived signal does this campaign need to establish?"
+  downstream_consumer: "Mechanistic note | screening rule | feature export | draft"
+
+papers:
+  primary_sources:
+    - title: "Deciphering the Allosterically Driven Conformational Ensemble in Tryptophan Synthase Evolution"
+      doi: "10.1021/jacs.9b03646"
+      role: "benchmark or method reference"
+      status: "read"
+  local_context:
+    - "Weekly report"
+    - "MetaDynamics_Setup_Notes.md"
+
+systems:
+  - name: "GenSLM-230"
+    role: "generated comparator"
+    sequence_source: "draft"
+    structure_source: "draft"
+    confidence: "draft"
+  - name: "NdTrpB"
+    role: "natural homolog comparator"
+    sequence_source: "draft"
+    structure_source: "draft"
+    confidence: "draft"
+
+science:
+  conformational_process: "COMM-domain open -> partially closed -> closed transition"
+  reference_states:
+    - pdb_id: "5DVZ"
+      role: "closed benchmark anchor"
+      confidence: "explicit"
+    - pdb_id: "5DW0"
+      role: "intermediate benchmark anchor"
+      confidence: "explicit"
+    - pdb_id: "7RNQ"
+      role: "optional open comparison anchor"
+      confidence: "inferred"
+  cv_package:
+    primary: "path_cv"
+    secondary: "draft"
+    scientific_risk: "A technically valid CV setup may still miss the biology of interest."
+  readouts:
+    - name: "COMM-domain barrier height"
+      type: "free_energy"
+      status: "draft"
+    - name: "productive closed-state population"
+      type: "population"
+      status: "draft"
+    - name: "off-path excursions"
+      type: "trajectory feature"
+      status: "draft"
+  productive_state_definition:
+    explicit_from_literature:
+      - "COMM RMSD < 1.5 A from closed reference"
+      - "K82-to-intermediate distance <= 3.6 A for productive L-Trp-like closure"
+    project_hypotheses:
+      - "D-Trp selectivity criterion still undefined"
+
+stack:
+  md_engine: "AMBER"
+  amber_version: "draft"
+  plumed_version: "draft"
+  force_field: "ff14SB"
+  water_model: "TIP3P"
+  cofactor_parameterization: "PLP custom parameterization required"
+  environment: "local | HPC | draft"
+
+metadynamics:
+  scheme: "well-tempered metadynamics"
+  height_kj_per_mol: "draft"
+  sigma: "draft"
+  pace_steps: "draft"
+  bias_factor: "draft"
+  grid_spacing: "draft"
+  temperature_k: 300
+  timestep_fs: 2
+
+validation:
+  operational_checks:
+    - "expected artifacts exist"
+    - "no NaN or fatal runtime error"
+    - "HILLS or equivalent bias output is generated"
+  scientific_checks:
+    - "readouts are consistent with frozen campaign question"
+    - "compared systems use compatible preparation and analysis settings"
+    - "interpretation does not exceed benchmarked evidence"
+  integration_checks:
+    - "downstream consumer is named explicitly"
+    - "exported feature table or decision rule is traceable to artifacts"
+    - "hypotheses are not mislabeled as production filters"
+
+deliverables:
+  - "campaign report"
+  - "resource inventory"
+  - "validation report"
+  - "feature export if applicable"
+
+blockers:
+  - "Caltech HPC access pending"
+  - "exact benchmark SI confirmation may still be needed"
+  - "D-Trp metric may still be unresolved"
+
+notes:
+  fact_policy: "Preserve explicit fact vs hypothesis vs unresolved question"
+  human_review_required: true

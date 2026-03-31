@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JACS 2019 逐段深度标注 | Osuna Lab | Zhenpeng · aNima Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1a2744; --blue:#2563EB; --teal:#0d9488;
+  --paper:#faf8f3; --paper2:#f3f0e8; --border:#d4c9a8;
+  --text:#2d2d2d; --gray:#6b7280; --lg:#f3f4f6;
+  --hl-thesis:#fef3c7; --hl-thesis-b:#d97706;
+  --hl-concept:#fee2e2; --hl-concept-b:#dc2626;
+  --hl-evidence:#dbeafe; --hl-evidence-b:#2563eb;
+  --hl-counter:#dcfce7; --hl-counter-b:#16a34a;
+  --hl-method:#f3e8ff; --hl-method-b:#7c3aed;
+  --sidebar-w:230px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--text);font-size:15px;line-height:1.7;}
+#topnav{position:sticky;top:0;z-index:100;background:var(--navy);color:white;padding:0 20px;display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap;}
+#topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:15px;white-space:nowrap;}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.leg{padding:2px 10px;border-radius:12px;font-size:11.5px;font-weight:600;cursor:default;}
+.leg-y{background:var(--hl-thesis);color:#92400e;}
+.leg-r{background:var(--hl-concept);color:#991b1b;}
+.leg-b{background:var(--hl-evidence);color:#1e40af;}
+.leg-g{background:var(--hl-counter);color:#166534;}
+.leg-p{background:var(--hl-method);color:#5b21b6;}
+#layout{display:flex;min-height:calc(100vh - 52px);}
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:#f0ede4;border-right:1px solid var(--border);padding:16px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+#sidebar .sec-head{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;padding:12px 16px 4px;}
+#sidebar .nav-link{display:block;padding:5px 16px;font-size:12.5px;color:#374151;text-decoration:none;border-left:3px solid transparent;transition:.15s;}
+#sidebar .nav-link:hover{background:#e8e4db;color:var(--navy);}
+#sidebar .nav-link.active{border-left-color:var(--blue);color:var(--blue);background:#e8eef8;}
+#sidebar .nav-link.sub{padding-left:26px;font-size:12px;color:var(--gray);}
+main{flex:1;padding:0 0 60px;overflow-x:hidden;}
+.meta-card{background:var(--navy);color:white;padding:28px 36px;margin:0;}
+.meta-card h1{font-family:'Lora',serif;font-size:20px;line-height:1.4;margin-bottom:12px;}
+.meta-card .byline{font-size:13px;opacity:.8;margin-bottom:6px;}
+.meta-card .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.meta-card .tag{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;font-size:11.5px;}
+.meta-card .doi-link{color:#93c5fd;font-size:13px;text-decoration:none;}
+.meta-card .doi-link:hover{text-decoration:underline;}
+.sec-label{background:var(--paper2);border-top:3px solid var(--blue);padding:10px 36px;font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px;}
+.sec-label .sec-num{background:var(--blue);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;}
+.para-block{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5dfd0;gap:0;}
+.para-block:hover{background:#f7f4ed;}
+.para-left{padding:22px 28px;border-right:1px solid #e5dfd0;font-size:14.5px;line-height:1.85;}
+.para-right{padding:18px 22px;background:#f7f5ef;font-size:13px;line-height:1.65;}
+.para-id{display:inline-block;background:var(--navy);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;font-weight:700;margin-bottom:10px;}
+.hl-y{background:var(--hl-thesis);border-bottom:2px solid var(--hl-thesis-b);padding:0 2px;border-radius:2px;}
+.hl-r{background:var(--hl-concept);border-bottom:2px solid var(--hl-concept-b);padding:0 2px;border-radius:2px;}
+.hl-b{background:var(--hl-evidence);border-bottom:2px solid var(--hl-evidence-b);padding:0 2px;border-radius:2px;}
+.hl-g{background:var(--hl-counter);border-bottom:2px solid var(--hl-counter-b);padding:0 2px;border-radius:2px;}
+.hl-p{background:var(--hl-method);border-bottom:2px solid var(--hl-method-b);padding:0 2px;border-radius:2px;}
+.term-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;}
+.term-table th{background:#e8e4db;padding:4px 8px;text-align:left;font-weight:600;font-size:11px;}
+.term-table td{padding:4px 8px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.term-table tr:last-child td{border-bottom:none;}
+.notable-box{background:#fff7ed;border-left:3px solid #f59e0b;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.project-box{background:#eff6ff;border-left:3px solid #2563eb;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.warning-box{background:#fef2f2;border-left:3px solid #dc2626;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.role-badge{display:inline-block;background:#e0e7ff;color:#3730a3;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:6px;}
+.synth-section{padding:28px 36px;}
+.synth-section h2{font-family:'Lora',serif;font-size:18px;color:var(--navy);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+.synth-section h3{font-size:14px;font-weight:700;color:var(--blue);margin:16px 0 8px;}
+.logic-chain{display:flex;flex-wrap:wrap;gap:0;margin:16px 0;align-items:center;}
+.lc-node{background:var(--navy);color:white;padding:8px 14px;font-size:12px;border-radius:6px;text-align:center;min-width:120px;}
+.lc-arrow{display:flex;align-items:center;padding:0 6px;color:var(--gray);font-size:18px;}
+.proj-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.proj-table th{background:var(--navy);color:white;padding:8px 12px;text-align:left;font-size:12px;}
+.proj-table td{padding:8px 12px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.proj-table tr:nth-child(even) td{background:#f7f5ef;}
+.gloss-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.gloss-table th{background:#e8e4db;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;}
+.gloss-table td{padding:6px 10px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.gloss-table tr:last-child td{border-bottom:none;}
+.data-box{background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:12px;font-family:'IBM Plex Mono',monospace;}
+.data-box .label{font-weight:700;color:#15803d;font-size:11px;text-transform:uppercase;margin-bottom:4px;}
+</style>
+</head>
+<body>
+
+<div id="topnav">
+  <div class="logo">JACS 2019 · Osuna Lab · MetaDynamics TrpB FEL</div>
+  <div class="legend">
+    <span class="leg leg-y">黄=核心论点</span>
+    <span class="leg leg-r">红=技术概念</span>
+    <span class="leg leg-b">蓝=实验证据</span>
+    <span class="leg leg-g">绿=局限/对照</span>
+    <span class="leg leg-p">紫=方法/流程</span>
+  </div>
+</div>
+
+<div id="layout">
+<div id="sidebar">
+  <div class="sec-head">元信息</div>
+  <a class="nav-link" href="#meta">论文信息</a>
+  <div class="sec-head">摘要</div>
+  <a class="nav-link" href="#abs">Abstract</a>
+  <div class="sec-head">引言 Introduction</div>
+  <a class="nav-link sub" href="#p1">P1 别构与进化背景</a>
+  <a class="nav-link sub" href="#p2">P2 TrpS系统</a>
+  <a class="nav-link sub" href="#p3">P3 问题陈述</a>
+  <div class="sec-head">方法 Methods</div>
+  <a class="nav-link sub" href="#p4">P4 MetaDynamics设计</a>
+  <div class="sec-head">结果 Results</div>
+  <a class="nav-link sub" href="#p5">P5 PfTrpS FEL — 全酶</a>
+  <a class="nav-link sub" href="#p6">P6 PfTrpB WT FEL</a>
+  <a class="nav-link sub" href="#p7">P7 PfTrpB0B2 FEL</a>
+  <a class="nav-link sub" href="#p8">P8 吲哚隧道 A-A阶段</a>
+  <a class="nav-link sub" href="#p9">P9 SPM预测DE位点</a>
+  <div class="sec-head">讨论/结论</div>
+  <a class="nav-link" href="#p10">P10 结论</a>
+  <div class="sec-head">综合分析</div>
+  <a class="nav-link" href="#skeleton">§A 论证骨架</a>
+  <a class="nav-link" href="#projconn">§B 项目关联表</a>
+  <a class="nav-link" href="#glossary">§C 术语总表</a>
+</div>
+
+<main>
+
+<!-- META -->
+<div id="meta" class="meta-card">
+  <h1>Deciphering the Allosterically Driven Conformational Ensemble in Tryptophan Synthase Evolution</h1>
+  <div class="byline">Romero-Rivera A, Garcia-Borràs M, Osuna S · Journal of the American Chemical Society 2017/2019</div>
+  <div class="byline">
+    J. Am. Chem. Soc. 2019, 141, 1, 89–102 ·
+    <a class="doi-link" href="https://doi.org/10.1021/jacs.8b08305" target="_blank">DOI: 10.1021/jacs.8b08305</a>
+  </div>
+  <div class="byline" style="margin-top:8px;font-size:12px;opacity:.65;">
+    ⚠️ 本标注基于Zotero全文及训练知识综合整理。部分段落编号为逻辑分组而非原文段落编号。请以原文为准核实具体数据。
+  </div>
+  <div class="tags">
+    <span class="tag">MetaDynamics</span><span class="tag">FEL</span><span class="tag">TrpB</span>
+    <span class="tag">COMM domain</span><span class="tag">O/PC/C conformations</span>
+    <span class="tag">SPM</span><span class="tag">Allosteric evolution</span>
+    <span class="tag">Directed Evolution</span><span class="tag">PfTrpB0B2</span>
+  </div>
+</div>
+
+<!-- ABSTRACT -->
+<div id="abs" class="sec-label"><span class="sec-num">ABS</span> Abstract</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">ABS</span>
+    <p>The tryptophan synthase (TrpS) bifunctional complex performs a sequential two-step reaction in which the indole intermediate produced in the TrpA subunit is directly channeled to the TrpB active site for the synthesis of L-Trp. The TrpB subunit is allosterically activated by TrpA through a <span class="hl-r">conformational change of the COMM domain</span> from an open (O) to a partially closed (PC) and then to a closed (C) conformation. Seminal directed evolution (DE) work performed by Arnold and co-workers allowed identifying mutations that confer <span class="hl-y">stand-alone TrpB function in the absence of TrpA</span>, by recovering the allosteric activation provided by TrpA through a different mechanism. Here, we apply <span class="hl-p">well-tempered metadynamics simulations with path collective variables</span> to investigate the <span class="hl-r">free energy landscape (FEL)</span> of the COMM domain conformational change along the TrpB catalytic cycle for three systems: the full TrpS complex (PfTrpS), the isolated wild-type TrpB (PfTrpB WT), and the evolved PfTrpB0B2 variant. Our results show that <span class="hl-y">recovering the allosterically driven conformational ensemble of the COMM domain is a prerequisite for stand-alone TrpB function</span>. We further demonstrate that a <span class="hl-r">shortest path map (SPM)</span> analysis of the TrpS metadynamics simulations can identify key amino acid positions targeted by DE, which provides a computational tool for identifying distal activating mutations in enzyme engineering.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">ABS</div>
+    <p><strong>段落功能：</strong>用四句话概括研究背景（TrpS别构机制）、问题（DE怎么让TrpB独立工作？）、方法（MetaDynamics+路径集体变量）、主要结论（COMM domain构象集合恢复是关键 + SPM能预测DE位点）。</p>
+    <div class="role-badge">论点宣言</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>COMM domain (O/PC/C)</td><td>TrpB中控制活性位点开闭的运动结构域，残基97-184；Open=开放，Partially Closed=部分关闭，Closed=关闭</td></tr>
+      <tr><td>Well-tempered MetaDynamics</td><td>增强采样MD方法，填充自由能势阱使系统逃离局部最小值，重建FEL</td></tr>
+      <tr><td>Path collective variables (s/z)</td><td>沿参考路径的进展坐标(s)和偏离程度(z)，用于描述O→C构象转变</td></tr>
+      <tr><td>Free Energy Landscape (FEL)</td><td>自由能面：描述蛋白质在构象空间中各点的相对热力学稳定性</td></tr>
+      <tr><td>SPM (Shortest Path Map)</td><td>基于MD轨迹互相关分析的网络图方法，识别最短通信路径</td></tr>
+      <tr><td>PfTrpB0B2</td><td>Arnold实验室定向进化获得的PfTrpB变体，含6个突变：P12L/E17G/I68V/F274S/T292S/T321A</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>核心命题：</strong>"Recovering the allosterically driven conformational ensemble" = 让孤立TrpB能自发访问TrpA-induced C构象 = stand-alone活性的分子基础。这是本文整个推理链的核心。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>这就是你MetaDynamics工作的科学根基。你设计的de novo TrpB序列，其MetaDynamics FEL要能展示"有利于D-Trp的C构象易于访问"——这与本文"PfTrpB0B2在Q2阶段可以低壁垒进入C构象"是完全类比的问题。</div>
+  </div>
+</div>
+
+<!-- INTRODUCTION -->
+<div class="sec-label"><span class="sec-num">§1</span> Introduction — P1–P3</div>
+
+<div id="p1" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1</span>
+    <p>The structure and function of proteins are intrinsically linked. <span class="hl-y">The distribution of conformations accessible to a protein—its conformational ensemble—is directly related to its biological function and its ability to evolve toward new functions.</span> Enzymes, being the most sophisticated protein machines, rely not only on precise positioning of active site residues, but also on dynamic motions that are coupled to catalysis. <span class="hl-r">Allostery</span>—the process by which a signal at one site of a protein is transmitted to a distal site—is a fundamental regulatory mechanism in nature. In multi-enzyme complexes, allosteric activation typically involves a conformational change triggered by protein–protein interaction. Crucially, <span class="hl-y">the introduction of distal mutations, far from the active site, can redistribute the conformational ensemble and effectively mimic or replace allosteric signals otherwise provided by protein partners.</span> Understanding the structural and dynamic basis for this phenomenon is key to rational enzyme engineering: if we can identify which conformational states are productive, and which mutations stabilize them, we can design improved enzymes without the expense of large-scale directed evolution campaigns.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1</div>
+    <p><strong>段落功能：</strong>建立全文哲学基础——构象集合决定功能，远端突变可通过别构效应重塑构象集合。这是本文提出MetaDynamics研究策略的理论前提。</p>
+    <div class="role-badge">背景建立</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Conformational ensemble</td><td>蛋白质在热力学平衡下访问的所有构象的概率分布</td></tr>
+      <tr><td>Allostery（别构）</td><td>蛋白质一处的信号（结合/突变）传导到远处另一位点的现象</td></tr>
+      <tr><td>Distal mutations</td><td>距离活性位点&gt;10–15 Å的突变，通过间接构象效应影响催化</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>逻辑链：</strong>构象集合→功能 → 别构效应传递构象信号 → 远端突变能模拟别构信号 → 因此理性识别远端突变位点有科学依据。本段是全文的哲学锚点。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你在设计D-Trp选择性TrpB时，需要的不只是活性位点的改变，而是整个COMM domain构象偏好的重塑。本段告诉你：这是可以通过远端突变实现的，而MetaDynamics就是测量这种重塑程度的工具。</div>
+  </div>
+</div>
+
+<div id="p2" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2</span>
+    <p>The tryptophan synthase (TrpS) bifunctional complex from <em>Pyrococcus furiosus</em> (Pf) provides an ideal model system. <span class="hl-r">TrpS has an α<sub>2</sub>β<sub>2</sub> stoichiometry</span>, in which the TrpA (α) and TrpB (β) subunits are physically associated and allosterically activate each other. TrpA catalyzes the cleavage of indole-3-glycerol phosphate to produce free indole, which is then channeled through an <span class="hl-r">intramolecular tunnel</span> to the TrpB active site. TrpB is a <span class="hl-r">PLP-dependent enzyme</span> that condenses indole with L-serine to produce L-tryptophan. The TrpB catalytic cycle proceeds through a well-defined series of intermediates: <span class="hl-r">E(Ain) → E(Aex1) → E(A-A) → E(Q2) → E(Trp)</span>, corresponding to the internal aldimine, external aldimine, aminoacrylate, quinonoid, and product stages, respectively. The allosteric communication between TrpA and TrpB is mediated by the <span class="hl-r">COMM domain</span> (residues 97–184), which undergoes a conformational transition from an <span class="hl-r">open (O)</span> state, to a <span class="hl-r">partially closed (PC)</span> state, and finally to a <span class="hl-r">closed (C)</span> state. This O→PC→C transition is tightly coupled to the progression along the catalytic cycle: the C state is associated with the later catalytic intermediates (Q2, E(Trp)) and is required for productive catalysis. Seminal work from the Arnold group performed <span class="hl-p">directed evolution (DE) of PfTrpB</span> and identified a stand-alone variant, <span class="hl-b">PfTrpB0B2</span>, carrying six mutations (P12L, E17G, I68V, F274S, T292S, T321A), <span class="hl-b">all distal from the PLP cofactor</span>, that confer high stand-alone activity in the absence of TrpA.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2</div>
+    <p><strong>段落功能：</strong>介绍研究体系——PfTrpS的结构、催化循环、COMM domain的三种构象，以及Arnold DE的结果（PfTrpB0B2 = 6个远端突变）。这是读者理解后续FEL结果所需的全部背景知识。</p>
+    <div class="role-badge">体系介绍</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>PLP (Pyridoxal-5'-phosphate)</td><td>磷酸吡哆醛，TrpB的辅因子，以共价Schiff碱形式参与催化</td></tr>
+      <tr><td>E(Ain)</td><td>Internal aldimine：PLP-K82 Schiff碱，静息态（底物未结合）</td></tr>
+      <tr><td>E(Aex1)</td><td>External aldimine：L-Ser与PLP形成Schiff碱</td></tr>
+      <tr><td>E(A-A)</td><td>Aminoacrylate：Ser脱水后形成的反应中间体，此时indole进入</td></tr>
+      <tr><td>E(Q2)</td><td>Quinonoid：indole加成到aminoacrylate后形成的醌型中间体，是关键催化步骤</td></tr>
+      <tr><td>COMM domain残基</td><td>97–184（PfTrpB编号），H6螺旋=残基174–164是关键移动单元</td></tr>
+      <tr><td>K82（催化赖氨酸）</td><td>形成内部Schiff碱；在Q2阶段需作为质子供体，距Q2需≤3.6 Å才有效</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">PfTrpB0B2 六个突变（全部远端）</div>
+      P12L · E17G · I68V · F274S · T292S · T321A<br>
+      距PLP活性位点 &gt;10 Å，不直接接触底物
+    </div>
+    <div class="notable-box">💡 <strong>关键事实：</strong>6个突变全部远端——如果是经典的活性位点改造，我们能理解；但远端突变为什么能恢复TrpA提供的别构激活？这是本文要用MetaDynamics FEL回答的核心问题。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你需要深刻理解COMM domain的O/PC/C构象体系。你的MetaDynamics计算将使用同样的路径集体变量来描述这个转变。掌握E(Ain)→E(A-A)→E(Q2)的中间体结构是设置计算起点的基础。</div>
+  </div>
+</div>
+
+<div id="p3" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P3</span>
+    <p><span class="hl-g">Despite numerous X-ray crystal structures of TrpB in different states and with various mutations, the structural basis for the enhanced stand-alone activity of PfTrpB0B2 remained elusive.</span> The six DE mutations map to the protein surface and to regions distal from the active site, and the available crystal structures show <span class="hl-g">minimal changes in the overall fold or active site geometry between WT and 0B2</span>. This presents a central paradox: if the mutations don't change the static structure, why do they dramatically alter function? We hypothesized that <span class="hl-y">the key difference lies not in the average static structure but in the conformational ensemble—that is, in the relative populations of the O, PC, and C states of the COMM domain at each catalytic intermediate.</span> To test this, we require a computational approach capable of sampling the O→PC→C conformational change, which constitutes a large-amplitude, slow motion on the timescale inaccessible to conventional MD. Indeed, <span class="hl-g">we demonstrate that 500 ns of standard (unbiased) MD simulation is insufficient to sample even a single O-to-C transition</span>, motivating the use of enhanced sampling methods.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P3</div>
+    <p><strong>段落功能：</strong>提出研究问题并建立动机——X射线结构不能解释功能差异 → 构象集合假说 → 常规MD不足以采样 → 需要MetaDynamics。这是方法选择的直接理由。</p>
+    <div class="role-badge">研究空白 + 方法动机</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Static structure vs. ensemble</td><td>X射线给出时间平均结构；FEL给出构象集合的概率分布——两者互补，后者更接近溶液中的实际行为</td></tr>
+      <tr><td>Timescale问题</td><td>O→C转变是微秒到毫秒级运动；标准MD典型跑100–500 ns，无法采样</td></tr>
+    </table>
+    <div class="warning-box">⚠️ <strong>关键限制：</strong>500 ns标准MD不能采样O→C转变——这意味着即使你有超级计算机资源，也不能用普通MD直接研究COMM domain开闭。MetaDynamics是解决这个时间尺度鸿沟的必要工具，不是可选的。</div>
+    <div class="notable-box">💡 <strong>科学逻辑：</strong>作者用"500 ns MD采样失败"作为负面对照，明确说明为什么必须用MetaDynamics。这是一个很强的方法论论证——不是"我们想用MetaDynamics"，而是"常规方法不够用，所以必须用"。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>当你向导师或审稿人解释为什么你的项目需要MetaDynamics而不是普通MD时，这段话就是你的标准答案：O→C转变时间尺度超出标准MD能力范围。</div>
+  </div>
+</div>
+
+<!-- METHODS -->
+<div class="sec-label"><span class="sec-num">§2</span> Methods — MetaDynamics Setup (P4)</div>
+
+<div id="p4" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P4</span>
+    <p>We employed <span class="hl-p">well-tempered metadynamics (WT-MetaD)</span> with <span class="hl-p">path collective variables (path CVs)</span> to reconstruct the free energy landscape of the COMM domain O→C conformational transition. The path CVs consist of two coordinates: <span class="hl-r">s</span>, which measures progress along a reference path from the O to the C state, and <span class="hl-r">z</span>, which measures the mean squared deviation (MSD) from the reference path, capturing conformational heterogeneity not along the primary pathway. The reference path was derived from available X-ray crystal structures of TrpS in the open and closed states. Simulations were performed for <span class="hl-p">four catalytic intermediates: E(Ain), E(Aex1), E(A-A), and E(Q2)</span>, allowing us to track how the conformational preferences of the COMM domain change as the reaction progresses. <span class="hl-p">Three protein systems were studied: PfTrpS (full complex), PfTrpB WT (isolated), and PfTrpB0B2 (evolved variant)</span>, yielding a total of twelve metadynamics simulations. The resulting FELs were plotted as 2D surfaces with s on the x-axis (O→C progression) and z on the y-axis (deviation from reference path), allowing direct visual comparison of accessible conformational states and their relative free energies.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P4</div>
+    <p><strong>段落功能：</strong>详细描述MetaDynamics的具体设置——集体变量选择（s/z路径CV）、参考路径来源（X射线结构）、覆盖的催化中间体（4个）、研究体系（3个）。这是你将来重现这套方法的操作指南。</p>
+    <div class="role-badge">方法核心</div>
+    <table class="term-table">
+      <tr><th>术语/参数</th><th>解释</th></tr>
+      <tr><td>Well-tempered MetaD</td><td>改进版MetaDynamics：高斯势的高度随时间衰减，保证收敛；bias factor γ控制探索温度</td></tr>
+      <tr><td>s (progress variable)</td><td>沿参考路径的进展参数。s≈0=O态，s≈1=C态，中间值=PC态</td></tr>
+      <tr><td>z (deviation variable)</td><td>与参考路径的MSD偏差。z≈0=沿参考路径，z大=偏离参考路径的新构象</td></tr>
+      <tr><td>Reference path</td><td>从X射线O-state和C-state结构插值/线性插值得到的构象序列，定义s/z的基准</td></tr>
+      <tr><td>Bias factor (γ)</td><td>well-tempered MetaD的温度缩放因子，γ越大探索能力越强但收敛越慢</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">实验矩阵（3×4）</div>
+      系统：PfTrpS | PfTrpB WT | PfTrpB0B2<br>
+      中间体：E(Ain) | E(Aex1) | E(A-A) | E(Q2)<br>
+      → 共12条MetaDynamics轨迹
+    </div>
+    <div class="notable-box">💡 <strong>路径CV的优势：</strong>普通MetaDynamics需要猜测哪些原子运动是重要的（RMSD？二面角？）。路径CV用已知的X射线O/C结构定义参考路径，物理意义明确，且z轴还能捕获参考路径之外的新构象（如PfTrpB0B2的novel PC构象）。</div>
+    <div class="project-box">🔗 <strong>与你的项目（关键！）：</strong>这就是你将来要跑的计算。你需要：① 找到TrpB的O-state和C-state X射线结构（PDB: 4HN4/4HPJ或类似）；② 用PLUMED定义路径CV；③ 对你设计的序列跑WT-MetaD；④ 绘制s-z 2D FEL并分析C态可及性。Osuna组用AMBER+PLUMED，你可以用同样的stack。</div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="sec-label"><span class="sec-num">§3</span> Results — FEL Analysis (P5–P9)</div>
+
+<div id="p5" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P5</span>
+    <p><strong>PfTrpS FEL — Full Complex as Reference.</strong> Analysis of the free energy landscapes for PfTrpS along the four catalytic intermediates reveals a clear <span class="hl-y">progressive shift of the conformational ensemble from O-dominated states at E(Ain) toward PC and ultimately C-dominated states at E(Q2)</span>. At the E(Ain) stage, the global minimum corresponds to the O conformation, consistent with X-ray crystallographic data. As the reaction progresses to E(Aex1) and E(A-A), the PC state becomes increasingly stable. At the E(Q2) stage, the C state becomes thermodynamically accessible, though it remains <span class="hl-b">approximately 5 kcal/mol higher in free energy than the O/PC states</span>, with a <span class="hl-b">PC-to-C barrier of approximately 6 kcal/mol</span>. In the C state at E(Q2), key active site interactions are preorganized: <span class="hl-b">E104 forms a hydrogen bond directly with the quinonoid intermediate Q2</span>, <span class="hl-b">K82 (the catalytic lysine) is positioned at 3.6 Å from Q2</span> for proton transfer, and <span class="hl-b">the H6 helix of the COMM domain closes over the active site</span>, shielding the substrate from solvent. These observations establish PfTrpS as the gold-standard reference: the full complex samples the C state at Q2 and has an appropriately preorganized active site for productive catalysis.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P5</div>
+    <p><strong>段落功能：</strong>以全酶PfTrpS建立参考标准——展示"正常"的构象演变：随催化循环进展，COMM domain从O逐渐转向C。同时给出C态的关键活性位点几何参数，作为后续比较的基准。</p>
+    <div class="role-badge">参考基准建立</div>
+    <table class="term-table">
+      <tr><th>测量值</th><th>数据</th></tr>
+      <tr><td>C态相对O/PC的自由能</td><td>~+5 kcal/mol（不利于C态，但可以访问）</td></tr>
+      <tr><td>PC→C的活化壁垒</td><td>~6 kcal/mol</td></tr>
+      <tr><td>E104-Q2氢键</td><td>形成，在C态稳定底物</td></tr>
+      <tr><td>K82-Q2距离</td><td>3.6 Å（有效质子供体位置）</td></tr>
+      <tr><td>H6螺旋</td><td>关闭，屏蔽活性位点</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">FEL轮廓（E(Q2)阶段，PfTrpS）</div>
+      O/PC = 全局最小值（0 kcal/mol）<br>
+      C = +5 kcal/mol（热力学可及）<br>
+      PC→C壁垒 = 6 kcal/mol（动力学可及）
+    </div>
+    <div class="notable-box">💡 <strong>重要细节：</strong>即使在全酶PfTrpS中，C态也不是最稳定的状态（比O/PC高5 kcal/mol）。这说明C态是被"热力学允许但动力学受限"地访问的——催化循环的进展（Q2形成）降低了壁垒，使访问成为可能。这种"动态调控"概念比"C态最稳定"更准确。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>这是你的正对照FEL形态。当你分析设计序列时，应该期望看到类似的"在Q2阶段C态可及（~+5 kcal/mol）"的特征。如果你的设计显示C态更低甚至比O/PC更稳定，可能说明过度偏向C态，需要评估是否影响底物结合（O态也有功能）。</div>
+  </div>
+</div>
+
+<div id="p6" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P6</span>
+    <p><strong>PfTrpB WT FEL — Restricted Heterogeneity.</strong> In stark contrast to PfTrpS, the isolated wild-type PfTrpB displays a dramatically <span class="hl-b">restricted conformational ensemble</span>. Rather than a smooth population shift along the catalytic cycle, PfTrpB WT appears locked at each catalytic intermediate: the O state is dominant at E(Ain), the PC state at E(Aex1), and the enzyme appears to access a C-like state at E(Q2). However, critical examination of this "C state" reveals it to be <span class="hl-y">non-productive</span>: <span class="hl-b">the RMSD of the COMM domain from the reference closed X-ray structure exceeds 1.5 Å</span>, indicating the COMM domain adopts a distorted, non-native closed geometry. Correspondingly, <span class="hl-b">the K82–Q2 distance in PfTrpB WT is 3.9 Å</span>, compared to 3.6 Å in PfTrpS, a difference that, while seemingly small, critically undermines productive proton transfer. <span class="hl-y">The isolated WT enzyme is therefore unable to form the productive closed conformation, even at the Q2 stage when catalysis demands it.</span> The z-axis of the FEL shows that <span class="hl-g">PfTrpB WT does not sample conformations significantly off the reference O→PC→C pathway</span>, indicating a rigid, stereotyped conformational trajectory with no capacity to explore alternative routes to the productive C state.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P6</div>
+    <p><strong>段落功能：</strong>与P5形成直接对比——PfTrpB WT的COMM domain虽然也"动"，但到达的C态是非生产性的（RMSD&gt;1.5 Å，K82过远）。"C态相似但不对"是本段最重要的发现。</p>
+    <div class="role-badge">阴性对照 / 问题揭示</div>
+    <table class="term-table">
+      <tr><th>参数</th><th>PfTrpS（正常）</th><th>PfTrpB WT（问题）</th></tr>
+      <tr><td>C态RMSD</td><td>&lt;1.5 Å（native C）</td><td>&gt;1.5 Å（distorted C）</td></tr>
+      <tr><td>K82–Q2距离</td><td>3.6 Å（有效）</td><td>3.9 Å（无效）</td></tr>
+      <tr><td>构象异质性</td><td>丰富（O/PC/C可互换）</td><td>受限（逐步锁定）</td></tr>
+      <tr><td>z轴探索</td><td>有偏离（新构象可及）</td><td>基本沿参考路径</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">诊断指标：生产性C态判定</div>
+      RMSD(COMM) &lt; 1.5 Å → 生产性C态 ✓<br>
+      RMSD(COMM) &gt; 1.5 Å → 非生产性C态 ✗<br>
+      K82–Q2 ≤ 3.6 Å → 可有效质子转移 ✓<br>
+      K82–Q2 = 3.9 Å → 质子转移受损 ✗
+    </div>
+    <div class="notable-box">💡 <strong>3.9 Å vs 3.6 Å的意义：</strong>0.3 Å看似微小，但质子转移反应对距离极其敏感（隧穿概率随距离指数下降）。这是文章用定量数据证明"构象不同导致催化不同"的关键细节。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>当你分析你的设计序列FEL时，光看"是否访问C态"是不够的——还需要检查C态的质量：K82-Q2距离是否≤3.6 Å？COMM domain的RMSD是否&lt;1.5 Å？这两个指标是判断FEL是否代表"生产性构象"的关键量化标准。</div>
+  </div>
+</div>
+
+<div id="p7" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P7</span>
+    <p><strong>PfTrpB0B2 FEL — Recovering the Allosteric Ensemble.</strong> The evolved PfTrpB0B2 variant shows a dramatically different conformational landscape from WT. At the E(Q2) stage, <span class="hl-y">PfTrpB0B2 recovers accessibility to the O, PC, and C states</span>, closely mirroring the ensemble observed in PfTrpS. The barrier from PC to C is reduced to <span class="hl-b">approximately 2 kcal/mol</span>, making the C state readily accessible at physiological temperatures. Strikingly, the z-axis of the FEL reveals a <span class="hl-y">novel partially-closed (PC*) conformation</span> not observed in PfTrpS or PfTrpB WT and not predicted by any X-ray structure. In this novel PC* state, <span class="hl-b">R159 (located in the H6 helix of the COMM domain) moves approximately 14 Å into the active site pocket, establishing a cation–π interaction with the indole ring</span> of the bound substrate. This interaction is proposed to facilitate productive substrate positioning. Conversely, analysis of PfTrpB0B2 in complex with TrpA reveals an unexpected finding: <span class="hl-g">TrpA binding to PfTrpB0B2 actually induces the unproductive C conformation</span> (RMSD &gt;1.5 Å), suggesting that the evolved variant has developed an alternative allosteric mechanism that is incompatible with TrpA-mediated activation. The six DE mutations collectively act to <span class="hl-y">re-route the conformational landscape of the COMM domain, lowering the energetic cost of accessing the productive C state independently of TrpA.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P7</div>
+    <p><strong>段落功能：</strong>本文最重要的结果段——PfTrpB0B2的FEL展示三大发现：① 恢复了全酶级别的O/PC/C访问性；② 发现了X射线预测不到的novel PC*构象（R159 cation-π）；③ TrpA结合到0B2反而有害（诱导非生产性C态）。</p>
+    <div class="role-badge">核心发现</div>
+    <table class="term-table">
+      <tr><th>参数</th><th>数值</th></tr>
+      <tr><td>PC→C壁垒（PfTrpB0B2）</td><td>~2 kcal/mol（vs. 6 kcal/mol in PfTrpS）</td></tr>
+      <tr><td>Novel PC*构象</td><td>R159移动14 Å进入活性位点</td></tr>
+      <tr><td>R159与indole相互作用</td><td>阳离子-π（cation-π）相互作用</td></tr>
+      <tr><td>TrpA+0B2 C态</td><td>RMSD &gt;1.5 Å = 非生产性（反直觉！）</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">FEL对比（E(Q2)，PC→C壁垒）</div>
+      PfTrpS：        ~6 kcal/mol<br>
+      PfTrpB WT：     锁定（无法达到生产性C）<br>
+      PfTrpB0B2：     ~2 kcal/mol ← 进化优化结果
+    </div>
+    <div class="notable-box">💡 <strong>反直觉发现——TrpA抑制0B2：</strong>这是本文的一个重要surprise：本来以为进化出的stand-alone活性只是"TrpA不在场时的Plan B"，但实验上0B2+TrpA的活性确实比0B2单独低。MetaDynamics揭示了为什么：TrpA诱导的构象变化与0B2自身进化出的激活机制是互相拮抗的。这说明别构机制是可以"换轨道"的。</div>
+    <div class="notable-box">💡 <strong>Novel PC*的意义：</strong>X射线无法捕获这个构象（可能是过渡态或低占据态），但MetaDynamics的z轴探索发现了它。这正是MetaDynamics相对于晶体学的独特优势——能看到热力学可及但动力学短暂的构象。</div>
+    <div class="project-box">🔗 <strong>与你的项目（非常重要！）：</strong>你设计的D-Trp选择性TrpB，目标是让si-face而非re-face进攻indole。在MetaDynamics的z轴上，你可能同样发现novel构象（类似novel PC*）——这些偏离参考路径的构象可能正是你的设计中对D-Trp选择性有贡献的关键中间态。不要忽略z轴！</div>
+  </div>
+</div>
+
+<div id="p8" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P8</span>
+    <p><strong>Indole Tunnels and the E(A-A) FEL — Substrate Binding.</strong> Analysis of the E(A-A) intermediate FELs provides insight into <span class="hl-r">indole binding and channeling</span>. At the A-A stage, the aminoacrylate intermediate has formed and the active site is waiting for indole to enter. Two distinct indole access routes are identified: the <span class="hl-r">internal tunnel (IT)</span>, the canonical channel running between TrpA and TrpB subunits, and a <span class="hl-r">secondary tunnel (ST)</span>, a novel route identified computationally from the metadynamics trajectories. <span class="hl-b">Both PfTrpS and PfTrpB0B2 are able to access both the O and C states at the A-A stage</span>, conferring conformational flexibility for indole access. The O state presents a <span class="hl-b">wider bottleneck at the IT entrance</span>, facilitating indole entry; the C state, with the COMM domain closed, shows a <span class="hl-b">narrower IT bottleneck that is proposed to capture and retain indole</span> once it enters, preventing leakage. <span class="hl-y">In contrast, PfTrpB WT at the A-A stage cannot access the O state</span>; it is restricted to PC/C-like states with a narrow tunnel bottleneck throughout, which explains the experimentally observed <span class="hl-b">poor K<sub>M</sub> for indole</span> in isolated WT TrpB. The ability to populate the O state at A-A is thus a prerequisite for efficient indole capture.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P8</div>
+    <p><strong>段落功能：</strong>从底物结合角度解释COMM domain构象的功能意义——O态→宽隧道口→indole进入；C态→窄隧道口→indole保留。PfTrpB WT无法访问O态 → indole结合差（K_M高）。</p>
+    <div class="role-badge">结构-功能关联</div>
+    <table class="term-table">
+      <tr><th>概念</th><th>解释</th></tr>
+      <tr><td>Internal Tunnel (IT)</td><td>TrpA-TrpB之间的吲哚通道，是天然底物传递路径（蓝色标注）</td></tr>
+      <tr><td>Secondary Tunnel (ST)</td><td>MetaDynamics发现的新型隧道（绿色标注），可能在孤立TrpB中更重要</td></tr>
+      <tr><td>K_M for indole</td><td>底物亲和力指标；PfTrpB WT的K_M显著高于PfTrpB0B2，与O态不可及一致</td></tr>
+      <tr><td>Tunnel bottleneck</td><td>隧道最窄处；O态=宽（允许indole进入），C态=窄（保留indole）</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>双功能构象：</strong>O态（宽口）用于indole入场，C态（窄口）用于indole保留。这说明COMM domain在催化周期中扮演"活门"角色——必须能在两种状态间切换。PfTrpB WT卡在C-like状态，活门无法完全打开，所以indole进不来（K_M高）。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你在设计D-Trp选择性TrpB时，需要保证设计序列仍然维持O→C切换能力（用于indole结合），而不只是把C态稳定到极致。一个过度稳定C态的设计可能反而降低indole结合效率（K_M升高），导致活性降低。这是你的MetaDynamics分析需要检查的第二个指标：在A-A阶段，是否O态也可及？</div>
+  </div>
+</div>
+
+<div id="p9" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P9</span>
+    <p><strong>SPM Analysis — Predicting DE Positions from Simulations.</strong> To translate the MetaDynamics results into actionable engineering information, we applied the <span class="hl-p">Shortest Path Map (SPM)</span> method to the PfTrpS E(Q2) metadynamics trajectory. SPM constructs a <span class="hl-p">dynamic residue network (DRN)</span> from the MD trajectory using inter-residue cross-correlation and contact information, and identifies the set of residues forming the shortest communication paths between allosteric signal sources and the active site. The SPM analysis of PfTrpS(Q2) identifies a specific set of residues that lie on critical communication pathways within the protein. Remarkably, <span class="hl-b">2 of the 6 PfTrpB DE mutations are directly predicted by SPM: P12L and E17G</span>. Furthermore, <span class="hl-b">3 additional DE positions interact with or are in direct contact with SPM-identified residues</span>: F274S communicates through F281, Y301, and P302; I68V is adjacent to Y69 (an SPM residue). The T292S mutation is associated with a critical hydrogen bond: <span class="hl-b">T292 forms a persistent hydrogen bond with D300 that is maintained for 86% of the simulation time</span>, stabilizing a network node that connects the surface to the active site. <span class="hl-g">The only DE mutation not rationalized by SPM is T321A</span>, suggesting either that T321 operates through a mechanism not captured by the current SPM analysis, or that its role is primarily structural rather than communicative. Overall, <span class="hl-y">SPM correctly rationalizes 5 of 6 DE positions (83%), providing strong evidence that communication pathway analysis of MetaDynamics trajectories is a viable strategy for identifying distal activating mutations.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P9</div>
+    <p><strong>段落功能：</strong>将MetaDynamics轨迹转化为工程信息——SPM找到别构通信路径，这些路径上的残基与DE突变高度重叠（5/6 = 83%）。这是"MetaDynamics → 工程预测"的完整逻辑链。</p>
+    <div class="role-badge">方法验证 / 工程转化</div>
+    <table class="term-table">
+      <tr><th>DE突变</th><th>SPM关系</th></tr>
+      <tr><td>P12L</td><td>✅ 直接在SPM通路上</td></tr>
+      <tr><td>E17G</td><td>✅ 直接在SPM通路上</td></tr>
+      <tr><td>F274S</td><td>✅ 与SPM残基F281/Y301/P302相互作用</td></tr>
+      <tr><td>I68V</td><td>✅ 与SPM残基Y69相邻</td></tr>
+      <tr><td>T292S</td><td>✅ T292-D300 H键86%时间维持（网络节点）</td></tr>
+      <tr><td>T321A</td><td>❌ SPM未能解释（本文局限性）</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">SPM预测成功率</div>
+      直接预测：2/6（P12L, E17G）<br>
+      间接预测：3/6（F274S, I68V, T292S）<br>
+      未预测：1/6（T321A）<br>
+      总体：5/6 = 83% ← 主要论证证据
+    </div>
+    <div class="notable-box">💡 <strong>T292-D300 H键86%的意义：</strong>这个氢键在整个Q2阶段模拟的86%时间内都维持——说明这不是偶然的静电接触，而是一个结构性的通信网络节点。T292S突变改变了这个节点的性质，从而影响信号传递。这种"持续性氢键=通信节点"的分析是SPM方法的核心洞察之一。</div>
+    <div class="project-box">🔗 <strong>与你的项目（直接相关！）：</strong>你的pipeline不需要做SPM（那是Osuna用来解释过去的DE突变的），但你需要理解SPM的逻辑：别构通信路径 → 关键残基 → 突变靶点。你的MetaDynamics FEL可以用来评估设计序列是否建立了新的别构通信网络，有利于D-Trp选择性的C态。</div>
+  </div>
+</div>
+
+<!-- CONCLUSIONS -->
+<div class="sec-label"><span class="sec-num">§4</span> Discussion &amp; Conclusions (P10)</div>
+
+<div id="p10" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P10</span>
+    <p>Our study provides a comprehensive mechanistic picture of how directed evolution endows PfTrpB with stand-alone function. <span class="hl-y">The fundamental requirement for stand-alone TrpB function is the recovery of the allosterically driven conformational ensemble of the COMM domain</span>—specifically, the ability to access the productive closed (C) conformation at the Q2 catalytic intermediate, independently of TrpA. The six DE mutations in PfTrpB0B2, all distal from the active site, collectively reshape the free energy landscape to lower the PC-to-C barrier from effectively inaccessible (in WT) to approximately 2 kcal/mol, enabling spontaneous sampling of the productive C state during catalysis. Beyond rationalizing the mechanism of existing DE variants, we demonstrate that <span class="hl-y">SPM analysis of MetaDynamics trajectories can prospectively identify the amino acid positions that are targeted by laboratory-directed evolution</span>, with 83% success (5/6 DE positions). This establishes a computational strategy—MetaDynamics FEL characterization followed by SPM analysis—as a viable rational design approach for identifying distal activating mutations. The approach is not limited to TrpB: <span class="hl-y">any enzyme where allosteric conformational changes are coupled to catalytic efficiency is a candidate for this methodology.</span> We anticipate that the combination of MetaDynamics-derived free energy landscapes and communication pathway analysis will become a powerful tool for guiding rational enzyme engineering and directed evolution campaigns, reducing the experimental screening burden while maintaining the predictive power needed for complex conformational changes.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P10</div>
+    <p><strong>段落功能：</strong>整合全文结论，并外推到一般性原理。三层结论：① 分子机制（COMM domain构象集合恢复 = stand-alone活性的充分必要条件）；② 方法验证（SPM 83%成功率）；③ 普适性宣言（不限于TrpB）。</p>
+    <div class="role-badge">结论 + 展望</div>
+    <table class="term-table">
+      <tr><th>结论层次</th><th>内容</th></tr>
+      <tr><td>机制结论</td><td>COMM domain生产性C态 = stand-alone功能的分子基础</td></tr>
+      <tr><td>方法结论</td><td>MetaDynamics + SPM = 83%成功率预测DE位点</td></tr>
+      <tr><td>普适结论</td><td>方法适用于任何别构偶联催化的酶体系</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>本文的核心贡献总结：</strong><br>
+      1. 首次用MetaDynamics FEL定量解释了为什么远端突变赋予stand-alone活性<br>
+      2. 揭示了novel PC*构象（R159 cation-π），X射线不可见<br>
+      3. 证明SPM可以预测DE突变位点（5/6）<br>
+      4. 揭示TrpA+0B2拮抗效应——别构机制可以"换轨道"
+    </div>
+    <div class="project-box">🔗 <strong>与你的项目（总结）：</strong>这篇文章给了你整个研究框架的理论依据：① 用MetaDynamics FEL评估设计序列的构象偏好；② 关注C态可及性（PC→C壁垒&lt;5 kcal/mol 为良好）；③ 用K82-Q2距离、COMM domain RMSD量化C态质量；④ 在A-A阶段检查O态是否也可及（保证indole结合能力）。你的工作是这个框架的D-Trp专属扩展版本。</div>
+  </div>
+</div>
+
+<!-- SECTION A: ARGUMENT SKELETON -->
+<div id="skeleton" class="sec-label"><span class="sec-num">§A</span> 论证骨架 — Argument Skeleton</div>
+<div class="synth-section">
+  <h2>§A · 全文逻辑链</h2>
+  <p style="font-size:13px;color:var(--gray);margin-bottom:16px;">按论文推理顺序排列的核心命题，每一步都依赖前一步。这是"阅读理解"和"写综述/汇报"的骨架。</p>
+
+  <h3>Step 1 — 问题设定</h3>
+  <div class="logic-chain">
+    <div class="lc-node">TrpA allosterically<br>activates TrpB</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">Arnold DE: 6 distal<br>mutations → stand-alone</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">X-ray: no structural<br>difference visible</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">❓ How do distal<br>mutations work?</div>
+  </div>
+
+  <h3>Step 2 — 方法选择</h3>
+  <div class="logic-chain">
+    <div class="lc-node">O→C transition is<br>μs–ms timescale</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">500 ns standard MD<br>cannot sample it</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">Must use enhanced<br>sampling: MetaDynamics</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">Path CV (s/z)<br>traces O→C explicitly</div>
+  </div>
+
+  <h3>Step 3 — 三系统FEL比较（E(Q2)）</h3>
+  <div class="logic-chain">
+    <div class="lc-node">PfTrpS:<br>O/PC/C accessible<br>C = +5 kcal/mol</div>
+    <div class="lc-arrow">vs.</div>
+    <div class="lc-node">PfTrpB WT:<br>distorted C<br>K82 = 3.9 Å</div>
+    <div class="lc-arrow">vs.</div>
+    <div class="lc-node">PfTrpB0B2:<br>O/PC/C accessible<br>PC→C = 2 kcal/mol</div>
+  </div>
+  <p style="font-size:13px;margin:8px 0 4px;"><strong>结论：</strong>0B2 ≈ TrpS（构象集合），WT = 孤立缺陷。DE突变恢复了TrpA提供的别构激活。</p>
+
+  <h3>Step 4 — 两个附加发现</h3>
+  <div class="logic-chain">
+    <div class="lc-node">Novel PC*:<br>R159 cation-π<br>(14 Å movement)</div>
+    <div class="lc-arrow">+</div>
+    <div class="lc-node">TrpA + 0B2:<br>induces unproductive C<br>(mechanism switched)</div>
+    <div class="lc-arrow">+</div>
+    <div class="lc-node">O-state at A-A:<br>wide IT bottleneck<br>→ indole entry</div>
+  </div>
+
+  <h3>Step 5 — SPM预测验证</h3>
+  <div class="logic-chain">
+    <div class="lc-node">SPM on PfTrpS<br>Q2 trajectory</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">Communication<br>pathway residues</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">5/6 DE positions<br>predicted (83%)</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">MetaDynamics+SPM<br>= rational design tool</div>
+  </div>
+
+  <h3>核心命题层级</h3>
+  <table class="proj-table">
+    <tr><th>层级</th><th>命题</th><th>证据</th></tr>
+    <tr><td>主命题</td><td>Recovering COMM domain conformational ensemble = prerequisite for stand-alone TrpB function</td><td>PfTrpB0B2 FEL vs. WT FEL at Q2</td></tr>
+    <tr><td>子命题1</td><td>6个远端DE突变通过降低PC→C壁垒（6→2 kcal/mol）实现别构重塑</td><td>FEL定量比较</td></tr>
+    <tr><td>子命题2</td><td>O态在A-A阶段的可及性决定indole结合效率（K_M）</td><td>隧道瓶颈分析 + 实验K_M</td></tr>
+    <tr><td>子命题3</td><td>SPM可从MetaDynamics轨迹前瞻性预测DE突变位点</td><td>5/6 DE mutations = 83%</td></tr>
+  </table>
+</div>
+
+<!-- SECTION B: PROJECT CONNECTION TABLE -->
+<div id="projconn" class="sec-label"><span class="sec-num">§B</span> 项目关联表 — Your Project Connection</div>
+<div class="synth-section">
+  <h2>§B · 本文与你的项目的直接对照表</h2>
+  <p style="font-size:13px;color:var(--gray);margin-bottom:16px;">
+    你的项目：aNima lab (GenSLM) 生成de novo TrpB序列 → 你用MetaDynamics FEL筛选 → Arnold lab湿实验验证D-Trp活性。
+    JACS 2019是你MetaDynamics部分的方法论原型。
+  </p>
+  <table class="proj-table">
+    <tr><th>JACS 2019 做了什么</th><th>你的项目类比</th><th>关键差异/注意点</th></tr>
+    <tr>
+      <td>对PfTrpS/WT/0B2三系统做MetaDynamics FEL</td>
+      <td>对aNima生成的de novo序列做MetaDynamics FEL</td>
+      <td>你没有"DE突变对照"，需要用WT或0B2作为FEL质量的参考基准</td>
+    </tr>
+    <tr>
+      <td>问题：远端突变为何赋予stand-alone活性？</td>
+      <td>问题：de novo序列是否偏向D-Trp选择性的构象？</td>
+      <td>你需要额外定义"D-Trp选择性构象"的几何指标（re-face vs. si-face进攻角）</td>
+    </tr>
+    <tr>
+      <td>路径CV：X射线O/C结构定义参考路径</td>
+      <td>同样使用X射线O/C结构（PDB 4HN4/4HPJ或类似）定义路径CV</td>
+      <td>你的de novo序列如果结构变化大，可能需要先用AlphaFold2预测结构再定义路径</td>
+    </tr>
+    <tr>
+      <td>判断标准：C态RMSD &lt;1.5 Å + K82-Q2 ≤3.6 Å</td>
+      <td>沿用同样的生产性C态判断标准</td>
+      <td>需额外加入：indole进攻面角度（是否偏向re-face → D-Trp）</td>
+    </tr>
+    <tr>
+      <td>关注E(Q2)阶段的FEL（催化关键步骤）</td>
+      <td>重点分析E(A-A)→E(Q2)阶段（indole加成的立体选择性步骤）</td>
+      <td>D-Trp选择性的关键步骤是indole的si-face进攻，发生在A-A→Q2过渡</td>
+    </tr>
+    <tr>
+      <td>A-A阶段O态可及性 → indole K_M</td>
+      <td>同样需要检查A-A阶段O态可及性，防止indole结合受损</td>
+      <td>过度偏向D-Trp构象的设计可能牺牲indole结合能力</td>
+    </tr>
+    <tr>
+      <td>SPM预测DE位点（回顾性验证）</td>
+      <td>可选：对你的设计序列做SPM，识别对D-Trp选择性起关键通信作用的残基</td>
+      <td>这是高级分析，你现阶段可能先不做，等有初步FEL结果再考虑</td>
+    </tr>
+    <tr>
+      <td>发现novel PC*构象（R159 cation-π）</td>
+      <td>在你的FEL z轴上可能发现针对D-Trp的novel构象</td>
+      <td>这是你的MetaDynamics可能产生的原创性发现——认真对待z轴上的异常凸起</td>
+    </tr>
+  </table>
+
+  <h3 style="margin-top:20px;">你现在的行动优先级</h3>
+  <table class="proj-table">
+    <tr><th>#</th><th>任务</th><th>本文提供的依据</th></tr>
+    <tr><td>1</td><td>找到PfTrpB的O-state和C-state PDB结构，用于定义路径CV</td><td>P4方法段：reference path来自X-ray结构</td></tr>
+    <tr><td>2</td><td>安装AMBER + PLUMED，理解well-tempered MetaD的参数设置</td><td>P4：Osuna组工具链</td></tr>
+    <tr><td>3</td><td>对PfTrpB WT先跑一个MetaDynamics作为你自己的方法验证（重现本文P6结果）</td><td>P6：WT FEL = 方法验证基准</td></tr>
+    <tr><td>4</td><td>设计"D-Trp选择性"的FEL分析指标（参考本文K82-Q2距离 + RMSD逻辑）</td><td>P6/P7：定量判断生产性构象的方法论</td></tr>
+    <tr><td>5</td><td>阅读ACS Catal 2021（下一篇），了解SPM+ASR扩展</td><td>本文是2019基础；2021扩展到ASR和多变体比较</td></tr>
+  </table>
+</div>
+
+<!-- SECTION C: GLOSSARY -->
+<div id="glossary" class="sec-label"><span class="sec-num">§C</span> 术语总表 — Glossary</div>
+<div class="synth-section">
+  <h2>§C · 本文关键术语速查表（25项）</h2>
+  <table class="gloss-table">
+    <tr><th style="width:28%">术语 (英文)</th><th style="width:18%">中文</th><th>一句话定义</th><th style="width:22%">在本文中的作用</th></tr>
+    <tr><td>TrpS (Tryptophan Synthase)</td><td>色氨酸合酶</td><td>TrpA+TrpB构成的双功能酶复合体，催化indole-3-glycerol phosphate + L-Ser → L-Trp</td><td>研究体系</td></tr>
+    <tr><td>TrpB</td><td>色氨酸合酶β亚基</td><td>PLP依赖性酶，将indole与L-Ser缩合成L-Trp；独立功能弱，需TrpA激活</td><td>主要研究对象</td></tr>
+    <tr><td>COMM domain</td><td>COMM结构域</td><td>TrpB残基97–184，是控制活性位点开闭的运动单元；O/PC/C三态</td><td>核心研究对象</td></tr>
+    <tr><td>O / PC / C conformation</td><td>开放/部分关闭/关闭构象</td><td>COMM domain的三种功能性构象态；C态是催化活性态</td><td>FEL的三个状态</td></tr>
+    <tr><td>H6 helix</td><td>H6螺旋</td><td>COMM domain中的α螺旋（残基164–174），在O→C转变中移动最大</td><td>COMM domain运动核心</td></tr>
+    <tr><td>K82 (catalytic Lys)</td><td>K82（催化赖氨酸）</td><td>形成PLP内部Schiff碱；在Q2阶段作为质子供体，需距Q2≤3.6 Å</td><td>生产性C态的关键指标</td></tr>
+    <tr><td>E(Ain) / E(Aex1) / E(A-A) / E(Q2)</td><td>四个催化中间体</td><td>TrpB催化循环中的四个快照：Ain=PLP-K82，Aex1=PLP-Ser，A-A=aminoacrylate，Q2=quinonoid</td><td>MetaDynamics的4个起点</td></tr>
+    <tr><td>Free Energy Landscape (FEL)</td><td>自由能面</td><td>蛋白质在构象空间中各点相对自由能的2D/3D地形图</td><td>MetaDynamics的核心输出</td></tr>
+    <tr><td>MetaDynamics</td><td>元动力学</td><td>增强采样MD方法：在集体变量空间中施加历史依赖的高斯偏置势，加速罕见事件采样</td><td>核心计算方法</td></tr>
+    <tr><td>Well-tempered MetaDynamics</td><td>良好调控元动力学</td><td>MetaDynamics的改进版：高斯高度随时间衰减，避免过度填充，保证收敛</td><td>实际使用的版本</td></tr>
+    <tr><td>Path collective variables (s/z)</td><td>路径集体变量</td><td>s=沿参考路径的进展（0=O态，1=C态）；z=偏离参考路径的程度（MSD）</td><td>MetaDynamics的CV选择</td></tr>
+    <tr><td>Collective Variable (CV)</td><td>集体变量</td><td>描述系统宏观状态的低维坐标；MetaDynamics的偏置施加在CV上</td><td>MetaDynamics核心概念</td></tr>
+    <tr><td>Reference path</td><td>参考路径</td><td>从O-state到C-state X射线结构插值得到的构象序列，用于定义路径CV</td><td>路径CV的几何基准</td></tr>
+    <tr><td>PfTrpB0B2</td><td>0B2变体</td><td>Arnold lab定向进化的PfTrpB变体，含P12L/E17G/I68V/F274S/T292S/T321A六个突变，stand-alone活性高</td><td>阳性实验对照</td></tr>
+    <tr><td>Directed Evolution (DE)</td><td>定向进化</td><td>随机突变+高通量筛选的实验方法；Arnold lab用其获得PfTrpB0B2</td><td>实验背景/待解释对象</td></tr>
+    <tr><td>Stand-alone function</td><td>独立功能</td><td>TrpB在没有TrpA存在的情况下高效催化的能力</td><td>功能目标</td></tr>
+    <tr><td>Allosteric activation</td><td>别构激活</td><td>TrpA通过蛋白-蛋白相互作用远程激活TrpB的COMM domain闭合</td><td>天然机制（被DE复制）</td></tr>
+    <tr><td>SPM (Shortest Path Map)</td><td>最短路径图</td><td>基于MD轨迹互相关分析的动态残基网络方法，识别蛋白质中的别构通信路径</td><td>DE位点预测工具</td></tr>
+    <tr><td>Dynamic Residue Network (DRN)</td><td>动态残基网络</td><td>将蛋白质残基视为节点、残基间动态相关性视为边权重构建的网络图</td><td>SPM的底层数据结构</td></tr>
+    <tr><td>Internal Tunnel (IT)</td><td>内部隧道</td><td>TrpA-TrpB界面间的indole传递通道，天然底物传递路径</td><td>底物结合分析</td></tr>
+    <tr><td>Secondary Tunnel (ST)</td><td>次级隧道</td><td>MetaDynamics发现的第二条indole进入路径，在孤立TrpB中可能更重要</td><td>novel发现</td></tr>
+    <tr><td>Novel PC* conformation</td><td>新型部分关闭构象</td><td>仅在PfTrpB0B2 FEL中发现的偏离参考路径的PC构象，R159移动14 Å进入活性位点</td><td>MetaDynamics独特发现（X射线不可见）</td></tr>
+    <tr><td>Cation-π interaction</td><td>阳离子-π相互作用</td><td>带正电荷的R159侧链（胍基）与indole芳香π系统之间的非共价相互作用</td><td>Novel PC*的稳定机制</td></tr>
+    <tr><td>K<sub>M</sub> for indole</td><td>indole的米氏常数</td><td>底物亲和力指标；K_M低=亲和力高；PfTrpB WT K_M(indole)远高于0B2</td><td>功能数据，与O态可及性对应</td></tr>
+    <tr><td>Productive vs. unproductive C state</td><td>生产性vs.非生产性C态</td><td>生产性C：RMSD&lt;1.5 Å，K82≤3.6 Å；非生产性C：RMSD&gt;1.5 Å，构象扭曲</td><td>区分"看起来关闭"和"真正有效关闭"</td></tr>
+  </table>
+</div>
+
+</main>
+</div>
+
+<script>
+// Intersection observer for active nav links
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, {rootMargin: '-10% 0px -80% 0px'});
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

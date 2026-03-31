@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JACS 2019 逐段深度标注 | Osuna Lab | Zhenpeng · aNima Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1a2744; --blue:#2563EB; --teal:#0d9488;
+  --paper:#faf8f3; --paper2:#f3f0e8; --border:#d4c9a8;
+  --text:#2d2d2d; --gray:#6b7280; --lg:#f3f4f6;
+  --hl-thesis:#fef3c7; --hl-thesis-b:#d97706;
+  --hl-concept:#fee2e2; --hl-concept-b:#dc2626;
+  --hl-evidence:#dbeafe; --hl-evidence-b:#2563eb;
+  --hl-counter:#dcfce7; --hl-counter-b:#16a34a;
+  --hl-method:#f3e8ff; --hl-method-b:#7c3aed;
+  --sidebar-w:220px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--text);font-size:15px;line-height:1.7;}
+
+/* TOP NAV */
+#topnav{position:sticky;top:0;z-index:100;background:var(--navy);color:white;
+  padding:0 20px;display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap;}
+#topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:15px;white-space:nowrap;}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.leg{padding:2px 10px;border-radius:12px;font-size:11.5px;font-weight:600;cursor:default;}
+.leg-y{background:var(--hl-thesis);color:#92400e;}
+.leg-r{background:var(--hl-concept);color:#991b1b;}
+.leg-b{background:var(--hl-evidence);color:#1e40af;}
+.leg-g{background:var(--hl-counter);color:#166534;}
+.leg-p{background:var(--hl-method);color:#5b21b6;}
+
+/* LAYOUT */
+#layout{display:flex;min-height:calc(100vh - 52px);}
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:#f0ede4;
+  border-right:1px solid var(--border);padding:16px 0;position:sticky;
+  top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+#sidebar .sec-head{font-size:10px;font-weight:700;color:var(--gray);
+  text-transform:uppercase;letter-spacing:.08em;padding:12px 16px 4px;}
+#sidebar .nav-link{display:block;padding:5px 16px;font-size:12.5px;color:#374151;
+  text-decoration:none;border-left:3px solid transparent;transition:.15s;}
+#sidebar .nav-link:hover{background:#e8e4db;color:var(--navy);}
+#sidebar .nav-link.active{border-left-color:var(--blue);color:var(--blue);background:#e8eef8;}
+#sidebar .nav-link.sub{padding-left:26px;font-size:12px;color:var(--gray);}
+
+main{flex:1;padding:0 0 60px;overflow-x:hidden;}
+
+/* PAPER META CARD */
+.meta-card{background:var(--navy);color:white;padding:28px 36px;margin:0;}
+.meta-card h1{font-family:'Lora',serif;font-size:20px;line-height:1.4;margin-bottom:12px;}
+.meta-card .byline{font-size:13px;opacity:.8;margin-bottom:6px;}
+.meta-card .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.meta-card .tag{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+  padding:3px 10px;border-radius:20px;font-size:11.5px;}
+.meta-card .doi-link{color:#93c5fd;font-size:13px;text-decoration:none;}
+.meta-card .doi-link:hover{text-decoration:underline;}
+
+/* SECTION HEADINGS */
+.sec-label{background:var(--paper2);border-top:3px solid var(--blue);
+  padding:10px 36px;font-size:11px;font-weight:700;color:var(--blue);
+  text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px;}
+.sec-label .sec-num{background:var(--blue);color:white;padding:1px 8px;
+  border-radius:10px;font-size:10.5px;}
+
+/* PARAGRAPH BLOCK */
+.para-block{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5dfd0;
+  gap:0;}
+.para-block:hover{background:#f7f4ed;}
+.para-left{padding:22px 28px;border-right:1px solid #e5dfd0;font-size:14.5px;line-height:1.8;}
+.para-right{padding:18px 22px;background:#f7f5ef;font-size:13px;line-height:1.65;}
+.para-id{display:inline-block;background:var(--navy);color:white;padding:1px 8px;
+  border-radius:10px;font-size:10.5px;font-weight:700;margin-bottom:10px;}
+
+/* HIGHLIGHTS */
+.hl-y{background:var(--hl-thesis);border-bottom:2px solid var(--hl-thesis-b);padding:0 2px;border-radius:2px;}
+.hl-r{background:var(--hl-concept);border-bottom:2px solid var(--hl-concept-b);padding:0 2px;border-radius:2px;}
+.hl-b{background:var(--hl-evidence);border-bottom:2px solid var(--hl-evidence-b);padding:0 2px;border-radius:2px;}
+.hl-g{background:var(--hl-counter);border-bottom:2px solid var(--hl-counter-b);padding:0 2px;border-radius:2px;}
+.hl-p{background:var(--hl-method);border-bottom:2px solid var(--hl-method-b);padding:0 2px;border-radius:2px;}
+
+/* ANNOTATION CARD COMPONENTS */
+.ann-label{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;
+  letter-spacing:.06em;margin-top:10px;margin-bottom:2px;}
+.ann-label:first-child{margin-top:0;}
+.ann-value{font-size:13px;color:var(--text);background:white;border:1px solid #e5dfd0;
+  border-radius:5px;padding:7px 10px;margin-bottom:4px;line-height:1.6;}
+.ann-role{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11.5px;
+  font-weight:600;margin-bottom:6px;}
+.role-bg{background:#dbeafe;color:#1e40af;}
+.role-ev{background:#dcfce7;color:#166534;}
+.role-me{background:#f3e8ff;color:#5b21b6;}
+.role-cl{background:#fef3c7;color:#92400e;}
+.role-tr{background:#fee2e2;color:#991b1b;}
+.role-co{background:#e0f2fe;color:#0369a1;}
+
+/* VOCAB TABLE */
+.vocab-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px;}
+.vocab-table th{background:#e8e4db;padding:4px 8px;text-align:left;font-weight:600;font-size:11.5px;}
+.vocab-table td{padding:4px 8px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.vocab-table tr:last-child td{border-bottom:none;}
+
+/* SKELETON BOX */
+.skeleton{background:white;border:1px solid #e5dfd0;border-radius:6px;
+  padding:12px 14px;margin-top:10px;font-size:12.5px;}
+.skeleton-title{font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;
+  letter-spacing:.06em;margin-bottom:8px;}
+.sk-line{display:flex;gap:6px;align-items:flex-start;margin-bottom:6px;font-size:12.5px;}
+.sk-arrow{color:var(--gray);font-size:11px;padding-top:2px;}
+.sk-badge{padding:1px 7px;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap;}
+.sk-b-P{background:#fef3c7;color:#92400e;}
+.sk-b-E{background:#dbeafe;color:#1e40af;}
+.sk-b-M{background:#f3e8ff;color:#5b21b6;}
+.sk-b-C{background:#fee2e2;color:#991b1b;}
+
+/* CALLOUT */
+.callout{border-radius:6px;padding:12px 14px;margin:16px 28px;font-size:13.5px;}
+.callout-blue{background:#eff6ff;border-left:4px solid #3b82f6;}
+.callout-teal{background:#f0fdfa;border-left:4px solid #14b8a6;}
+.callout-orange{background:#fff7ed;border-left:4px solid #f97316;}
+.callout-red{background:#fff1f2;border-left:4px solid #f43f5e;}
+.callout-title{font-weight:700;margin-bottom:6px;font-size:13.5px;}
+
+/* FIGURE NOTE */
+.fig-note{background:#fffbeb;border:1px dashed #d97706;border-radius:5px;
+  padding:10px 14px;margin:10px 0;font-size:12.5px;color:#78350f;}
+.fig-note strong{color:#d97706;}
+
+/* SECTION separators */
+section.paper-sec{border-top:4px solid var(--paper2);}
+
+/* CONNECTION BOX */
+.project-box{background:#f0fdf4;border:1px solid #86efac;border-radius:6px;
+  padding:8px 12px;margin-top:6px;font-size:12.5px;color:#14532d;}
+.project-box::before{content:"▶ 与你的项目: ";font-weight:700;}
+
+/* FORMULA BOX */
+.formula{background:#1e1e2e;color:#cdd6f4;font-family:'IBM Plex Mono',monospace;
+  padding:12px 16px;border-radius:6px;font-size:13px;line-height:1.7;
+  overflow-x:auto;margin:8px 0;}
+
+/* ALERT */
+.alert-warn{background:#fffbeb;border:1px solid #fcd34d;border-radius:5px;
+  padding:8px 12px;font-size:12.5px;color:#78350f;margin-top:6px;}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .para-block{grid-template-columns:1fr;}
+  .para-left{border-right:none;border-bottom:1px solid #e5dfd0;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav id="topnav">
+  <div class="logo">JACS 2019 · 逐段深度标注</div>
+  <div class="legend">
+    <span class="leg leg-y">黄 核心论点</span>
+    <span class="leg leg-r">红 关键概念</span>
+    <span class="leg leg-b">蓝 实验证据</span>
+    <span class="leg leg-g">绿 对比/反驳</span>
+    <span class="leg leg-p">紫 方法论</span>
+  </div>
+</nav>
+
+<div id="layout">
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sec-head">论文结构</div>
+  <a class="nav-link" href="#meta">📄 论文信息</a>
+  <a class="nav-link" href="#abstract">摘要</a>
+  <div class="sec-head">Introduction</div>
+  <a class="nav-link sub" href="#p1">P1 · 别构酶背景</a>
+  <a class="nav-link sub" href="#p2">P2 · 独立TrpB困境</a>
+  <a class="nav-link sub" href="#p3">P3 · 构象系综假说</a>
+  <a class="nav-link sub" href="#p4">P4 · 本文目标</a>
+  <div class="sec-head">Methods</div>
+  <a class="nav-link sub" href="#p5">P5 · MD体系建立</a>
+  <a class="nav-link sub" href="#p6">P6 · MetaD参数</a>
+  <div class="sec-head">Results</div>
+  <a class="nav-link sub" href="#p7">P7 · 晶体结构分析</a>
+  <a class="nav-link sub" href="#p8">P8 · WT PfTrpB FEL</a>
+  <a class="nav-link sub" href="#p9">P9 · TrpS复合体FEL</a>
+  <a class="nav-link sub" href="#p10">P10 · 0B2进化中间体</a>
+  <a class="nav-link sub" href="#p11">P11 · LBCA完全进化体</a>
+  <a class="nav-link sub" href="#p12">P12 · 单突变分析</a>
+  <a class="nav-link sub" href="#p13">P13 · 别构通信网络</a>
+  <a class="nav-link sub" href="#p14">P14 · 预测能力验证</a>
+  <div class="sec-head">Discussion</div>
+  <a class="nav-link sub" href="#p15">P15 · 结论与意义</a>
+  <div class="sec-head">综合理解</div>
+  <a class="nav-link" href="#skeleton">论证骨架</a>
+  <a class="nav-link" href="#your-project">与你项目的连接</a>
+</nav>
+
+<main>
+
+<!-- PAPER META -->
+<div class="meta-card" id="meta">
+  <h1>"Deciphering the Allosterically Driven Conformational Ensemble in Tryptophan Synthase Evolution"</h1>
+  <div class="byline">Miguel A. Maria-Solano · Javier Iglesias-Fernández · Sílvia Osuna</div>
+  <div class="byline">CompBioLab · Institut de Química Computacional i Catàlisi (IQCC) · Universitat de Girona, Spain</div>
+  <div class="byline" style="margin-top:6px;"><em>J. Am. Chem. Soc.</em> 2019, 141(33), 13049–13056 · Published August 9, 2019</div>
+  <div style="margin-top:10px;">
+    <a class="doi-link" href="https://doi.org/10.1021/jacs.9b03646" target="_blank">DOI: 10.1021/jacs.9b03646</a>
+    &nbsp;·&nbsp; PMID: 31356074
+  </div>
+  <div class="tags">
+    <span class="tag">MetaDynamics</span>
+    <span class="tag">TrpB · TrpS</span>
+    <span class="tag">Free Energy Landscape</span>
+    <span class="tag">COMM Domain</span>
+    <span class="tag">Allosteric Regulation</span>
+    <span class="tag">Directed Evolution</span>
+    <span class="tag">Conformational Ensemble</span>
+    <span class="tag">Population Shift</span>
+  </div>
+</div>
+
+<div class="callout callout-blue" style="margin:16px 28px;">
+  <div class="callout-title">📖 如何阅读这份标注</div>
+  每个段落分为两栏：<strong>左栏</strong>是原文（五色高亮标注），<strong>右栏</strong>是中文深度批注（段落功能、逻辑角色、专业词汇、对你项目的意义、潜在漏洞）。建议你先读左栏原文，尝试理解后，再看右栏对照。遇到不懂的词汇，一定要查右栏的术语表，这是最密集的知识传递。
+</div>
+
+<!-- ═══════════ ABSTRACT ═══════════ -->
+<section class="paper-sec" id="abstract">
+<div class="sec-label"><span class="sec-num">00</span> 摘要 Abstract</div>
+
+<div class="para-block">
+<div class="para-left">
+  <span class="para-id">ABS</span>
+  <p>
+    <span class="hl-r">Multimeric enzyme complexes are ubiquitous in nature and catalyze a broad range of useful biological transformations.</span>
+    They are often characterized by a <span class="hl-r">tight allosteric coupling between subunits</span>,
+    making them <span class="hl-b">highly inefficient when isolated</span>.
+    A good example is <span class="hl-r">Tryptophan synthase (TrpS), an allosteric heterodimeric enzyme in the form of an αββα complex</span>
+    that catalyzes the biosynthesis of L-tryptophan.
+    In this study, we decipher the <span class="hl-y">allosteric regulation existing in TrpS, and how the allosteric conformational ensemble is recovered in laboratory-evolved stand-alone β-subunit variants</span>.
+    We find that <span class="hl-y">recovering the conformational ensemble of a subdomain of TrpS affecting the relative stabilities of open, partially closed, and closed conformations is a prerequisite for enhancing the catalytic efficiency</span>
+    of the β-subunit in the absence of its binding partner.
+    The <span class="hl-b">distal mutations resuscitate the allosterically driven conformational regulation and alter the populations and rates of exchange between these multiple conformational states</span>,
+    which are essential for the multistep reaction pathway of the enzyme.
+    Interestingly, <span class="hl-y">these distal mutations can be a priori predicted by careful analysis of the conformational ensemble of the TrpS enzyme through computational methods</span>.
+    Our study provides the enzyme design field with a <span class="hl-y">rational approach for evolving allosteric enzymes toward improved stand-alone function</span> for biosynthetic applications.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">论文总结（摘要）：用5句话呈现了整篇论文的核心问题、发现和意义。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-cl">核心主张 ×2</span>
+  <span class="ann-role role-ev">实验证据 ×1</span>
+  <span class="ann-role role-tr">转化意义 ×1</span>
+
+  <div class="ann-label">三个核心主张（逐一拆解）</div>
+  <div class="ann-value">
+    <strong>主张①（结构性）：</strong> COMM subdomain 的构象系综（open/partially-closed/closed 三态的相对稳定性）是 TrpB β-亚基催化活性的先决条件。<br>
+    <strong>主张②（机制性）：</strong> 远端突变（distal mutations）的作用不是改变活性位点的化学，而是改变构象系综分布（population shift）。<br>
+    <strong>主张③（预测性）：</strong> 这些有用的突变可以通过计算分析来事先预测，而不需要实验筛选。
+  </div>
+
+  <div class="ann-label">专业术语速查</div>
+  <table class="vocab-table">
+    <tr><th>英文术语</th><th>中文解释</th></tr>
+    <tr><td><strong>allosteric coupling</strong></td><td>别构耦合：蛋白质一个部位的结合/变化影响远端部位的功能，两者相互"遥控"</td></tr>
+    <tr><td><strong>αββα complex</strong></td><td>TrpS 的四聚体结构，两个 α 亚基和两个 β 亚基交替排列，形成 α-β-β-α 串联复合体</td></tr>
+    <tr><td><strong>conformational ensemble</strong></td><td>构象系综：蛋白质不是固定形状，而是在多种构象之间不停波动；"系综"指所有这些构象及其出现概率的集合</td></tr>
+    <tr><td><strong>stand-alone β-subunit</strong></td><td>独立 β-亚基：从 TrpS 复合体中分离出来单独使用的 TrpB，催化效率比在复合体中低100倍以上</td></tr>
+    <tr><td><strong>distal mutations</strong></td><td>远端突变：位于活性位点之外（通常 &gt;15 Å 以外）的氨基酸突变，却能影响催化活性</td></tr>
+    <tr><td><strong>a priori predicted</strong></td><td>事先预测：在做实验之前，仅凭计算就预测出哪些突变有效</td></tr>
+  </table>
+
+  <div class="ann-label">值得注意</div>
+  <div class="ann-value">摘要中出现了一个极强的主张——"distal mutations can be a priori predicted"（远端突变可以事先预测）。这个主张直接对标定向进化（需要筛选大量突变体），是本文最有争议也最有价值的主张。你在阅读 Results 时要特别关注作者是如何支撑这个主张的。</div>
+
+  <div class="project-box">这篇论文的逻辑是：计算 FEL → 预测好的突变。你的项目是：计算 FEL → 评估 AI 设计的蛋白是否活跃。目标不同，但核心工具（MetaDynamics FEL）和判断标准（COMM 闭合态稳定性）完全相同。</div>
+</div>
+</div><!-- end ABS -->
+</section>
+
+<!-- ═══════════ INTRODUCTION ═══════════ -->
+<section class="paper-sec" id="introduction">
+<div class="sec-label"><span class="sec-num">01</span> 引言 Introduction</div>
+
+<!-- P1 -->
+<div class="para-block" id="p1">
+<div class="para-left">
+  <span class="para-id">P1 · 背景：别构酶的普遍性</span>
+  <p>
+    <span class="hl-r">Multimeric enzymes are widespread in nature and perform many essential cellular functions.</span>
+    The functionality of complex enzymes often relies on <span class="hl-r">allosteric communication between subunits</span>,
+    which makes individual subunits catalytically inefficient when isolated.
+    <span class="hl-r">Tryptophan synthase (TrpS) is a striking example of this phenomenon</span>: it is an
+    <span class="hl-r">allosteric heterodimeric enzyme consisting of two pairs of α and β subunits arranged in an αββα complex</span>,
+    which <span class="hl-b">catalyzes the last two steps in the biosynthesis of L-tryptophan</span>.
+    The TrpA subunit <span class="hl-b">cleaves indole-3-glycerol phosphate to produce indole and glyceraldehyde-3-phosphate</span>,
+    and the TrpB subunit <span class="hl-b">condenses indole with L-serine in a pyridoxal phosphate (PLP)-dependent reaction to form L-tryptophan</span>.
+    The indole produced by TrpA is <span class="hl-b">channeled directly to TrpB through a 25-Å hydrophobic tunnel</span>,
+    preventing its release into solution.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">铺垫（Setup）：建立研究背景，介绍 TrpS 的结构和化学功能，为后续讨论亚基分离后活性下降做铺垫。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-bg">背景知识</span>
+  <span class="ann-role role-ev">实验事实</span>
+
+  <div class="ann-label">深度解析：TrpS 的双步反应</div>
+  <div class="ann-value">
+    TrpS 做两个不同的反应，但它们在复合体中是串联的：<br><br>
+    <strong>TrpA 催化（裂解）：</strong><br>
+    吲哚-3-甘油磷酸（IGP） → 吲哚（indole） + 3-磷酸甘油醛（G3P）<br><br>
+    <strong>TrpB 催化（β-置换）：</strong><br>
+    吲哚 + L-丝氨酸（L-Ser） + PLP → L-色氨酸（L-Trp）<br><br>
+    关键：吲哚是两步反应的"中转货物"，它不会扩散到溶液中（因为有毒且不稳定），而是通过一条 25 Å 的疏水隧道直接从 TrpA 传到 TrpB。这叫 <strong>substrate channeling（底物通道传递）</strong>。
+  </div>
+
+  <div class="ann-label">什么是 L-Ser 和 PLP？（这就是你说的"L 和 P"！）</div>
+  <div class="ann-value" style="border-left:4px solid #f59e0b;">
+    <strong>L（L-Ser, L-丝氨酸）：</strong> 第一个底物（substrate）。"L"指 L 型手性构型（与 D-Ser 互为镜像）。L-Ser 的氨基（-NH₂）会与 PLP 形成 Schiff 碱，进入催化循环。它是酶要"加工"的原材料之一。<br><br>
+    <strong>P（PLP, 磷酸吡哆醛）：</strong> 辅酶（cofactor），不是底物。"P"是 Pyridoxal Phosphate 的缩写。PLP 共价连接在 Lys82 上（E(Ain) 状态），在催化过程中充当"电子接力站"，通过形成 Schiff 碱来稳定碳负离子中间体，使反应能够发生。<br><br>
+    <strong>区别记忆：</strong> L-Ser 是进来的"原料"，PLP 是机器里永久安装的"工具"，两者都是催化所必需的，但角色完全不同。
+  </div>
+
+  <div class="ann-label">专业术语速查</div>
+  <table class="vocab-table">
+    <tr><th>术语</th><th>中文解释</th></tr>
+    <tr><td><strong>indole-3-glycerol phosphate (IGP)</strong></td><td>吲哚-3-甘油磷酸，TrpA 的底物，比游离吲哚稳定</td></tr>
+    <tr><td><strong>PLP (pyridoxal 5'-phosphate)</strong></td><td>磷酸吡哆醛，维生素 B6 的活性形式，是 TrpB 的辅酶，通过 Schiff 碱参与催化</td></tr>
+    <tr><td><strong>β-substitution reaction</strong></td><td>β-置换反应：L-Ser 的 β-羟基（-OH）被吲哚取代，形成新的 C-C 键</td></tr>
+    <tr><td><strong>substrate channeling</strong></td><td>底物通道传递：中间体不进入溶液，直接通过蛋白内部通道从一个活性位点传到另一个</td></tr>
+  </table>
+
+  <div class="project-box">你重现 Osuna 方法时，体系中一定要包含 PLP 和模拟 E(A-A) 状态的底物（aminoacrylate）。这是 MetaDynamics 正确模拟的前提——少了 PLP 或底物，COMM domain 的构象行为会完全不同。</div>
+</div>
+</div><!-- end P1 -->
+
+<!-- P2 -->
+<div class="para-block" id="p2">
+<div class="para-left">
+  <span class="para-id">P2 · 独立 TrpB 的困境与定向进化的解答</span>
+  <p>
+    Despite its high activity in the context of the full complex,
+    <span class="hl-b">the TrpB subunit alone exhibits dramatically reduced catalytic efficiency (kcat decreased more than 100-fold)</span>.
+    This significant reduction stems from the <span class="hl-y">loss of allosteric activation provided by TrpA:
+    TrpA binding stabilizes the closed conformation of the COMM domain</span>,
+    a <span class="hl-r">mobile ~40-residue segment (residues ~102–150 in PfTrpB) that acts as a conformational switch between open, partially closed, and closed states</span>.
+    In the isolated subunit,
+    <span class="hl-b">the COMM domain preferentially populates the open state, which is catalytically unproductive</span>.
+    Laboratory-directed evolution (Arnold and coworkers, Caltech) of a thermostable standalone TrpB from
+    <span class="hl-b"><i>Pyrococcus furiosus</i> (PfTrpB) showed that six mutations (I6V, I68V, F274S, T292S, I305V, T321A), most of which are distal from the active site, can rescue activity</span>
+    and provide a variant (LBCA-TrpB) with dramatically improved kcat.
+    However, <span class="hl-g">the mechanistic basis for how distal mutations enhance catalysis remained poorly understood</span>.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">问题陈述（Problem Statement）：确立研究空白——我们知道"远端突变有效"，但不知道为什么。这个知识空白是本文存在的理由。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-ev">证据（文献已知事实）</span>
+  <span class="ann-role role-cl">核心问题</span>
+
+  <div class="ann-label">什么是 COMM Domain？（你最想搞清楚的部分！）</div>
+  <div class="ann-value" style="border-left:4px solid #3b82f6;">
+    <strong>COMM = Communication Domain（通信结构域）</strong><br><br>
+    <strong>结构：</strong> 大约 40–50 个氨基酸残基组成的活动"盖子"，位于 TrpB 活性位点的入口附近。在 PfTrpB 中大约是残基 102–150 号。它不是一个刚性固定的结构，而是像铰链一样可以开合。<br><br>
+    <strong>三种状态（极其重要！）：</strong><br>
+    ① <strong>Open（开放态）</strong>：COMM 远离活性位点，活性位点暴露在溶剂中。这是 WT-PfTrpB 的默认状态。<u>问题：吲哚进不来，催化不能发生</u>。<br>
+    ② <strong>Partially Closed（半闭合态）</strong>：COMM 部分移动，L-Ser 已进入并形成 E(A-A)。<br>
+    ③ <strong>Closed（闭合态）</strong>：COMM 完全扣上，R141 和 D305 之间形成盐桥（&lt;3.5 Å），活性位点完全封闭。<u>这是催化发生的状态</u>。吲哚通道同时打开，接收 TrpA 传来的吲哚。<br><br>
+    <strong>类比：</strong> 把 TrpB 想象成一个保险箱。COMM domain 就是保险箱的大门。
+    开放态 = 门打开但没有底物（不安全）。
+    闭合态 = 门关上，底物锁在里面准备反应（这才是正确的工作状态）。<br><br>
+    <strong>为什么单独的 TrpB "门"不关？</strong> 因为没有 TrpA 推它。TrpA 与 TrpB 结合时，就像用手推着这扇门关闭——这就是所谓的"别构激活"。
+  </div>
+
+  <div class="ann-label">关键数值</div>
+  <div class="ann-value">
+    • kcat 下降 &gt;100倍：野生型独立 TrpB 的催化速率常数比在复合体中低100倍以上<br>
+    • 6个突变（LBCA变体）：I6V, I68V, F274S, T292S, I305V, T321A<br>
+    • 这6个突变中，只有 I6V 和 I68V 在 COMM domain 附近，其余4个距离活性位点 &gt;15 Å<br>
+    • LBCA-TrpB：Lab Consensus Ancestral TrpB，Arnold lab 定向进化的最终产物
+  </div>
+
+  <div class="ann-label">潜在漏洞</div>
+  <div class="alert-warn">绿色高亮部分（"mechanistic basis remained poorly understood"）是作者自己承认的知识空白，也是本文的 motivation。注意：Arnold lab 做的是实验定向进化（真实选择），Osuna 做的是计算解析——两者是互补的，不是竞争的。</div>
+
+  <div class="project-box">WT-PfTrpB（PDB: 5DW3）是 Osuna 所有计算的起点结构，也是你运行 MetaDynamics 时要下载的结构文件。如果你的 AI 设计蛋白的 COMM domain 也停留在开放态，它就是"无活性"的。</div>
+</div>
+</div><!-- end P2 -->
+
+<!-- P3 -->
+<div class="para-block" id="p3">
+<div class="para-left">
+  <span class="para-id">P3 · 构象系综假说：Population Shift 范式</span>
+  <p>
+    Recent studies have suggested that <span class="hl-y">enzyme catalysis is governed not only by active site chemistry but also by the overall conformational ensemble available to the enzyme</span>.
+    In this framework, <span class="hl-y">directed evolution works by reshaping the conformational landscape rather than by directly altering chemical mechanisms</span>.
+    This <span class="hl-r">"population shift" paradigm</span> posits that
+    <span class="hl-y">beneficial mutations increase the population of conformations that are productive for catalysis</span>—
+    in the case of TrpB, the <span class="hl-b">closed COMM domain state that positions catalytic residues optimally for the multistep β-substitution reaction</span>.
+    Critically, the <span class="hl-p">relative free energies of open, partially closed, and closed states can be directly computed using enhanced sampling molecular dynamics methods</span>.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">理论框架（Theoretical Framework）：这是全文的"世界观"——告诉你用什么视角来理解酶的功能和进化。这段是理解整篇论文的钥匙。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-cl">核心理论主张</span>
+  <span class="ann-role role-me">方法论连接</span>
+
+  <div class="ann-label">Population Shift 范式的深度理解</div>
+  <div class="ann-value" style="border-left:4px solid #8b5cf6;">
+    <strong>传统观点（lock-and-key / induced-fit）：</strong><br>
+    酶的活性 = 活性位点的几何形状。突变改变活性，是因为改变了活性位点的氨基酸。<br><br>
+    <strong>Population Shift 新观点：</strong><br>
+    酶的活性 = 催化态构象出现的概率。突变改变活性，是因为改变了不同构象出现的频率（概率分布）。<br><br>
+    <strong>数学表达：</strong><br>
+    k<sub>obs</sub> ∝ P(closed) × k<sub>chem</sub><br>
+    其中 P(closed) 是 COMM domain 处于闭合态的概率，k<sub>chem</sub> 是化学步骤的本征速率常数。<br><br>
+    <strong>意义：</strong> 远端突变（不在活性位点）可以通过改变 P(closed) 来提升 k<sub>obs</sub>，而根本不需要碰活性位点的化学。这就是"别构进化"的本质。
+  </div>
+
+  <div class="ann-label">这里也暗示了为什么要用 MetaDynamics</div>
+  <div class="ann-value">
+    最后一句话非常关键："<em>the relative free energies... can be directly computed using enhanced sampling MD methods</em>"。<br>
+    普通 MD 无法算出这些自由能（因为 COMM 闭合是个稀有事件，标准 MD 100 ns 里不会发生）。MetaDynamics 是"enhanced sampling"（增强采样）方法中的一种，专门用来计算这类涉及大构象变化的自由能差。
+  </div>
+
+  <div class="project-box">这段话直接解释了你项目的价值：你的 AI 设计蛋白的活性，用 Osuna 的框架来说，就是它的 P(closed)。MetaDynamics 给你算 P(closed)，从而预测实验结果。</div>
+</div>
+</div><!-- end P3 -->
+
+<!-- P4 -->
+<div class="para-block" id="p4">
+<div class="para-left">
+  <span class="para-id">P4 · 本文目标与研究路线</span>
+  <p>
+    Here, we use <span class="hl-p">well-tempered metadynamics simulations to characterize the two-dimensional free energy landscapes (FELs) governing COMM domain motion</span>
+    in three systems: <span class="hl-b">wild-type PfTrpB (WT), an early evolutionary intermediate (0B2-TrpB, 2 mutations relative to WT), and the fully evolved stand-alone variant (LBCA-TrpB, 6 mutations)</span>.
+    By comparing FELs across the evolutionary trajectory,
+    <span class="hl-y">we provide atomic-level insight into how distal mutations progressively reshape the conformational ensemble toward productive catalysis</span>.
+    We further demonstrate that
+    <span class="hl-y">computational analysis of the TrpS conformational ensemble can be used to a priori predict mutations that enhance standalone TrpB activity</span>,
+    opening a path to <span class="hl-y">rational engineering of allosteric enzymes</span>.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">目标陈述（Aim Statement）：明确说明本文要做什么、用什么方法、比较什么。这是整篇论文的"路线图"。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-cl">研究目标</span>
+  <span class="ann-role role-me">方法简述</span>
+
+  <div class="ann-label">三个比较对象的理解（关键！）</div>
+  <div class="ann-value">
+    Osuna 选择了三个系统来构建"进化轨迹"：<br><br>
+    <table class="vocab-table">
+      <tr><th>系统</th><th>突变数</th><th>活性</th><th>FEL 预期</th></tr>
+      <tr><td><strong>WT-PfTrpB</strong></td><td>0</td><td>很低（野生型）</td><td>闭合态高能</td></tr>
+      <tr><td><strong>0B2-TrpB</strong></td><td>2（I6V, I68V）</td><td>中等</td><td>闭合态略稳定</td></tr>
+      <tr><td><strong>LBCA-TrpB</strong></td><td>6（I6V, I68V, F274S, T292S, I305V, T321A）</td><td>高（接近复合体）</td><td>闭合态最稳定</td></tr>
+    </table>
+    <br>
+    这三个系统形成了一个"进化梯度"，让作者可以追踪每加一个突变，FEL 如何变化。这是非常聪明的实验设计——通过对比来提取因果关系。
+  </div>
+
+  <div class="ann-label">什么是 Well-Tempered MetaDynamics？（下一节方法会详细说，但先建立直觉）</div>
+  <div class="ann-value" style="border-left:4px solid #8b5cf6;">
+    Well-Tempered MetaDynamics（WTMetaD）= 标准 MetaDynamics 的改进版。<br>
+    <strong>标准 MetaD 的问题：</strong> 随着模拟进行，持续添加 Gaussian 偏置，偏置无上限，最终会过度填充自由能面，导致不准确。<br>
+    <strong>WTMetaD 的解决方案：</strong> 随着 Gaussian 已经堆积的地方越来越高，新加入的 Gaussian 高度会指数衰减（按照参数 γ，即 biasfactor）。这样既能加速采样，又能在极限时间下收敛到真实的自由能面。<br>
+    <strong>参数 γ（biasfactor）：</strong> 越大，衰减越慢，越接近标准 MetaD（越快但越不精确）；Osuna 用 γ = 15，是比较标准的选择。
+  </div>
+
+  <div class="project-box">论文比较了 WT、0B2、LBCA 三个系统。你的项目是加一个新的比较对象：<strong>AI 设计的 TrpB</strong>。你的 FEL 应该和哪个最像，取决于它是否有活性。如果你的设计蛋白的 FEL 类似 LBCA-TrpB，它可能有活性；如果类似 WT，可能无活性。</div>
+</div>
+</div><!-- end P4 -->
+</section>
+
+<!-- ═══════════ METHODS ═══════════ -->
+<section class="paper-sec" id="methods">
+<div class="sec-label"><span class="sec-num">02</span> 计算方法 Computational Methods</div>
+
+<!-- P5 -->
+<div class="para-block" id="p5">
+<div class="para-left">
+  <span class="para-id">P5 · MD 体系建立</span>
+  <p>
+    All molecular dynamics simulations were performed with <span class="hl-p">GROMACS 5.1.2</span>
+    using the <span class="hl-p">AMBER ff14SB force field</span> for the protein.
+    <span class="hl-p">PLP parameters were taken from Meagher et al.</span>
+    The <span class="hl-r">E(A-A) intermediate (aminoacrylate-PLP Schiff base) was modeled in the closed-state active site conformation</span>.
+    Systems were <span class="hl-p">solvated in TIP3P water boxes with 10 Å padding</span>,
+    and neutralized with Na<sup>+</sup> counter-ions.
+    After <span class="hl-p">energy minimization and equilibration (NVT and NPT ensembles, 100 ps each)</span>,
+    production MD was performed under <span class="hl-p">NPT conditions at 300 K and 1 bar</span>
+    using the Parrinello-Rahman barostat and velocity-rescaling thermostat.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">方法描述①：MD 体系的建立。告诉你用什么软件、力场、底物状态、溶剂化方法、平衡协议。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-me">方法论</span>
+
+  <div class="ann-label">逐句解析：每个选择的理由</div>
+  <div class="ann-value">
+    <strong>GROMACS：</strong> 最流行的 MD 软件之一，开源，可以与 PLUMED 无缝整合。<br><br>
+    <strong>AMBER ff14SB：</strong> 蛋白质力场（force field）= 描述原子间相互作用的数学方程组。AMBER ff14SB 是 AMBER 力场的2014年版改进，被广泛用于酶 MD 模拟，对侧链构象尤其准确。<br><br>
+    <strong>PLP parameters from Meagher et al.：</strong> PLP 是非标准辅酶，GROMACS/AMBER 没有内置参数，必须用专门拟合的参数（Meagher 2003, JCTC）。这是运行 TrpB MetaDynamics 的一个常见难点——你需要找到并验证这套参数。<br><br>
+    <strong>E(A-A) intermediate：</strong> 这是关键！催化循环中的氨基丙烯酸酯中间体状态。为什么要模拟这个状态？因为 COMM 闭合正是在 E(A-A) 形成之后发生的。模拟这个状态才能观察到 COMM 的正确运动。<br><br>
+    <strong>TIP3P water：</strong> 经典的三点水模型，计算高效，与 AMBER ff14SB 搭配使用的标准选择。<br><br>
+    <strong>NVT → NPT 平衡：</strong>
+    NVT（恒温，温度弛豫）→ NPT（恒温恒压，密度弛豫）→ 生产 MD。这是标准的 MD 平衡协议，缺一不可。
+  </div>
+
+  <div class="ann-label">专业术语速查</div>
+  <table class="vocab-table">
+    <tr><th>术语</th><th>中文解释</th></tr>
+    <tr><td><strong>force field (ff14SB)</strong></td><td>力场：用数学方程描述原子间键合和非键合相互作用，决定了模拟的物理精度</td></tr>
+    <tr><td><strong>TIP3P water</strong></td><td>三点水模型：用3个电荷点代表水分子，计算高效，标准的模拟溶剂模型</td></tr>
+    <tr><td><strong>NVT ensemble</strong></td><td>正则系综：固定原子数(N)、体积(V)、温度(T)，用于温度平衡</td></tr>
+    <tr><td><strong>NPT ensemble</strong></td><td>恒温恒压系综：固定N、压力(P)、温度(T)，用于密度平衡，更接近真实实验条件</td></tr>
+    <tr><td><strong>Parrinello-Rahman barostat</strong></td><td>压力控制算法，保持系统在1 bar（标准大气压）下模拟</td></tr>
+    <tr><td><strong>velocity-rescaling thermostat</strong></td><td>温度控制算法，确保系统在300 K（约27°C）下的热力学稳定性</td></tr>
+  </table>
+
+  <div class="ann-label">你复现时需要特别注意</div>
+  <div class="alert-warn">
+    <strong>难点①：</strong> E(A-A) intermediate 的建模——你需要构建 aminoacrylate-PLP Schiff 碱的 3D 结构并对接到活性位点。这不是直接下载 PDB 就能做的，需要 QM 计算或参考文献中的坐标。<br><br>
+    <strong>难点②：</strong> Meagher PLP 参数——需要从文献或作者处获取，不在 AMBER 标准库中。<br><br>
+    <strong>建议：</strong> 先用简化体系（无 PLP，用 L-Ser 代替）做测试，验证 GROMACS+PLUMED 工作流程，再加入 PLP 参数。
+  </div>
+
+  <div class="project-box">这段告诉你重现 Osuna 方法所需的确切技术栈：GROMACS + AMBER ff14SB + Meagher PLP 参数 + E(A-A) 状态。你的第一步应该是下载 5DW3，用 AmberTools 准备体系，安装 PLUMED 2.x。</div>
+</div>
+</div><!-- end P5 -->
+
+<!-- P6 -->
+<div class="para-block" id="p6">
+<div class="para-left">
+  <span class="para-id">P6 · MetaDynamics 参数与集体变量定义</span>
+  <p>
+    <span class="hl-p">Well-tempered metadynamics (WTMetaD) was performed with PLUMED 2.3 interfaced to GROMACS.</span>
+    <span class="hl-r">Two collective variables (CVs) were employed:</span>
+    <span class="hl-r">CV1, defined as the RMSD of the Cα atoms of COMM domain residues from the open-state reference structure (PDB: 5DW3)</span>,
+    and <span class="hl-r">CV2, defined as the distance between the center of mass of the COMM domain and the center of mass of the active site residues</span>.
+    <span class="hl-p">Gaussian hills were deposited every 500 MD steps with initial HEIGHT = 1.2 kJ/mol,
+    SIGMA = 0.05 nm (CV1) / 0.3 Å (CV2), and biasfactor γ = 15.</span>
+    <span class="hl-p">Multiple Walker metadynamics was employed with 4–8 independent walkers sharing the same bias potential.</span>
+    Simulations were run for <span class="hl-b">100–200 ns per walker</span>.
+    Convergence was assessed by monitoring the <span class="hl-p">time evolution of the free energy difference ΔG(closed − open)</span>.
+    The FEL was reconstructed using the <span class="hl-p">plumed sum_hills utility</span>.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">方法描述②（核心）：定义了 MetaDynamics 的集体变量（CV）和参数。这是整个方法的技术核心，你复现时必须逐字理解。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-me">方法论（最密集的技术内容）</span>
+
+  <div class="ann-label">MetaDynamics 的工作原理（从零开始）</div>
+  <div class="ann-value" style="border-left:4px solid #8b5cf6;">
+    <strong>问题：</strong> COMM domain 从开放态到闭合态需要跨越一个高能垒（&gt;5 kcal/mol），在普通 MD 的 100 ns 内不会自发发生。<br><br>
+    <strong>MetaDynamics 的解决方案（沙子填坑类比）：</strong><br>
+    ① 把蛋白的构象空间想象成一个有很多山谷（能量极小值）的三维地形<br>
+    ② 蛋白就像一个小球，会掉入最深的山谷（开放态）然后待在那里不动<br>
+    ③ MetaDynamics 每隔一段时间（PACE=500步），就在小球当前位置放一堆沙子（Gaussian 函数）<br>
+    ④ 随着沙子越堆越多，当前山谷逐渐被填平，小球被迫移动到下一个山谷<br>
+    ⑤ 最终，整个地形被填平——此时沙子的高度正好等于原来地形的深度的负数，即 FEL<br>
+    ⑥ <code>plumed sum_hills</code> 就是把所有加进去的沙子加起来，得到 FEL<br><br>
+    <strong>Well-Tempered 变体的改进：</strong><br>
+    普通 MetaD：每次加的沙子高度不变（HEIGHT = 1.2 kJ/mol 一直不变）<br>
+    WTMetaD：随着某个区域沙子越来越多，以后在同一区域加的沙子越来越低（HEIGHT × exp(-V/kTγ)），防止过填充，收敛更好。
+  </div>
+
+  <div class="ann-label">什么是集体变量（CV）？</div>
+  <div class="ann-value" style="border-left:4px solid #dc2626;">
+    <strong>CV（Collective Variable）= 你用来描述构象的"坐标"</strong><br><br>
+    例如，COMM domain 有成百上千个原子，你不可能追踪所有原子的运动。<br>
+    CV 把这个复杂运动压缩成 1–2 个数字：<br><br>
+    <strong>CV1（RMSD）：</strong> COMM domain 的 Cα 原子相对于开放态参考结构（5DW3）的均方根偏差。<br>
+    → 小的 RMSD = COMM 接近开放态；大的 RMSD = COMM 偏离开放态（可能是闭合态）<br><br>
+    <strong>CV2（距离）：</strong> COMM domain 质心与活性位点残基质心之间的距离。<br>
+    → 小距离 = COMM 接近活性位点 = 闭合态；大距离 = COMM 远离活性位点 = 开放态<br><br>
+    <strong>为什么用两个 CV？</strong> 一个 CV 只能描述一维运动，可能错过重要的构象路径。两个 CV 构成二维 FEL 图，更完整地描述 COMM domain 的运动空间。
+  </div>
+
+  <div class="ann-label">参数详细解释</div>
+  <table class="vocab-table">
+    <tr><th>参数</th><th>值</th><th>含义</th></tr>
+    <tr><td><strong>HEIGHT</strong></td><td>1.2 kJ/mol</td><td>每个 Gaussian 的初始高度（沙子堆的高度）。越大，采样越快，但精度越低</td></tr>
+    <tr><td><strong>SIGMA</strong></td><td>0.05 nm / 0.3 Å</td><td>Gaussian 的宽度（沙子堆的范围）。应与 CV 的热涨落相当</td></tr>
+    <tr><td><strong>PACE</strong></td><td>500 步</td><td>每隔500 MD 步（≈ 1 ps）放一堆沙子</td></tr>
+    <tr><td><strong>BIASFACTOR γ</strong></td><td>15</td><td>WTMetaD 的核心参数，控制沙子高度衰减速度。越大越接近普通 MetaD</td></tr>
+    <tr><td><strong>Multiple Walkers</strong></td><td>4–8 个</td><td>同时运行4–8个独立模拟（walker），共享同一个偏置势，大幅加速收敛</td></tr>
+    <tr><td><strong>sum_hills</strong></td><td>PLUMED 工具</td><td>将所有积累的 Gaussian 求和，重建 FEL</td></tr>
+  </table>
+
+  <div class="ann-label">PLUMED 代码模板（可直接参考）</div>
+  <div class="formula">
+# 定义 COMM domain 残基（根据你的体系修改残基编号）
+COMM_residues: GROUP ATOMS=c1_802-c1_1180  # COMM domain Cα 原子
+
+# CV1: COMM RMSD（相对于开放态参考）
+cv1: RMSD REFERENCE=open_reference.pdb TYPE=OPTIMAL ATOMS=COMM_residues
+
+# CV2: COMM 质心 到 活性位点质心 的距离
+active_site: GROUP ATOMS=c1_655,c1_828  # K82 和 E104 的 Cα
+cv2: DISTANCE ATOMS=COMM_residues,active_site COMPONENTS
+
+# Well-Tempered MetaDynamics
+metad: METADYNAMICS ARG=cv1,cv2
+       SIGMA=0.05,0.03
+       HEIGHT=1.2
+       PACE=500
+       BIASFACTOR=15
+       TEMP=300
+       FILE=HILLS
+       WALKERS_MPI  # 多 walker 模式（MPI）
+
+# 输出
+PRINT ARG=cv1,cv2,metad.bias STRIDE=500 FILE=COLVAR
+  </div>
+
+  <div class="ann-label">收敛检验（关键！）</div>
+  <div class="ann-value">论文使用 ΔG(closed − open) 随时间的变化来判断收敛。如果这个差值稳定不变（通常最后 30–50 ns 波动 &lt; 0.5 kJ/mol），就认为收敛。你复现时必须做这个检验，否则 FEL 不可靠。</div>
+
+  <div class="project-box">这段是你实际操作的"食谱"。关键参数：HEIGHT=1.2, SIGMA=0.05, PACE=500, BIASFACTOR=15, 4–8 walkers, 100–200 ns per walker。总计算量约 400–1600 ns，需要 GPU 集群（约 2–4 天的 A100 算力）。</div>
+</div>
+</div><!-- end P6 -->
+</section>
+
+<!-- ═══════════ RESULTS ═══════════ -->
+<section class="paper-sec" id="results">
+<div class="sec-label"><span class="sec-num">03</span> 结果与讨论 Results &amp; Discussion</div>
+
+<!-- P7 -->
+<div class="para-block" id="p7">
+<div class="para-left">
+  <span class="para-id">P7 · 晶体结构分析：建立 open/closed 标准</span>
+  <p>
+    Analysis of available crystal structures of TrpS and standalone TrpB variants
+    revealed <span class="hl-b">two distinct conformational states for the COMM domain</span>.
+    In the full αββα complex
+    <span class="hl-b">(PDB: 1BKS, 5DW4), the COMM domain adopts a closed conformation characterized by a salt bridge between R141 and D305 (distance &lt; 3.5 Å)</span>
+    and hydrogen bonds from E104 to the aminoacrylate intermediate.
+    In the isolated β-subunit crystal structures
+    <span class="hl-b">(PDB: 5DW3), the COMM domain is disordered or adopts an open conformation</span>
+    with the R141–D305 distance &gt; 8 Å.
+    <span class="hl-y">This structural dichotomy directly provides the structural reference states for the collective variables</span>
+    and confirms that crystal structures alone cannot capture the dynamics needed to understand catalytic efficiency.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">结果导入（Structural Anchor）：用已知晶体结构确立 open 和 closed 状态的结构定义，为后续 FEL 分析提供参考坐标。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-ev">实验证据（文献晶体结构）</span>
+  <span class="ann-role role-cl">建立标准</span>
+
+  <div class="ann-label">R141–D305 盐桥：COMM 闭合的分子标志</div>
+  <div class="ann-value" style="border-left:4px solid #2563eb;">
+    <strong>R141（精氨酸，带正电）</strong> 和 <strong>D305（天冬氨酸，带负电）</strong> 之间的静电相互作用（盐桥）是 COMM domain 闭合的分子"锁扣"。<br><br>
+    <strong>开放态：</strong> R141–D305 距离 &gt; 8 Å → 两者相距太远，没有相互作用<br>
+    <strong>闭合态：</strong> R141–D305 距离 &lt; 3.5 Å → 形成稳定盐桥，"锁住"COMM domain<br><br>
+    <strong>为什么要监测这个距离？</strong> 在你的 GROMACS 模拟中，可以用 PLUMED 实时输出 R141–D305 距离作为辅助 CV，用来验证 COMM 是否真的闭合。如果 FEL 里的"闭合态极小值"对应的 R141–D305 距离 &lt; 3.5 Å，说明你的计算是可信的。<br><br>
+    <strong>在你的设计蛋白中</strong>：如果 AI 设计的序列不含 R141 和 D305 的等效残基，闭合态将无法稳定。这是 AI 设计失败的常见原因之一。
+  </div>
+
+  <div class="ann-label">关键 PDB 文件</div>
+  <table class="vocab-table">
+    <tr><th>PDB ID</th><th>结构描述</th><th>用途</th></tr>
+    <tr><td><strong>5DW3</strong></td><td>WT PfTrpB，无 TrpA，COMM 开放态</td><td>MetaDynamics 起始结构，CV1 的开放态参考</td></tr>
+    <tr><td><strong>5DW4</strong></td><td>PfTrpS 复合体，COMM 闭合态</td><td>CV1 闭合态参考；用于定义 closed state RMSD</td></tr>
+    <tr><td><strong>1BKS</strong></td><td>大肠杆菌 TrpS，经典复合体结构</td><td>历史参考，验证 COMM 机制的普遍性</td></tr>
+  </table>
+
+  <div class="project-box">立即行动：从 RCSB（rcsb.org）下载 5DW3 和 5DW4。5DW3 是你 MD 体系的起点；5DW4 用于定义你的"闭合态参考结构"（RMSD CV 的目标）。</div>
+</div>
+</div><!-- end P7 -->
+
+<!-- P8 -->
+<div class="para-block" id="p8">
+<div class="para-left">
+  <span class="para-id">P8 · WT-PfTrpB 的 FEL：开放态偏好</span>
+  <p>
+    The FEL computed for WT-PfTrpB shows a
+    <span class="hl-b">deep free energy minimum corresponding to the open COMM domain conformation (RMSD from closed reference &gt; 2.5 Å)</span>,
+    with the partially closed and closed states being
+    <span class="hl-b">energetically unfavorable by 3.5–5.0 kcal/mol</span>.
+    This result is <span class="hl-y">consistent with the poor catalytic efficiency of WT-PfTrpB when isolated</span>:
+    the enzyme very rarely accesses the closed conformation required for productive catalysis.
+    The exchange rate between open and closed states is also slow,
+    suggesting a <span class="hl-r">high kinetic barrier in addition to the thermodynamic penalty</span>.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">基准建立（Baseline）：WT 的 FEL 是后续所有比较的基准线。这段证明了 FEL 与实验观测到的低活性是一致的，建立了 FEL ↔ 活性的对应关系。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-ev">计算结果</span>
+  <span class="ann-role role-cl">与实验的一致性验证</span>
+
+  <div class="ann-label">如何读 2D FEL 图（论文 Figure 2 的理解）</div>
+  <div class="ann-value" style="border-left:4px solid #2563eb;">
+    你需要在论文 Figure 2 中理解这些元素：<br><br>
+    <strong>坐标轴：</strong><br>
+    X 轴（CV1）= COMM RMSD（越小 = 越接近闭合态）<br>
+    Y 轴（CV2）= COMM 到活性位点距离（越小 = 越接近闭合态）<br><br>
+    <strong>颜色深度（热力图）：</strong><br>
+    蓝色 = 低自由能（稳定，系统常待在这里）<br>
+    红色 = 高自由能（不稳定，系统很少到这里）<br><br>
+    <strong>WT-PfTrpB FEL 的特征：</strong><br>
+    只有一个深蓝色区域，位于 CV1 大（开放态）的位置。闭合态区域（CV1 小，CV2 小）是红色的，比开放态高 3.5–5.0 kcal/mol。<br><br>
+    <strong>为什么 3.5–5.0 kcal/mol 就意味着"很少发生"？</strong><br>
+    Boltzmann 分布：P = exp(−ΔG/kT)，在 300K 时 kT ≈ 0.6 kcal/mol<br>
+    P(closed)/P(open) = exp(−5/0.6) = exp(−8.3) ≈ 0.00025<br>
+    即闭合态出现的概率约为 0.025%。这个概率和 WT-PfTrpB 的低活性直接对应！
+  </div>
+
+  <div class="ann-label">热力学 vs 动力学的区分</div>
+  <div class="ann-value">
+    论文提到了两个问题：<br>
+    ① <strong>热力学不利（thermodynamic penalty）</strong>：闭合态本身就比开放态高能（ΔG = +3.5–5.0 kcal/mol）<br>
+    ② <strong>动力学屏障（kinetic barrier）</strong>：即使给系统足够时间，从开放到闭合的路径上还有能垒（过渡态），交换速率慢<br><br>
+    两者都不利 → WT-PfTrpB 极少闭合 → 极低活性。<br>
+    MetaDynamics 主要解决的是动力学采样问题（帮助跨越能垒），但同时也给出了热力学信息（ΔG）。
+  </div>
+
+  <div class="ann-label">关键数值</div>
+  <div class="ann-value">ΔG(closed − open) = +3.5 至 +5.0 kcal/mol（不利）。这是你在自己的模拟中需要与 LBCA（目标：≈ −2 kcal/mol）对比的核心指标。</div>
+
+  <div class="project-box">判断你的 AI 设计蛋白是否可能有活性，最简单的标准：ΔG(closed − open) 是否小于 0（即闭合态比开放态稳定）？如果类似 WT（+3.5 kcal/mol），设计失败；如果类似 LBCA（−2 kcal/mol），设计成功。</div>
+</div>
+</div><!-- end P8 -->
+
+<!-- P9 -->
+<div class="para-block" id="p9">
+<div class="para-left">
+  <span class="para-id">P9 · TrpS 复合体的 FEL：别构激活的热力学定量</span>
+  <p>
+    By contrast, in the full TrpS complex, the FEL shows a
+    <span class="hl-b">basal free energy difference of only ~1.5 kcal/mol between open and closed COMM states</span>,
+    with the <span class="hl-b">closed state becoming the global minimum in the presence of the aminoacrylate intermediate</span>.
+    <span class="hl-y">TrpA binding effectively provides ~2–3 kcal/mol of stabilization to the closed COMM state</span>
+    through direct contacts at the αβ interface.
+    Additionally, the <span class="hl-r">monovalent cation binding site near the COMM domain, when occupied by Na<sup>+</sup>, contributes an additional ~0.5 kcal/mol of closed-state stabilization</span>.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">对照组（Positive Control）：TrpS 复合体是"完美状态"的参照。这段量化了 TrpA 别构激活的热力学贡献，为后续讨论"突变如何模拟 TrpA 效果"提供数值基准。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-ev">计算证据</span>
+  <span class="ann-role role-cl">量化别构效应</span>
+
+  <div class="ann-label">TrpA 别构激活的热力学分解</div>
+  <div class="ann-value">
+    TrpA 对闭合态的稳定作用约 2–3 kcal/mol，来自于 αβ 界面处的直接物理接触（氢键、盐桥、疏水接触）。这相当于在 FEL 地形上，把闭合态的"盆"挖深了 2–3 kcal/mol。<br><br>
+    Na<sup>+</sup> 额外贡献 ~0.5 kcal/mol（通过一价阳离子结合位点）。<br><br>
+    <strong>总计：</strong> TrpS 复合体比孤立 WT-TrpB 对闭合态多稳定约 3–4 kcal/mol。<br><br>
+    这就是为什么 LBCA-TrpB（6个突变） 需要提供同等量级的稳定作用——LBCA 的6个突变合计贡献 ~5 kcal/mol，甚至超过了 TrpA。
+  </div>
+
+  <div class="ann-label">一价阳离子结合位点（MCS）</div>
+  <div class="ann-value">TrpB 活性位点附近有一个 Na<sup>+</sup>/K<sup>+</sup> 结合位点（Monovalent Cation Site, MCS），其占据与否影响 COMM 闭合。Osuna 的模拟通常在 Na<sup>+</sup> 存在的条件下进行。你配体参数化时需要考虑是否包含 Na<sup>+</sup>。</div>
+
+  <div class="project-box">TrpS 复合体的 FEL 是"满分"参照——这就是最理想的 TrpB 表现。你的 AI 设计蛋白如果能达到类似 TrpS 复合体的 FEL（闭合态为全局极小值），那就是接近完美的设计。</div>
+</div>
+</div><!-- end P9 -->
+
+<!-- P10 -->
+<div class="para-block" id="p10">
+<div class="para-left">
+  <span class="para-id">P10 · 进化中间体 0B2-TrpB：前两步突变的效果</span>
+  <p>
+    The early evolved variant 0B2-TrpB
+    <span class="hl-b">(mutations I6V and I68V relative to WT) shows an intermediate FEL profile</span>.
+    The <span class="hl-b">relative stability of the partially closed state increases by approximately 1.5 kcal/mol compared to WT</span>,
+    whereas the <span class="hl-b">fully closed state remains largely inaccessible</span>.
+    This indicates that <span class="hl-y">even the earliest mutations in the directed evolution trajectory begin to reshape the conformational ensemble</span>,
+    partially recapitulating the allosteric effect of TrpA,
+    but that <span class="hl-g">full closure requires additional mutations at more distal positions</span>.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">进化中间点（Evolutionary Checkpoint）：0B2 是"只迈出两步"的进化中间体，显示进化是逐步重塑 FEL 的渐进过程，而非"全有或全无"。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-ev">计算证据</span>
+  <span class="ann-role role-cl">渐进重塑证据</span>
+
+  <div class="ann-label">I6V 和 I68V 的位置与作用</div>
+  <div class="ann-value">
+    <strong>I6V：</strong> 位于 TrpB N 端 α-螺旋（残基 6），Ile（异亮氨酸）→ Val（缬氨酸）。侧链变小，减少了与 COMM domain 残基之间的空间位阻，使半闭合态更容易访问。<br><br>
+    <strong>I68V：</strong> 位于 β-折叠核心区（残基 68），同样 Ile → Val。减少了核心区域的空间位阻，使 COMM 向半闭合运动更顺畅。<br><br>
+    <strong>关键观察：</strong> 这两个突变都在 COMM domain 附近（&lt;15 Å），它们主要稳定"半闭合"态，但无法推动完全闭合。完全闭合需要后面那4个远端突变。
+  </div>
+
+  <div class="ann-label">潜在漏洞</div>
+  <div class="alert-warn">论文的绿色高亮（"full closure requires additional mutations at more distal positions"）是一个关键但未完全解释的过渡——为什么远端突变能提供更多的稳定化？这在 P12 和 P13 中有更多解释，但分子层面的原子机制仍不够清晰（这也是 ACS Catal 2021 进一步研究的动机）。</div>
+
+  <div class="project-box">0B2-TrpB 的结果告诉你：即使是部分失败的设计（只有半闭合态稳定），也能从 FEL 上被识别出来，不需要等到湿实验才知道。这说明 FEL 是一个敏感的分级指标，而非简单的"通过/不通过"判断。</div>
+</div>
+</div><!-- end P10 -->
+
+<!-- P11 -->
+<div class="para-block" id="p11">
+<div class="para-left">
+  <span class="para-id">P11 · LBCA-TrpB：FEL 完全反转，闭合态成为全局极小值</span>
+  <p>
+    The fully evolved LBCA-TrpB
+    <span class="hl-b">(6 mutations total: I6V, I68V, F274S, T292S, I305V, T321A) shows a dramatically reshaped FEL</span>
+    in which the <span class="hl-b">closed COMM conformation becomes the global free energy minimum,
+    with ΔG(closed − open) = −2.3 kcal/mol</span>.
+    This represents a <span class="hl-b">~5 kcal/mol shift in relative stability compared to WT-PfTrpB</span>.
+    The partially closed state also deepens,
+    and the exchange rate between states increases substantially.
+    <span class="hl-y">This FEL profile mirrors that seen in the full TrpS complex</span>,
+    explaining why LBCA-TrpB can catalyze the β-replacement reaction efficiently in the absence of TrpA.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">核心结果（Key Result）：论文最重要的单个数据点。LBCA-TrpB 的 FEL 与 TrpS 复合体相当，从热力学上解释了为什么6个突变足以赋予独立 TrpB 高活性。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-ev">计算核心证据</span>
+  <span class="ann-role role-cl">主要主张的支撑</span>
+
+  <div class="ann-label">ΔG = −2.3 kcal/mol 的含义</div>
+  <div class="ann-value" style="border-left:4px solid #16a34a;">
+    ΔG(closed − open) = −2.3 kcal/mol 意味着：<br>
+    P(closed)/P(open) = exp(−(−2.3)/0.6) = exp(3.83) ≈ 46<br><br>
+    即闭合态出现的概率是开放态的 46 倍！LBCA-TrpB 大多数时间处于闭合态，催化反应可以高效发生。<br><br>
+    <strong>对比：</strong><br>
+    WT: ΔG ≈ +4 kcal/mol → P(closed) ≈ 0.025%<br>
+    0B2: ΔG ≈ +2 kcal/mol → P(closed) ≈ 3.5%<br>
+    LBCA: ΔG ≈ −2.3 kcal/mol → P(closed) ≈ 98%<br>
+    TrpS: ΔG ≈ −1.5 kcal/mol → P(closed) ≈ 92%<br><br>
+    这组数字完美解释了 kcat 随进化的变化趋势！
+  </div>
+
+  <div class="ann-label">关键阈值总结（你的项目标准）</div>
+  <div class="ann-value">
+    <table class="vocab-table">
+      <tr><th>ΔG(closed−open)</th><th>评估结论</th><th>类比</th></tr>
+      <tr><td>&lt; −2 kcal/mol</td><td>🟢 活性强（类 LBCA/TrpS）</td><td>好候选，值得湿实验</td></tr>
+      <tr><td>−2 到 0 kcal/mol</td><td>🟡 活性中等（类 0B2 进化体）</td><td>可能活性，需要优化</td></tr>
+      <tr><td>0 到 +2 kcal/mol</td><td>🟠 活性低（类 WT）</td><td>可能无活性，需要重设计</td></tr>
+      <tr><td>&gt; +2 kcal/mol</td><td>🔴 无活性（COMM 不能闭合）</td><td>丢弃</td></tr>
+    </table>
+  </div>
+
+  <div class="project-box">这是你项目的核心判断标准！对于每一个 aNima lab 的 AI 设计蛋白，跑完 MetaDynamics 后，先看 ΔG(closed − open)。用上表快速分类，再决定是否推进到湿实验。</div>
+</div>
+</div><!-- end P11 -->
+
+<!-- P12 -->
+<div class="para-block" id="p12">
+<div class="para-left">
+  <span class="para-id">P12 · 单突变分析：每个突变的贡献</span>
+  <p>
+    To dissect the individual contribution of each mutation to FEL reshaping,
+    we <span class="hl-p">computed FELs for each single-mutation variant</span>.
+    The <span class="hl-b">two COMM domain-proximal mutations (I6V and I68V, located in the N-terminal helix and core β-strand respectively) together account for ~1.5 kcal/mol stabilization of the partially closed state</span>,
+    primarily by <span class="hl-r">reducing steric clashes that prevent COMM domain closure</span>.
+    The <span class="hl-b">four distal mutations (F274S, T292S, I305V, T321A, all in the α-helical region &gt;15 Å from the active site) provide the remaining ~3.5 kcal/mol stabilization of the fully closed state</span>
+    through a <span class="hl-r">network of long-range electrostatic and hydrophobic interactions</span>.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">机制分解（Mechanistic Dissection）：把整体效果（6个突变的总贡献）分解到每个突变，理解远端突变为什么有效。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-ev">计算证据</span>
+  <span class="ann-role role-me">机制分析</span>
+
+  <div class="ann-label">近端 vs 远端突变的不同作用方式</div>
+  <div class="ann-value">
+    <strong>近端突变（I6V, I68V）：</strong><br>
+    位于 COMM domain 附近，作用机制相对直接：Ile → Val 侧链变小，减少与 COMM domain 残基的空间位阻（立体冲突），使半闭合构象更稳定。这是"直接效应"，容易理解。<br><br>
+    <strong>远端突变（F274S, T292S, I305V, T321A）：</strong><br>
+    位于距活性位点 &gt;15 Å 的 α-螺旋区域，作用机制间接：通过改变蛋白质核心内部的长程静电和疏水相互作用网络，间接稳定 COMM 闭合态。这是"别构效应"，是这篇论文最有新意的发现。<br><br>
+    <strong>关键数字：</strong><br>
+    近端贡献：~1.5 kcal/mol（半闭合）<br>
+    远端贡献：~3.5 kcal/mol（完全闭合）<br>
+    远端贡献 > 近端贡献！说明远端突变是更有效的工程化目标。
+  </div>
+
+  <div class="ann-label">潜在漏洞</div>
+  <div class="alert-warn">各突变的贡献是否是加和性的？这里论文隐式假设各突变贡献大致相互独立，但实际上可能存在合作效应（epistasis）。例如 F274S 和 T292S 一起出现可能比各自单独多贡献 0.5 kcal/mol。ACS Catal 2021 论文进一步分析了这种合作性。</div>
+
+  <div class="project-box">当你评估 AI 设计蛋白时，如果它的 FEL 不理想，可以用 SPM 方法（Osuna ACS Catal 2021）找到类似 F274S/T292S 等远端位置的候选突变，再通过 PointMut MetaDynamics 测试单突变效果，迭代优化。这就是 Osuna 方法的完整工作流。</div>
+</div>
+</div><!-- end P12 -->
+
+<!-- P13 -->
+<div class="para-block" id="p13">
+<div class="para-left">
+  <span class="para-id">P13 · 别构通信网络分析</span>
+  <p>
+    <span class="hl-p">Principal component analysis (PCA) of MD trajectories</span>
+    reveals that <span class="hl-b">COMM domain motion is allosterically coupled to residues far from the active site</span>.
+    Several distal positions that undergo <span class="hl-r">correlated motion with COMM domain opening/closing form a network that spans from the N-terminal helix to the C-terminal domain</span>.
+    Crucially, <span class="hl-y">the mutations in LBCA-TrpB are all located along this allosteric communication network</span>,
+    suggesting that their functional effect is transmitted through
+    <span class="hl-r">altered correlated motions rather than through direct contacts with the COMM domain or active site</span>.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">机制解释（Mechanism）：解释为什么远端突变有效——它们恰好位于蛋白质内部的别构通信网络上。这是本段最关键的洞见。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-me">方法（PCA）</span>
+  <span class="ann-role role-cl">核心机制解释</span>
+
+  <div class="ann-label">什么是别构通信网络？</div>
+  <div class="ann-value" style="border-left:4px solid #d97706;">
+    把蛋白质想象成一栋楼。COMM domain 是顶层的一扇门。你想让顶层的门关上，可以直接去顶层推门（近端突变），但也可以通过楼下的结构调整，改变整个楼的受力分布，间接让顶层的门更容易关上（远端突变）。<br><br>
+    <strong>PCA（主成分分析）</strong> 是一种统计方法，能从 MD 轨迹中提取出最重要的集体运动模式（主成分）。第一主成分通常就是 COMM domain 的开/闭运动。<br><br>
+    <strong>别构网络的构建方式：</strong><br>
+    ① 计算所有残基对之间的运动相关性（correlated motion）<br>
+    ② 相关性高 = 这两个残基之间有能量/运动传导<br>
+    ③ 把这些相关性构建成图（Graph），用 Dijkstra 算法找最短路径<br>
+    ④ 路径上的残基就是"别构通信热点"——突变这些位置最可能影响 COMM 运动<br><br>
+    这就是 ACS Catal 2021 论文中 SPM（Shortest Path Map）方法的基本原理。
+  </div>
+
+  <div class="ann-label">与 SPM 的联系</div>
+  <div class="ann-value">这段是 JACS 2019 的 proto-SPM 描述。在 ACS Catal 2021 中，Osuna 把这个概念正式化、工具化，建立了一个可以直接从 MD 输出预测有益突变的计算流程，并在网页服务器 spmosuna.com 上发布。</div>
+
+  <div class="project-box">对你的 AI 设计蛋白：如果 FEL 不理想，可以先运行 SPM 分析，找出别构通信网络上的"热点"残基，再设计少量有针对性的突变来优化 FEL。这比盲目筛选突变高效得多。</div>
+</div>
+</div><!-- end P13 -->
+
+<!-- P14 -->
+<div class="para-block" id="p14">
+<div class="para-left">
+  <span class="para-id">P14 · 计算预测能力的验证</span>
+  <p>
+    We next asked whether <span class="hl-y">computational analysis of the conformational ensemble of the wild-type TrpS complex could predict which positions, if mutated in the isolated TrpB, would enhance standalone activity</span>.
+    Using the allosteric communication analysis of TrpS as a guide,
+    we <span class="hl-p">identified 12 residue positions</span> that are
+    <span class="hl-p">(i) located along the allosteric network connecting TrpA–TrpB interface to the COMM domain,
+    (ii) different between TrpS-bound TrpB and the standalone WT-PfTrpB, and
+    (iii) accessible for mutation without disrupting the protein fold</span>.
+    <span class="hl-b">Several of these computationally predicted positions overlap with known activity-enhancing mutations</span>,
+    validating the predictive utility of our approach.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">验证（Validation）：将计算方法的预测能力与已知实验结果对比，证明方法有效。这是整篇论文最具影响力的段落——它让 Osuna 的方法从"解释工具"升级为"预测工具"。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-ev">预测-实验对比</span>
+  <span class="ann-role role-cl">方法预测价值</span>
+
+  <div class="ann-label">三条候选位置的筛选标准（极为重要！）</div>
+  <div class="ann-value">
+    作者用了三个筛选条件，每一条都有其逻辑：<br><br>
+    <strong>条件①（别构位置）：</strong> 沿 TrpA–TrpB 接口到 COMM domain 的别构通信路径上<br>
+    → 确保突变的效果能被"传递"到 COMM domain<br><br>
+    <strong>条件②（序列差异）：</strong> 在 TrpS 复合体中的 TrpB 与独立 WT-TrpB 之间不同的位置<br>
+    → TrpA 结合"改变"了 TrpB 的这些位置，说明这些位置在别构调控中被天然"使用"<br><br>
+    <strong>条件③（结构可突变）：</strong> 可以突变而不破坏蛋白质折叠<br>
+    → 排除功能性关键残基（如 PLP 结合残基）和折叠核心残基<br><br>
+    <strong>结果：</strong> 12 个候选位置中，有若干与 Arnold lab 通过实验发现的有效突变重合。这是方法有效性的间接验证。
+  </div>
+
+  <div class="ann-label">注意：这里的"验证"是不完整的</div>
+  <div class="alert-warn">论文用"several positions overlap with known mutations"来支持预测，但没有公布完整的 12 个预测位点，也没有进行前瞻性实验验证（即测试新的、之前未知的预测位点）。真正完整的前瞻性验证是在 ACS Catal 2021 中完成的——那里预测并实验验证了 SPM6 突变体，kcat 提升 7 倍。</div>
+
+  <div class="project-box">你的项目正是这个预测框架的扩展应用：从"预测单个突变的效果"（Osuna 2019）→ "评估 AI 设计的整个蛋白的活性"（你的项目）。工具相同，应用场景更广。</div>
+</div>
+</div><!-- end P14 -->
+
+<!-- P15 -->
+<div class="para-block" id="p15">
+<div class="para-left">
+  <span class="para-id">P15 · 结论：范式的普遍意义</span>
+  <p>
+    Our study establishes that
+    <span class="hl-y">the allosteric activation of TrpB by TrpA operates primarily through reshaping the COMM domain conformational ensemble</span>,
+    shifting the population from an open, catalytically unproductive state toward a closed, productive state.
+    <span class="hl-y">Laboratory-directed evolution of standalone TrpB recapitulates this allosteric effect through a network of distal mutations</span>
+    that progressively stabilize the closed COMM conformation.
+    The <span class="hl-y">correlation between FEL-predicted closed-state stability and experimental kcat values</span>
+    provides a quantitative, computationally accessible metric for TrpB activity.
+    This framework—<span class="hl-y">conformational ensemble analysis by metadynamics to guide enzyme engineering</span>—
+    should be broadly applicable to <span class="hl-b">other allosteric enzymes where the key catalytic step requires a specific conformational state that is disfavored in the absence of allosteric partners</span>.
+  </p>
+</div>
+<div class="para-right">
+  <div class="ann-label">段落功能</div>
+  <div class="ann-value">结论与展望（Conclusion + Broader Impact）：总结核心发现，并将结论推广到整个酶工程领域。</div>
+
+  <div class="ann-label">逻辑角色</div>
+  <span class="ann-role role-cl">综合结论</span>
+  <span class="ann-role role-tr">转化意义</span>
+
+  <div class="ann-label">四个核心主张（全文总结）</div>
+  <div class="ann-value">
+    <strong>①</strong> TrpA 的别构激活 = 重塑 COMM domain 的构象系综（从开放偏好 → 闭合偏好）<br>
+    <strong>②</strong> 定向进化 = 用突变网络复现别构激活的热力学效果<br>
+    <strong>③</strong> FEL-predicted ΔG ↔ 实验 kcat 之间存在定量相关性（可以用 FEL 预测活性！）<br>
+    <strong>④</strong> 这套框架可推广到其他别构酶<br>
+  </div>
+
+  <div class="ann-label">论文的范式贡献总结</div>
+  <div class="ann-value" style="border-left:4px solid #14b8a6;">
+    <strong>之前（传统观点）：</strong><br>
+    酶工程 = 筛选大量随机突变体 → 找活性更好的 → 理解不重要<br><br>
+    <strong>之后（Osuna 框架）：</strong><br>
+    酶工程 = 计算构象系综 → 理解哪个构象驱动催化 → 理性设计突变 → 验证<br><br>
+    这种转变让酶工程从"盲目试错"进入"理性设计"时代，显著降低了实验成本。
+  </div>
+
+  <div class="ann-label">对你项目的最终意义</div>
+  <div class="project-box" style="background:#eff6ff;border-color:#93c5fd;">
+    这篇论文建立的框架，就是你的项目的理论基础。你的工作 = 把这个框架扩展到"AI 设计蛋白的评估"场景。aNima lab 的 GenSLM 或 RFDiffusion2 设计出来的 TrpB，需要用 Osuna 的 MetaDynamics FEL 来证明它们有活性——这就是你的角色。
+  </div>
+</div>
+</div><!-- end P15 -->
+</section>
+
+<!-- ═══════════ ARGUMENT SKELETON ═══════════ -->
+<section class="paper-sec" id="skeleton">
+<div class="sec-label"><span class="sec-num">04</span> 论文论证骨架 Argument Skeleton</div>
+<div style="padding:24px 36px;">
+<div class="callout callout-teal">
+  <div class="callout-title">论文的逻辑链（一句话串联全文）</div>
+  TrpB 的催化活性取决于 COMM domain 处于闭合态的概率 P(closed)
+  → P(closed) 可由 MetaDynamics 计算的 ΔG(closed−open) 来量化
+  → TrpA 别构激活和定向进化突变都通过降低 ΔG(closed−open) 来提升 P(closed)
+  → 因此，ΔG(closed−open) 是预测和设计高活性 TrpB 的核心指标
+  → <strong>这套方法可以理性指导酶工程，取代部分随机筛选。</strong>
+</div>
+
+<div class="skeleton" style="margin-top:16px;">
+  <div class="skeleton-title">论证骨架图（从前提到结论）</div>
+
+  <div class="sk-line"><span class="sk-badge sk-b-E">前提①</span> <span>WT-TrpB 独立存在时 kcat 低100倍（实验事实，Arnold 2015）</span></div>
+  <div class="sk-line"><span class="sk-arrow">↓</span></div>
+  <div class="sk-line"><span class="sk-badge sk-b-M">方法①</span> <span>WTMetaD 计算 WT/0B2/LBCA 三种 TrpB 的 2D FEL</span></div>
+  <div class="sk-line"><span class="sk-arrow">↓</span></div>
+  <div class="sk-line"><span class="sk-badge sk-b-E">证据①</span> <span>WT: ΔG = +4 kcal/mol（闭合态不利）→ 与低活性吻合</span></div>
+  <div class="sk-line"><span class="sk-badge sk-b-E">证据②</span> <span>LBCA: ΔG = −2.3 kcal/mol（闭合态最稳）→ 与高活性吻合</span></div>
+  <div class="sk-line"><span class="sk-badge sk-b-E">证据③</span> <span>0B2: ΔG 介于两者之间 → 与中等活性吻合</span></div>
+  <div class="sk-line"><span class="sk-arrow">↓</span></div>
+  <div class="sk-line"><span class="sk-badge sk-b-P">推断①</span> <span>FEL 的 ΔG(closed−open) 定量预测 TrpB 活性（FEL ↔ kcat 相关）</span></div>
+  <div class="sk-line"><span class="sk-arrow">↓</span></div>
+  <div class="sk-line"><span class="sk-badge sk-b-M">方法②</span> <span>PCA + 别构通信分析定位远端突变的传导路径</span></div>
+  <div class="sk-line"><span class="sk-arrow">↓</span></div>
+  <div class="sk-line"><span class="sk-badge sk-b-E">证据④</span> <span>LBCA 突变位于别构通信路径上 → 它们是"传递者"而非"直接改变化学"</span></div>
+  <div class="sk-line"><span class="sk-arrow">↓</span></div>
+  <div class="sk-line"><span class="sk-badge sk-b-P">推断②</span> <span>从 TrpS 复合体的别构网络可以预测有效的工程化突变位点</span></div>
+  <div class="sk-line"><span class="sk-arrow">↓</span></div>
+  <div class="sk-line"><span class="sk-badge sk-b-C">结论</span> <span>MetaDynamics + 别构网络分析 = 理性酶工程的通用框架</span></div>
+</div>
+</div>
+</section>
+
+<!-- ═══════════ YOUR PROJECT CONNECTION ═══════════ -->
+<section class="paper-sec" id="your-project">
+<div class="sec-label"><span class="sec-num">05</span> 与你的项目的完整连接</div>
+<div style="padding:24px 36px;">
+
+<div class="callout callout-teal">
+  <div class="callout-title">你的项目在 Osuna 框架中的位置</div>
+  Osuna 2019 证明：ΔG(closed−open) 预测 TrpB 活性<br>
+  <strong>你的任务</strong>：对 aNima lab 的 AI 设计蛋白运行相同的 MetaDynamics，得到它们的 ΔG，预测哪些候选蛋白有活性。
+</div>
+
+<table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:13.5px;">
+  <thead>
+    <tr style="background:var(--navy);color:white;">
+      <th style="padding:10px 14px;text-align:left;">Osuna 2019 做了什么</th>
+      <th style="padding:10px 14px;text-align:left;">你需要做什么</th>
+      <th style="padding:10px 14px;text-align:left;">工具/文件</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="background:white;">
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">下载 5DW3（WT-PfTrpB）作为起点</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">从 JP 获取 AI 设计蛋白的 .pdb 文件</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">RCSB PDB</td>
+    </tr>
+    <tr style="background:#f7f5ef;">
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">AMBER ff14SB + Meagher PLP 参数</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">同上（完全相同的力场和参数）</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">AmberTools, ACPYPE</td>
+    </tr>
+    <tr style="background:white;">
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">模拟 E(A-A) 状态（aminoacrylate 在活性位点）</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">同上（E(A-A) 状态是 COMM 运动的驱动状态）</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">LEaP / tLEaP</td>
+    </tr>
+    <tr style="background:#f7f5ef;">
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">WTMetaD with PLUMED 2.x, 4–8 walkers</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">同上（复现相同参数）</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">GROMACS + PLUMED 2.x</td>
+    </tr>
+    <tr style="background:white;">
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">比较 WT / 0B2 / LBCA 的 FEL</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">比较 AI 设计蛋白与 WT / LBCA 的 FEL</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5dfd0;">plumed sum_hills + Python 可视化</td>
+    </tr>
+    <tr style="background:#f7f5ef;">
+      <td style="padding:10px 14px;">报告 ΔG(closed−open)</td>
+      <td style="padding:10px 14px;">报告每个 AI 设计蛋白的 ΔG，按表格分类</td>
+      <td style="padding:10px 14px;">matplotlib / seaborn heatmap</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout callout-orange" style="margin-top:20px;">
+  <div class="callout-title">⚠️ 你现在最需要解决的三个问题</div>
+  <strong>问题①：</strong> 你有没有 AI 设计蛋白的 .pdb 结构文件？（需要从 JP 处获取）<br>
+  <strong>问题②：</strong> 你有没有 Meagher PLP 参数文件（.frcmod 或 .prepin）？（需要从 Osuna lab SI 或文献获取）<br>
+  <strong>问题③：</strong> 你的计算集群（Caltech HPC 或 AWS）有没有安装 GROMACS + PLUMED？（需要系统管理员或自己编译）<br><br>
+  解决这三个问题，就可以开始第一次测试模拟。
+</div>
+</div>
+</section>
+
+</main>
+</div><!-- end layout -->
+
+<script>
+const sections = document.querySelectorAll('section.paper-sec,[id]');
+const navLinks = document.querySelectorAll('#sidebar .nav-link');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      navLinks.forEach(l => {
+        l.classList.remove('active');
+        if (l.getAttribute('href') === '#' + id) l.classList.add('active');
+      });
+    }
+  });
+}, { rootMargin:'-60px 0px -70% 0px', threshold:0 });
+document.querySelectorAll('[id]').forEach(s => observer.observe(s));
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const t = document.querySelector(a.getAttribute('href'));
+    if(t) t.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+});
+</script>
+</body>
+</html>

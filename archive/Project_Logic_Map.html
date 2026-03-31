@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Logic Map | Zhenpeng · aNima Lab · Caltech</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1a2744;--blue:#2563eb;--teal:#0d9488;--gold:#d97706;
+  --paper:#faf8f3;--paper2:#f3f0e8;--border:#d4c9a8;--text:#2d2d2d;
+  --gray:#6b7280;--green:#16a34a;--red:#dc2626;--purple:#7c3aed;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--text);font-size:15px;line-height:1.7;}
+a{color:var(--blue);text-decoration:none;}a:hover{text-decoration:underline;}
+
+/* NAV */
+#topnav{position:sticky;top:0;z-index:100;background:var(--navy);color:white;
+  padding:0 24px;display:flex;align-items:center;gap:18px;min-height:52px;}
+#topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:15px;}
+#topnav .nav-links{display:flex;gap:14px;margin-left:auto;}
+#topnav .nav-links a{color:rgba(255,255,255,.75);font-size:12.5px;text-decoration:none;padding:4px 0;}
+#topnav .nav-links a:hover{color:white;}
+
+main{max-width:960px;margin:0 auto;padding:0 24px 80px;}
+
+/* ── HERO ── */
+.hero{background:var(--navy);color:white;margin:0 -24px;padding:44px 60px;}
+.hero .tag{background:var(--teal);color:white;padding:2px 10px;border-radius:20px;
+  font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  display:inline-block;margin-bottom:14px;}
+.hero h1{font-family:'Lora',serif;font-size:26px;line-height:1.4;margin-bottom:12px;}
+.hero .subtitle{font-size:14px;opacity:.8;line-height:1.6;}
+
+/* ── SECTION HEADS ── */
+.sec-head{margin-top:48px;margin-bottom:24px;padding-bottom:10px;
+  border-bottom:3px solid var(--blue);}
+.sec-head h2{font-family:'Lora',serif;font-size:21px;color:var(--navy);display:flex;align-items:center;gap:10px;}
+.sec-head .num{background:var(--blue);color:white;width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+
+/* ── PROJECT DESC CARD ── */
+.project-box{background:white;border:2px solid var(--teal);border-radius:10px;padding:28px;margin-bottom:24px;}
+.project-box h3{color:var(--teal);font-size:15px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;margin-bottom:12px;}
+.project-box p{margin-bottom:10px;font-size:15px;line-height:1.75;}
+.project-box p:last-child{margin-bottom:0;}
+.hl{background:#fef3c7;padding:1px 3px;border-radius:3px;font-weight:600;}
+
+/* ── 5W TABLE ── */
+.five-w{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px;}
+.five-w td{padding:10px 14px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.five-w td:first-child{font-weight:700;color:var(--navy);width:80px;white-space:nowrap;background:#f7f5ef;}
+.five-w tr:last-child td{border-bottom:none;}
+
+/* ── PIPELINE DIAGRAM ── */
+.pipeline{display:flex;align-items:stretch;gap:0;margin:20px 0;flex-wrap:wrap;}
+.pipe-step{flex:1;min-width:100px;background:white;border:1px solid var(--border);
+  padding:16px 12px;text-align:center;position:relative;}
+.pipe-step:not(:last-child)::after{content:'→';position:absolute;right:-14px;top:50%;
+  transform:translateY(-50%);font-size:18px;color:var(--gray);z-index:1;}
+.pipe-step .tool{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--blue);margin-bottom:4px;}
+.pipe-step .desc{font-size:12.5px;color:var(--gray);}
+.pipe-step.yours{background:#f0fdf4;border-color:#86efac;}
+.pipe-step.yours .tool{color:var(--green);}
+.pipe-you-label{text-align:center;font-size:12px;font-weight:700;color:var(--green);margin-top:4px;}
+
+/* ── READING PATH ── */
+.reading-path{position:relative;}
+.rp-item{display:grid;grid-template-columns:160px 1fr;gap:0;margin-bottom:3px;}
+.rp-left{padding:14px 16px;border-right:3px solid var(--border);}
+.rp-left .rp-num{font-size:22px;font-weight:700;color:var(--border);}
+.rp-left .rp-time{font-size:11px;color:var(--gray);margin-top:2px;}
+.rp-right{padding:14px 20px;}
+.rp-right h4{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px;}
+.rp-right .rp-papers{font-size:13px;color:var(--gray);margin-bottom:6px;}
+.rp-right .rp-reason{font-size:13px;color:var(--text);background:#f7f5ef;
+  padding:6px 10px;border-radius:4px;border-left:3px solid var(--teal);}
+.urgent{background:#fff7ed;}
+.urgent .rp-left{border-right-color:var(--gold);}
+.urgent .rp-left .rp-num{color:var(--gold);}
+.done-badge{display:inline-block;background:#dcfce7;color:#166534;padding:1px 8px;
+  border-radius:10px;font-size:11px;font-weight:700;margin-left:8px;}
+.tonight-badge{display:inline-block;background:#fef3c7;color:#92400e;padding:1px 8px;
+  border-radius:10px;font-size:11px;font-weight:700;margin-left:8px;}
+.later-badge{display:inline-block;background:#f3f4f6;color:#6b7280;padding:1px 8px;
+  border-radius:10px;font-size:11px;font-weight:700;margin-left:8px;}
+
+/* ── OSUNA WORK SECTION ── */
+.osuna-card{background:white;border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden;}
+.osuna-card .oc-head{background:var(--navy);color:white;padding:12px 18px;
+  display:flex;align-items:center;gap:10px;}
+.osuna-card .oc-year{background:var(--teal);color:white;padding:2px 9px;border-radius:10px;font-size:12px;font-weight:700;}
+.osuna-card .oc-title{font-size:14px;font-weight:600;}
+.osuna-card .oc-body{padding:16px 18px;font-size:14px;line-height:1.7;}
+.osuna-card .oc-body h5{font-weight:700;color:var(--navy);margin-bottom:4px;margin-top:10px;font-size:13.5px;}
+.osuna-card .oc-body h5:first-child{margin-top:0;}
+.osuna-card .oc-doi{font-size:12px;color:var(--gray);margin-top:8px;padding-top:8px;border-top:1px solid #f0ede4;}
+.key-finding{background:#f0fdf4;border-left:3px solid var(--green);padding:8px 12px;
+  margin:10px 0;border-radius:0 5px 5px 0;font-size:13.5px;}
+.key-finding strong{color:var(--green);}
+
+/* ── PAPER LIST ── */
+.paper-table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px;}
+.paper-table th{background:var(--navy);color:white;padding:9px 12px;text-align:left;font-size:12.5px;}
+.paper-table td{padding:9px 12px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.paper-table tr:nth-child(even) td{background:#f7f5ef;}
+.paper-table .badge{padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;}
+.badge-open{background:#dcfce7;color:#166534;}
+.badge-wall{background:#fee2e2;color:#991b1b;}
+.badge-urgent{background:#fef3c7;color:#92400e;}
+.badge-later{background:#f3f4f6;color:#6b7280;}
+
+/* ── TONIGHT PLAN ── */
+.tonight-box{background:#fffbeb;border:2px solid var(--gold);border-radius:10px;padding:22px;}
+.tonight-box h3{color:var(--gold);font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;}
+.tonight-step{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start;}
+.tonight-step .ts-num{background:var(--gold);color:white;width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.tonight-step .ts-text{font-size:14px;line-height:1.7;}
+
+/* ── ZOTERO SECTION ── */
+.zotero-box{background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:18px;}
+.zotero-box h4{color:var(--blue);font-weight:700;margin-bottom:10px;font-size:14px;}
+.zotero-method{background:white;border:1px solid #e5dfd0;border-radius:5px;padding:10px 14px;margin-bottom:8px;font-size:13.5px;}
+.zotero-method strong{display:block;margin-bottom:3px;font-size:13px;color:var(--navy);}
+
+/* ── CALLOUT ── */
+.callout{border-radius:7px;padding:14px 18px;margin:16px 0;font-size:14px;line-height:1.7;}
+.callout-teal{background:#f0fdfa;border-left:4px solid var(--teal);}
+.callout-orange{background:#fff7ed;border-left:4px solid var(--gold);}
+.callout-blue{background:#eff6ff;border-left:4px solid var(--blue);}
+.callout-red{background:#fff1f2;border-left:4px solid var(--red);}
+.callout-title{font-weight:700;margin-bottom:5px;font-size:14px;}
+</style>
+</head>
+<body>
+
+<nav id="topnav">
+  <div class="logo">Project Logic Map</div>
+  <div class="nav-links">
+    <a href="#project">我的项目</a>
+    <a href="#reading">阅读路径</a>
+    <a href="#osuna">苏娜在做什么</a>
+    <a href="#papers">论文列表</a>
+    <a href="#tonight">今晚计划</a>
+    <a href="#zotero">Zotero</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="tag">Zhenpeng Liu · aNima Lab · Caltech · 2026</div>
+  <h1>从背景到目标：我的项目逻辑线全图</h1>
+  <div class="subtitle">这份文档回答四个核心问题：我的项目是什么 · 苏娜做了什么 · 我应该按什么顺序读 · 今晚我需要理解哪些</div>
+</div>
+
+<main>
+
+<!-- ══════════════════════════════════════════════════
+     SECTION 0: MY PROJECT
+═════════════════════════════════════════════════════ -->
+<div class="sec-head" id="project">
+  <h2><span class="num">0</span>最重要的事：我的项目到底是什么？</h2>
+</div>
+
+<div class="project-box">
+  <h3>一句话描述</h3>
+  <p>用苏娜实验室（Osuna Lab，西班牙）开发的 <span class="hl">MetaDynamics 计算流程</span>，评估 aNima Lab（Caltech）通过 AI 生成的 <span class="hl">TrpB 蛋白变体</span>是否具有催化活性——最终目标是筛选出能合成 <span class="hl">D-色氨酸</span> 的新型酶。</p>
+</div>
+
+<div class="callout callout-orange">
+  <div class="callout-title">⚠️ 关键区分：你不是在苏娜实验室，你只是使用她的方法</div>
+  你在 aNima Lab，使用的是苏娜团队发表在 JACS 2019 / ACS Catal 2021 中的计算方法。苏娜在西班牙做计算酶学，aNima 在 Caltech 做 AI 蛋白设计。你是连接两者的桥梁。
+</div>
+
+<h3 style="margin-top:24px;margin-bottom:12px;color:var(--navy);font-size:15px;font-weight:700;">五个维度完整描述</h3>
+<table class="five-w">
+  <tr><td>WHO（你）</td><td>Zhenpeng Liu，aNima Lab（Prof. Anima Anandkumar，Caltech）本科研究员。以前在 KU Miao Lab 做过 LiGaMD（和 MetaDynamics 类似的增强采样模拟），有 MD 基础。</td></tr>
+  <tr><td>WHAT（做什么）</td><td>复现苏娜的 GROMACS + PLUMED MetaDynamics 流程，计算每个 AI 设计蛋白的 COMM domain 自由能景观（FEL），提取关键指标 ΔG(closed−open)，判断蛋白是否有活性。</td></tr>
+  <tr><td>WHY（为什么）</td><td>aNima Lab 用 GenSLM / RFDiffusion2 设计了一批 TrpB 变体，但没有办法用计算快速判断"这个蛋白会不会在实验室里有活性"。苏娜的 MetaDynamics 方法是目前最好的计算预测工具，ΔG(closed−open) 和实验 kcat 高度相关。</td></tr>
+  <tr><td>HOW（怎么做）</td><td>① 下载 AI 设计蛋白 .pdb → ② 准备 AMBER/TIP3P 体系 → ③ 运行 WTMetaDynamics（GROMACS + PLUMED）→ ④ 计算 ΔG → ⑤ 按评分排序，推荐湿实验验证候选。</td></tr>
+  <tr><td>END GOAL（终极目标）</td><td>设计一个能合成 <strong>D-色氨酸（D-Trp）</strong>（而非天然的 L-Trp）的酶。这需要 re-face 而非 si-face 的吲哚进攻——活性位点几何需要完全重新设计，这就是为什么要用 de novo 设计。</td></tr>
+</table>
+
+<h3 style="margin-top:28px;margin-bottom:14px;color:var(--navy);font-size:15px;font-weight:700;">整个设计-评估流水线（你的位置标绿）</h3>
+<div class="pipeline">
+  <div class="pipe-step">
+    <div class="tool">Step 1</div>
+    <div class="tool" style="color:#7c3aed;">RFDiffusion2</div>
+    <div class="desc">生成蛋白骨架，包含 D-Trp 催化几何</div>
+  </div>
+  <div class="pipe-step">
+    <div class="tool">Step 2</div>
+    <div class="tool" style="color:#7c3aed;">ProteinMPNN</div>
+    <div class="desc">在骨架上设计氨基酸序列</div>
+  </div>
+  <div class="pipe-step">
+    <div class="tool">Step 3</div>
+    <div class="tool" style="color:#7c3aed;">AlphaFold2</div>
+    <div class="desc">结构预测，过滤折叠不稳定的序列</div>
+  </div>
+  <div class="pipe-step yours">
+    <div class="tool">Step 4 ← 你</div>
+    <div class="tool" style="color:#16a34a;">MetaDynamics</div>
+    <div class="desc">FEL 评估：ΔG(closed−open)</div>
+  </div>
+  <div class="pipe-step">
+    <div class="tool">Step 5</div>
+    <div class="tool" style="color:#d97706;">湿实验</div>
+    <div class="desc">合作实验室验证 kcat, ee 值</div>
+  </div>
+</div>
+<div class="pipe-you-label">▲ 你的角色：用计算筛选 Step 3 输出的候选蛋白，避免把时间浪费在无活性的候选上</div>
+
+<div class="callout callout-teal" style="margin-top:20px;">
+  <div class="callout-title">判断标准：ΔG(closed−open) 阈值</div>
+  ΔG &lt; −2 kcal/mol → 🟢 强活性候选（类 LBCA-TrpB，推荐湿实验）<br>
+  ΔG = −2 到 0 → 🟡 中等活性（可能有活性，需优化）<br>
+  ΔG = 0 到 +2 → 🟠 低活性（类 WT-PfTrpB，大概率无效）<br>
+  ΔG &gt; +2 → 🔴 无活性（COMM domain 无法关闭，直接丢弃）
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SECTION 1: READING PATH
+═════════════════════════════════════════════════════ -->
+<div class="sec-head" id="reading">
+  <h2><span class="num">1</span>阅读逻辑线：按什么顺序读，读完每步能理解什么</h2>
+</div>
+
+<div class="callout callout-blue">
+  每一层建立在上一层的基础上。如果你跳过层级，会发现后面的论文根本看不懂。今晚只需要完成 <strong>层 0 + 层 1</strong>，其余的在未来几周内按顺序读。
+</div>
+
+<div class="reading-path">
+
+  <!-- Layer 0 -->
+  <div class="rp-item urgent">
+    <div class="rp-left">
+      <div class="rp-num">层 0</div>
+      <div class="rp-time">TrpB 背景<br><span class="tonight-badge">今晚</span></div>
+    </div>
+    <div class="rp-right">
+      <h4>为什么需要 TrpB 工程化？Arnold Lab 是怎么做的？</h4>
+      <div class="rp-papers">
+        📄 Buller et al., <em>PNAS</em> 2015 — "Directed evolution of the tryptophan synthase β-subunit for stand-alone function" <span class="badge badge-open">PMC开放</span><br>
+        📄 Buller et al., <em>JACS</em> 2018 — "Directed Evolution Mimics Allosteric Activation by Stepwise Tuning of the Conformational Ensemble" <span class="badge badge-open">PMC开放</span>
+      </div>
+      <div class="rp-reason">读完这两篇，你能回答：TrpB 为什么单独存在时活性低？定向进化是怎么解决这个问题的？为什么远端突变有效？——这是理解苏娜工作的<strong>前提知识</strong>。</div>
+    </div>
+  </div>
+
+  <!-- Layer 1 -->
+  <div class="rp-item urgent">
+    <div class="rp-left">
+      <div class="rp-num">层 1</div>
+      <div class="rp-time">苏娜核心方法<br><span class="tonight-badge">今晚</span></div>
+    </div>
+    <div class="rp-right">
+      <h4>苏娜用 MetaDynamics 做了什么？FEL 如何预测活性？</h4>
+      <div class="rp-papers">
+        📄 Maria-Solano, Iglesias-Fernández, Osuna. <em>JACS</em> 2019 — "Deciphering the Allosterically Driven Conformational Ensemble in TrpS Evolution" <span class="badge badge-wall">需机构权限</span>
+      </div>
+      <div class="rp-reason"><strong>这是最重要的论文。</strong>它建立了 FEL ↔ 催化活性 的对应关系，你的整个项目的判断标准（ΔG 阈值）就来自这篇。详细标注版已在 JACS2019_Deep_Annotation.html 中。</div>
+    </div>
+  </div>
+
+  <!-- Layer 2 -->
+  <div class="rp-item">
+    <div class="rp-left">
+      <div class="rp-num">层 2</div>
+      <div class="rp-time">SPM 方法<br><span class="later-badge">本周</span></div>
+    </div>
+    <div class="rp-right">
+      <h4>SPM 是什么？如何从 FEL 分析中找到有效突变？</h4>
+      <div class="rp-papers">
+        📄 Maria-Solano et al., <em>ACS Catal</em> 2021 — "Identification and Experimental Validation of Distal Activity-Enhancing Mutations" <span class="badge badge-open">完全开放</span>
+      </div>
+      <div class="rp-reason">引入 SPM（Shortest Path Map）方法，将 MD 轨迹的动态相关性转化为图，找到最影响 COMM 运动的关键残基。设计了 SPM6 变体，仅测试 1 个突变体就实现了 7 倍 kcat 提升（相当于 3 轮定向进化效果）。<br><br>→ 如果你的 AI 设计蛋白 FEL 不理想，可以用 SPM 找补救突变。已获取全文。</div>
+    </div>
+  </div>
+
+  <!-- Layer 3 -->
+  <div class="rp-item">
+    <div class="rp-left">
+      <div class="rp-num">层 3</div>
+      <div class="rp-time">快筛方法<br><span class="later-badge">第2周</span></div>
+    </div>
+    <div class="rp-right">
+      <h4>有没有比 MetaDynamics 更快的初步筛选方法？</h4>
+      <div class="rp-papers">
+        📄 Casadevall et al., <em>Protein Science</em> 2022 — "Estimating conformational heterogeneity of tryptophan synthase with a template-based AlphaFold2 approach" <span class="badge badge-open">PMC开放</span>
+      </div>
+      <div class="rp-reason">引入 tAF2-MD：用 reduced-MSA AlphaFold2（32-64 条序列）生成多种结构，再跑 10 ns 短 MD。计算量是 MetaDynamics 的 1/10–1/50，但能给出接近的构象分布估计。<br><br>→ 你可以先用 tAF2-MD 快速过滤大量候选，再对有希望的做完整 MetaDynamics。</div>
+    </div>
+  </div>
+
+  <!-- Layer 4 -->
+  <div class="rp-item">
+    <div class="rp-left">
+      <div class="rp-num">层 4</div>
+      <div class="rp-time">AI 设计背景<br><span class="later-badge">第3-4周</span></div>
+    </div>
+    <div class="rp-right">
+      <h4>aNima Lab 用什么工具设计 TrpB？设计流程是什么？</h4>
+      <div class="rp-papers">
+        📄 Watson et al., <em>Nature</em> 2023 — "De novo design of protein structure and function with RFdiffusion" <span class="badge badge-open">开放</span><br>
+        📄 Dauparas et al., <em>Science</em> 2022 — "Robust deep learning–based protein sequence design using ProteinMPNN" <span class="badge badge-open">开放</span><br>
+        📄 aNima Lab, <em>NatComm</em> 2025 — "Sequence-based generative AI design of versatile tryptophan synthases" (GenSLM-TrpB)
+      </div>
+      <div class="rp-reason">这些是 aNima Lab 生成候选蛋白的工具。你不需要复现这些算法，但需要理解它们的输入/输出，才能知道你拿到的 .pdb 文件是怎么来的，以及为什么 AI 设计的蛋白需要计算验证。</div>
+    </div>
+  </div>
+
+  <!-- Layer 5 -->
+  <div class="rp-item">
+    <div class="rp-left">
+      <div class="rp-num">层 5</div>
+      <div class="rp-time">D-Trp 目标<br><span class="later-badge">第4-6周</span></div>
+    </div>
+    <div class="rp-right">
+      <h4>D-色氨酸的科学价值和合成挑战是什么？</h4>
+      <div class="rp-papers">
+        📄 Osuna, <em>Protein Science</em> 2025 — "A naturally occurring standalone TrpB provides insights into allosteric communication"<br>
+        📄 背景综述：D-amino acid biology and asymmetric synthesis
+      </div>
+      <div class="rp-reason">D-Trp 是这个项目的终极科学动机。D-氨基酸在药物（多肽药物、抗肿瘤化合物）和材料（抗生物膜）中有重要价值，但天然没有酶高效合成 D-Trp。这为你的 de novo 设计工作提供了重要性叙事。</div>
+    </div>
+  </div>
+
+</div><!-- end reading-path -->
+
+<!-- ══════════════════════════════════════════════════
+     SECTION 2: OSUNA'S WORK
+═════════════════════════════════════════════════════ -->
+<div class="sec-head" id="osuna">
+  <h2><span class="num">2</span>苏娜（Sílvia Osuna）在做什么——完整梳理</h2>
+</div>
+
+<div class="callout callout-blue">
+  <div class="callout-title">苏娜是谁</div>
+  Sílvia Osuna，西班牙赫罗纳大学（Universitat de Girona）教授 + ICREA 研究员，CompBioLab 创始人。世界上最深入研究 TrpB 构象动力学的计算化学家。她的核心主张：<strong>"酶的催化活性取决于它的构象系综（conformational ensemble），而不只是活性位点的静态结构。"</strong>
+</div>
+
+<!-- Paper 1: JACS 2019 -->
+<div class="osuna-card">
+  <div class="oc-head">
+    <span class="oc-year">JACS 2019</span>
+    <span class="oc-title">解码 TrpS 进化中别构驱动的构象系综</span>
+  </div>
+  <div class="oc-body">
+    <h5>苏娜做了什么</h5>
+    <p>对三种 TrpB 变体（WT-PfTrpB、0B2-TrpB、LBCA-TrpB）运行 Well-Tempered MetaDynamics，计算 COMM domain 的二维自由能景观（2D FEL）。</p>
+    <h5>核心发现</h5>
+    <div class="key-finding"><strong>发现①：</strong> WT-PfTrpB（孤立，无活性）的 FEL 显示开放态深而稳，闭合态高出 3.5–5 kcal/mol。</div>
+    <div class="key-finding"><strong>发现②：</strong> LBCA-TrpB（6个突变，高活性）的 FEL 完全反转：ΔG(closed−open) = −2.3 kcal/mol，闭合态是全局极小值。</div>
+    <div class="key-finding"><strong>发现③：</strong> FEL 的 ΔG 和实验 kcat 之间存在定量相关性——可以用计算预测活性！</div>
+    <div class="key-finding"><strong>发现④：</strong> 6个突变都位于别构通信网络上，通过长程效应传递对 COMM 的稳定化。</div>
+    <h5>与你的项目的连接</h5>
+    <p>这篇论文建立了你的判断标准（ΔG 阈值），也证明了 MetaDynamics FEL 方法对评估 AI 设计蛋白有效。</p>
+    <div class="oc-doi">📄 DOI: <a href="https://doi.org/10.1021/jacs.9b03646" target="_blank">10.1021/jacs.9b03646</a> · 已有完整标注版：JACS2019_Deep_Annotation.html</div>
+  </div>
+</div>
+
+<!-- Paper 2: ACS Catal 2021 -->
+<div class="osuna-card">
+  <div class="oc-head">
+    <span class="oc-year">ACS Catal 2021</span>
+    <span class="oc-title">远端突变的计算识别与实验验证（SPM 方法）</span>
+  </div>
+  <div class="oc-body">
+    <h5>苏娜做了什么</h5>
+    <p>开发了 SPM（Shortest Path Map）方法：从 MD 轨迹计算残基间动态相关性矩阵 → 转化为图 → 用 Dijkstra 算法找最短路径 → 识别别构通信热点。</p>
+    <p>然后把 SPM 和祖先序列重建（ASR）结合，从 413 个残基缩减到 6 个候选突变（SPM6），设计出 ANC3-SPM6 TrpB 变体。</p>
+    <h5>核心发现</h5>
+    <div class="key-finding"><strong>结果：</strong> SPM6 变体（6个突变，5个远端，0个在 COMM domain 内）使 ANC3-TrpB 的 kcat 提升 <strong>7倍</strong>，相当于 3 轮定向进化（筛选 3080 个变体）的效果——但只测试了 1 个变体！</div>
+    <div class="key-finding"><strong>FEL 验证：</strong> SPM6 的 FEL 显示 COMM 闭合态稳定性提升（虽然未完全达到 LBCA 水平），与活性提升定量吻合。</div>
+    <h5>FEL 的坐标轴（重要：这就是你问的 s 和 z！）</h5>
+    <p><strong>s 轴（进度轴）：</strong> 沿参考 open-to-closed 路径的进度（由 X 射线晶体结构生成），从 0（开放）到 1（闭合）。</p>
+    <p><strong>z 轴（偏离轴）：</strong> 从参考路径的均方差（MSD）距离，反映偏离最优路径的程度。</p>
+    <p>这两个轴就是这篇论文 FEL 图中的 x 和 y 坐标——不同于 JACS 2019 用 RMSD + 距离，这里用了 PATH 集体变量。</p>
+    <div class="oc-doi">📄 DOI: <a href="https://doi.org/10.1021/acscatal.1c03950" target="_blank">10.1021/acscatal.1c03950</a> · <span class="badge badge-open">完全开放，已下载全文</span> · SPM 网页工具：<a href="https://www.spmosuna.com" target="_blank">spmosuna.com</a></div>
+  </div>
+</div>
+
+<!-- Paper 3: Protein Science 2022 -->
+<div class="osuna-card">
+  <div class="oc-head">
+    <span class="oc-year">Prot Sci 2022</span>
+    <span class="oc-title">tAF2-MD：用模板化 AlphaFold2 快速估计构象异质性</span>
+  </div>
+  <div class="oc-body">
+    <h5>苏娜做了什么</h5>
+    <p>意识到 MetaDynamics 计算量太大（每个蛋白需要 400–1600 ns 并行模拟，约 3–7 天 GPU），所以开发了快筛替代方案：</p>
+    <p><strong>tAF2-MD 流程：</strong> ① 用 Reduced-MSA（32–64 条序列）+ 结构模板 运行 AlphaFold2，生成约 60 个结构 → ② 对每个结构跑 10 ns 普通 MD → ③ 合并轨迹，评估构象覆盖度。</p>
+    <div class="key-finding"><strong>结果：</strong> tAF2-MD 能在约 1/10–1/50 的计算量下，近似重现 MetaDynamics 的构象分布。可以作为 MetaDynamics 之前的"粗筛"步骤。</div>
+    <h5>与你的项目的连接</h5>
+    <p>当你有 50+ 个 AI 设计候选蛋白时，对每个都跑完整 MetaDynamics 不现实。先用 tAF2-MD 过滤，再对最有希望的（例如 top 5–10）做 MetaDynamics。</p>
+    <div class="oc-doi">📄 DOI: <a href="https://doi.org/10.1002/pro.4426" target="_blank">10.1002/pro.4426</a> · <span class="badge badge-open">PMC开放</span></div>
+  </div>
+</div>
+
+<!-- Current Osuna work -->
+<div class="osuna-card">
+  <div class="oc-head" style="background:#0d9488;">
+    <span class="oc-year" style="background:#065f46;">2025年</span>
+    <span class="oc-title">苏娜实验室目前在做什么</span>
+  </div>
+  <div class="oc-body">
+    <p>根据最新信息，苏娜实验室当前（2025–2026）的主要工作方向：</p>
+    <div class="key-finding"><strong>① SPM 通用化：</strong> 将 SPM 方法推广到更多酶系统（不仅限于 TrpB），提供网页服务器 spmosuna.com，让更多团队可以直接使用。</div>
+    <div class="key-finding"><strong>② 天然独立 TrpB 的发现：</strong> 2025 年 Protein Science 发表了自然界中存在的天然独立 TrpB（不需要 TrpA 的 TrpB），分析其别构通信机制，为工程化提供新思路。</div>
+    <div class="key-finding"><strong>③ AlphaFold + MetaDynamics 整合：</strong> 继续开发 tAF2-MD 的后续版本，与最新 AlphaFold3 整合，进一步降低预测成本。</div>
+    <div class="key-finding"><strong>④ 与 AI 设计工具的对接：</strong> 苏娜组开始关注如何把 MetaDynamics FEL 指标用于评估 AI（RFDiffusion/ProteinMPNN）生成的蛋白——<strong>这正是你们 aNima Lab 最想合作的方向</strong>。</div>
+    <p style="margin-top:10px;">你的项目与苏娜的 ④ 方向高度吻合。这意味着你的工作有潜力发表（可能与苏娜合作），也意味着与苏娜组建立联系（发冷邮件）是值得考虑的。</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SECTION 3: PAPER LIST
+═════════════════════════════════════════════════════ -->
+<div class="sec-head" id="papers">
+  <h2><span class="num">3</span>完整论文清单（按重要性排序）</h2>
+</div>
+
+<table class="paper-table">
+  <thead>
+    <tr>
+      <th>优先级</th>
+      <th>标题 + 引用</th>
+      <th>关键问题</th>
+      <th>获取</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="badge badge-urgent">今晚必读</span></td>
+      <td><strong>Deciphering the Allosterically Driven Conformational Ensemble in TrpS Evolution</strong><br>Maria-Solano, Iglesias-Fernández, Osuna · <em>JACS</em> 2019 · <a href="https://doi.org/10.1021/jacs.9b03646">DOI</a></td>
+      <td>MetaDynamics FEL 如何预测 TrpB 活性</td>
+      <td><span class="badge badge-wall">机构权限</span> + 已有标注HTML</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-urgent">今晚参考</span></td>
+      <td><strong>Directed evolution of the TrpB β-subunit for stand-alone function recapitulates allosteric activation</strong><br>Buller et al. (Arnold Lab) · <em>PNAS</em> 2015 · <a href="https://doi.org/10.1073/pnas.1516401112">DOI</a></td>
+      <td>独立 TrpB 的活性恢复：6个突变的发现</td>
+      <td><span class="badge badge-open">PMC: 4664345</span></td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-urgent">今晚参考</span></td>
+      <td><strong>Directed Evolution Mimics Allosteric Activation by Stepwise Tuning of the Conformational Ensemble</strong><br>Buller et al. (Arnold Lab) · <em>JACS</em> 2018 · <a href="https://doi.org/10.1021/jacs.8b03490">DOI</a></td>
+      <td>定向进化通过构象系综调整起效的结构证据</td>
+      <td><span class="badge badge-open">PMC: 5999571</span></td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-later">本周</span></td>
+      <td><strong>Identification and Experimental Validation of Distal Activity-Enhancing Mutations in Tryptophan Synthase</strong><br>Maria-Solano et al. · <em>ACS Catal</em> 2021 · <a href="https://doi.org/10.1021/acscatal.1c03950">DOI</a></td>
+      <td>SPM 方法 + 7倍活性提升验证</td>
+      <td><span class="badge badge-open">PMC: 8576815（已读全文）</span></td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-later">第2周</span></td>
+      <td><strong>Estimating conformational heterogeneity of tryptophan synthase with a template-based AlphaFold2 approach</strong><br>Casadevall et al. · <em>Protein Science</em> 2022 · <a href="https://doi.org/10.1002/pro.4426">DOI</a></td>
+      <td>tAF2-MD 快筛方法</td>
+      <td><span class="badge badge-open">PMC: 开放</span></td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-later">第3周</span></td>
+      <td><strong>De novo design of protein structure and function with RFdiffusion</strong><br>Watson et al. · <em>Nature</em> 2023 · <a href="https://doi.org/10.1038/s41586-023-06415-8">DOI</a></td>
+      <td>aNima Lab 用的骨架设计工具</td>
+      <td><span class="badge badge-open">开放预印本</span></td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-later">第3周</span></td>
+      <td><strong>Robust deep learning–based protein sequence design using ProteinMPNN</strong><br>Dauparas et al. · <em>Science</em> 2022 · <a href="https://doi.org/10.1126/science.add2187">DOI</a></td>
+      <td>骨架上设计序列的工具</td>
+      <td><span class="badge badge-open">开放</span></td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-later">第4周</span></td>
+      <td><strong>A naturally occurring standalone TrpB provides insights into allosteric communication</strong><br>Osuna Lab · <em>Protein Science</em> 2025 · <a href="https://doi.org/10.1002/pro.70103">DOI</a></td>
+      <td>苏娜的最新工作：天然独立 TrpB</td>
+      <td><span class="badge badge-open">待查</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ══════════════════════════════════════════════════
+     SECTION 4: TONIGHT'S PLAN
+═════════════════════════════════════════════════════ -->
+<div class="sec-head" id="tonight">
+  <h2><span class="num">4</span>今晚的计划：深入理解的路线图</h2>
+</div>
+
+<div class="tonight-box">
+  <h3>今晚目标：能够清晰回答这两个问题</h3>
+  <p style="margin-bottom:16px;font-size:14px;">① 苏娜到底做了什么？（MetaDynamics + FEL + SPM 的逻辑链）<br>② TrpB 背景是什么？（为什么要工程化 TrpB，COMM domain 是什么，5步催化循环）</p>
+
+  <div class="tonight-step">
+    <div class="ts-num">1</div>
+    <div class="ts-text"><strong>先读 §0 基础背景（TrpB Complete Guide 或 TrpB_Study_Guide.html 的 §0）</strong><br>目标：理解 TrpS 是什么、TrpA+TrpB 各做什么反应、COMM domain 是什么、为什么孤立 TrpB 活性低。（约 30 分钟）</div>
+  </div>
+  <div class="tonight-step">
+    <div class="ts-num">2</div>
+    <div class="ts-text"><strong>读 JACS2019_Deep_Annotation.html（本文件夹）</strong><br>先读"论证骨架"（§4）——5分钟建立全局框架。再从 P1 逐段读到 P15，重点关注 P2（COMM domain）、P6（参数）、P8-P11（FEL 结果），以及 P4 中的三个比较对象。（约 90 分钟）</div>
+  </div>
+  <div class="tonight-step">
+    <div class="ts-num">3</div>
+    <div class="ts-text"><strong>读 TrpB_Concepts_Guide.docx</strong><br>重点：第一章（COMM domain）、第二章（MetaDynamics）。确保你能用自己的话解释"沙子填坑"类比和 ΔG 阈值的物理意义。（约 45 分钟）</div>
+  </div>
+  <div class="tonight-step">
+    <div class="ts-num">4</div>
+    <div class="ts-text"><strong>读本文档的苏娜工作梳理（Section 2）</strong><br>重点：JACS 2019、ACS Catal 2021 两张卡片，以及"苏娜目前在做什么"那一张。特别注意 ACS Catal 2021 中 s 和 z 轴的定义——这就是你之前问的"L 和 P"中可能看到的坐标轴。（约 20 分钟）</div>
+  </div>
+  <div class="tonight-step">
+    <div class="ts-num">5</div>
+    <div class="ts-text"><strong>（可选）快速浏览 Arnold PNAS 2015 摘要和结论</strong><br>不需要精读，只需要能说出：Arnold lab 是在哪里，发现了哪6个突变，实现了多少倍的活性提升。5分钟足够。<br>PMC: <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4664345/" target="_blank">PMC4664345</a></div>
+  </div>
+</div>
+
+<div class="callout callout-teal" style="margin-top:16px;">
+  <div class="callout-title">报告中你需要能回答的问题</div>
+  <strong>Q1:</strong> TrpB 在自然界中的功能是什么？为什么单独使用时活性低？（考 COMM domain + 别构激活）<br>
+  <strong>Q2:</strong> 苏娜的方法是什么？她证明了什么？（考 MetaDynamics + FEL + ΔG 阈值）<br>
+  <strong>Q3:</strong> 你的项目与苏娜工作的连接是什么？（考 AI 设计 → MetaDynamics 评估 → 湿实验）<br>
+  <strong>Q4:</strong> 为什么要合成 D-Trp，而不是 L-Trp？（考立体化学：re-face vs si-face 进攻）
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SECTION 5: ZOTERO
+═════════════════════════════════════════════════════ -->
+<div class="sec-head" id="zotero">
+  <h2><span class="num">5</span>Zotero 整合：如何保存 HTML 批注</h2>
+</div>
+
+<div class="callout callout-orange">
+  <div class="callout-title">关于小红书：我确实无法访问</div>
+  小红书需要登录验证，WebFetch 无法绕过，这是内容限制政策，不能用任何替代手段访问。如果你知道帖子的内容，可以直接告诉我，我来整合到文档里。
+</div>
+
+<div class="zotero-box">
+  <h4>把 HTML 批注导入 Zotero 的三个可行方案</h4>
+
+  <div class="zotero-method">
+    <strong>方案① 推荐：zotero-better-notes 插件（windingwind）</strong>
+    GitHub: <a href="https://github.com/windingwind/zotero-better-notes" target="_blank">windingwind/zotero-better-notes</a><br>
+    功能：在 Zotero 内部创建富文本笔记，支持 HTML 内容导入，可以把你的批注 HTML 转化为 Zotero 的笔记系统。<br>
+    方法：① 安装插件 → ② 在 Zotero 中手动创建一个论文条目（对应 JACS 2019）→ ③ 打开 Better Notes 编辑器 → ④ 粘贴 HTML 内容或用模板导入。这是目前最活跃维护的 Zotero 笔记增强插件。
+  </div>
+
+  <div class="zotero-method">
+    <strong>方案② 最简单：把 HTML 作为文件附件导入</strong>
+    在 Zotero 中找到或新建 JACS 2019 的论文条目 → 右键 → "Add Attachment" → "Attach Stored Copy of File" → 选择 JACS2019_Deep_Annotation.html。<br>
+    效果：HTML 文件直接存储在 Zotero 中，可以从 Zotero 打开并查看所有批注。格式完全保留。<strong>这是最可靠的方案，零设置。</strong>
+  </div>
+
+  <div class="zotero-method">
+    <strong>方案③ 进阶：SingleFile 浏览器扩展 + Zotero</strong>
+    GitHub: <a href="https://github.com/gildas-lormeau/SingleFile" target="_blank">gildas-lormeau/SingleFile</a><br>
+    SingleFile 可以将完整的 HTML 页面（包含样式和内嵌资源）保存为单一文件。如果你的 HTML 批注打开后依赖 Google Fonts CDN，用 SingleFile 可以打包成完全离线的单文件，再导入 Zotero。
+  </div>
+
+  <div class="zotero-method">
+    <strong>关于 HTML 批注 → PDF → Zotero（更高级）</strong>
+    如果你想让批注在 Zotero 的 PDF 阅读器里显示，可以：浏览器打开 HTML → 打印 → 保存为 PDF → 导入 Zotero。但这样会丢失交互性（中文注释还在，但不能折叠/展开）。适合分享给别人。
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SECTION 6: SKILL STATUS
+═════════════════════════════════════════════════════ -->
+<div class="sec-head" id="skill">
+  <h2><span class="num">6</span>Paper Annotation Skill 状态</h2>
+</div>
+
+<div class="callout callout-blue">
+  <div class="callout-title">关于"把 HTML 标注封装成 skill"的回答</div>
+  之前没有正式创建 skill 文件。正在创建 <code>/mnt/.skills/skills/paper-annotation/SKILL.md</code>，之后你可以说"帮我用论文标注格式分析这篇文章"，我会自动按照 JACS2019 的双栏格式生成 HTML。这对你之后分析 ACS Catal 2021、Protein Science 2022 等论文非常有用。
+</div>
+
+<div style="padding:16px;background:#f7f5ef;border-radius:8px;font-size:13.5px;">
+  <strong>已创建的文件（本文件夹）：</strong><br>
+  📄 <code>JACS2019_Deep_Annotation.html</code> — P1–P15 逐段双栏标注（JACS 2019）<br>
+  📄 <code>TrpB_Concepts_Guide.docx</code> — COMM domain + MetaDynamics + L/P 解释<br>
+  📄 <code>TrpB_Study_Guide.html</code> — 五篇论文综合学习指南<br>
+  📄 <code>Research_Context_Prompt.md</code> — 项目 master prompt（可直接粘贴给 AI）<br>
+  📂 <code>claude-scientific-skills/</code> — 177 个科学技能（含 molecular-dynamics）<br>
+  📄 <code>TASKS.md</code> — 任务看板<br>
+  📄 <code>dashboard.html</code> — 任务面板
+</div>
+
+</main>
+
+<script>
+const links = document.querySelectorAll('#topnav .nav-links a');
+const sections = document.querySelectorAll('[id]');
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      links.forEach(l=>{
+        l.style.color = l.getAttribute('href')==='#'+e.target.id ? 'white' : 'rgba(255,255,255,.75)';
+      });
+    }
+  });
+},{rootMargin:'-60px 0px -70% 0px'});
+sections.forEach(s=>obs.observe(s));
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    e.preventDefault();
+    const t=document.querySelector(a.getAttribute('href'));
+    if(t)t.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+});
+</script>
+</body>
+</html>

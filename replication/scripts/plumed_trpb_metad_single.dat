@@ -1,0 +1,138 @@
+# ================================================================
+# PLUMED 2.9 Input: Single-Walker Well-Tempered MetaDynamics for TrpB
+# ================================================================
+#
+# Project: TrpB MetaDynamics Replication (JACS 2019)
+# Reference: Maria-Solano et al., JACS 2019, 141, 13049–13056
+#
+# Purpose: Lightweight initial exploration run (single walker, ~50 ns)
+#          to:
+#          1) Test PLUMED + GROMACS integration
+#          2) Verify path CV definitions and atom indices
+#          3) Generate initial FES for bias exchange
+#          4) Collect snapshots for multi-walker initialization
+#
+# This is a scaled-down version of plumed_trpb_metad.dat suitable
+# for quick validation before launching the 10-walker production.
+#
+# ================================================================
+
+PLUMED: MOLFILE=./topol.gro
+
+# ================================================================
+# SECTION 1: REFERENCE PATH (same as multi-walker version)
+# ================================================================
+#
+# Linear interpolation: 1WDW (open) → 3CEP (closed), 15 frames
+# Atoms: Cα of residues 97–184 (COMM) + 282–305 (base)
+# Lambda = 0.029 (controls path Gaussian width)
+
+PATHCV: REFERENCE=[PLACEHOLDER_FRAME_LIST] LAMBDA=0.029
+
+s: PATHCV ARG=[PLACEHOLDER_PATHCV_ARG] COORD=s
+z: PATHCV ARG=[PLACEHOLDER_PATHCV_ARG] COORD=z
+
+# ================================================================
+# SECTION 2: OPTIONAL MONITORING CVs
+# ================================================================
+#
+# Monitor these distances for post-analysis only (not for biasing)
+
+K82_Q2_DIST: DISTANCE ATOMS=[PLACEHOLDER_K82_N_ATOM_INDEX],[PLACEHOLDER_Q2_C_ATOM_INDEX]
+E104_Q2_DIST: DISTANCE ATOMS=[PLACEHOLDER_E104_OE_ATOM_INDEX],[PLACEHOLDER_Q2_C_ATOM_INDEX]
+COMM_RMSD: RMSD REFERENCE=frame_0.pdb TYPE=BACKBONE ATOMS=[PLACEHOLDER_COMM_ATOM_LIST]
+
+# ================================================================
+# SECTION 3: WELL-TEMPERED METADYNAMICS (single walker)
+# ================================================================
+#
+# Single-walker mode: simpler setup, no WALKERS_* keywords
+# All other parameters identical to multi-walker version:
+#   - HEIGHT=0.628 kJ/mol
+#   - BIASFACTOR=10
+#   - PACE=1000 (every 2 ps)
+#   - TEMP=350 K
+#   - ADAPTIVE Gaussian width
+
+METAD ARG=s,z \
+       PACE=1000 \
+       HEIGHT=0.628 \
+       BIASFACTOR=10 \
+       TEMP=350 \
+       ADAPTIVE=GEOM \
+       SIGMA_MIN=0.1 \
+       SIGMA_MAX=3.0 \
+       FILE=HILLS \
+       STRIDE=500
+
+# ================================================================
+# SECTION 4: OUTPUT AND MONITORING
+# ================================================================
+#
+# COLVAR file: recorded every 500 MD steps (~1 ps)
+#   Columns: time s z K82_Q2_DIST E104_Q2_DIST COMM_RMSD
+#   Useful for convergence check (plot s vs time, should explore O→PC→C)
+
+PRINT ARG=s,z,K82_Q2_DIST,E104_Q2_DIST,COMM_RMSD \
+      FILE=COLVAR \
+      STRIDE=500
+
+# ================================================================
+# SECTION 5: USAGE FOR QUICK VALIDATION
+# ================================================================
+#
+# Typical workflow (single node, ~2 hours on Longleaf GPU):
+#
+# 1. Prepare system (same as for multi-walker):
+#    cd /work/users/l/i/liualex/AnimaLab/
+#
+# 2. Setup single test directory:
+#    mkdir -p single_test && cd single_test
+#    cp ../topol.tpr ../topol.gro ./
+#    cp ../structures/path_frames/frame_*.pdb ./
+#    cp ../plumed_trpb_metad_single.dat plumed.dat
+#
+# 3. Run for ~20 ns (quick test):
+#    sbatch -N 1 -n 1 --gpus=1 -t 02:00:00 <<'EOF'
+#    #!/bin/bash
+#    module load gromacs/2026.0
+#    conda activate trpb-md
+#
+#    gmx mdrun -s topol.tpr \
+#              -c conf.gro \
+#              -o traj.trr -x traj.xtc -cpo state.cpt -e ener.edr \
+#              -plumed plumed.dat \
+#              -ntomp 1 -ntmpi 1 -gpu_id 0 \
+#              -maxh 1.9  # stop before wall-clock limit
+#    EOF
+#
+# 4. Check convergence in COLVAR:
+#    gnuplot> plot 'COLVAR' using 1:2 with lines  # s vs time
+#    Should see s increase from ~1 (open) toward 15 (closed)
+#
+# 5. Reconstruct and visualize FES:
+#    plumed sum_hills --hills HILLS --out fes.dat --mintozero
+#    gnuplot> splot 'fes.dat' using 1:2:3 with pm3d  # FES landscape
+#
+# 6. If exploration looks good:
+#    - Extract 10 representative snapshots from this run
+#    - Use as initial structures for multi-walker ensemble
+#    - Launch full 10-walker production with plumed_trpb_metad.dat
+#
+# ================================================================
+# SECTION 6: EXPECTED BEHAVIOR
+# ================================================================
+#
+# For a properly converged TrpB system:
+#   s(R) range explored: 1–15 (full O→C transition) ✓
+#   z(R) should stay low: typically < 2 Å (on-path) ✓
+#   Two minima visible in FES: around s=2 (open) and s=13 (closed) ✓
+#
+# Signs of problems:
+#   - s stays stuck at one value → poor initial sampling
+#   - z too large (> 5 Å) → reference path doesn't match this system
+#   - No transitions observed → increase HEIGHT or BIASFACTOR
+#
+# ================================================================
+# END OF SINGLE-WALKER PLUMED INPUT
+# ================================================================

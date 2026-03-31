@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Osuna 2020 WIREs 逐段深度标注 | 酶设计 | Zhenpeng</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ===================================================
+   Paper Deep Annotation — Shared Stylesheet
+   Copy this entire block verbatim into <style> tags.
+   =================================================== */
+:root {
+  --navy:#1a2744; --blue:#2563EB; --teal:#0d9488;
+  --paper:#faf8f3; --paper2:#f3f0e8; --border:#d4c9a8;
+  --text:#2d2d2d; --gray:#6b7280; --lg:#f3f4f6;
+  --hl-thesis:#fef3c7; --hl-thesis-b:#d97706;
+  --hl-concept:#fee2e2; --hl-concept-b:#dc2626;
+  --hl-evidence:#dbeafe; --hl-evidence-b:#2563eb;
+  --hl-counter:#dcfce7; --hl-counter-b:#16a34a;
+  --hl-method:#f3e8ff; --hl-method-b:#7c3aed;
+  --sidebar-w:230px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--text);font-size:15px;line-height:1.7;}
+
+/* Top nav */
+#topnav{position:sticky;top:0;z-index:100;background:var(--navy);color:white;padding:0 20px;display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap;}
+#topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:15px;white-space:nowrap;}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.leg{padding:2px 10px;border-radius:12px;font-size:11.5px;font-weight:600;cursor:default;}
+.leg-y{background:var(--hl-thesis);color:#92400e;}
+.leg-r{background:var(--hl-concept);color:#991b1b;}
+.leg-b{background:var(--hl-evidence);color:#1e40af;}
+.leg-g{background:var(--hl-counter);color:#166534;}
+.leg-p{background:var(--hl-method);color:#5b21b6;}
+
+/* Layout */
+#layout{display:flex;min-height:calc(100vh - 52px);}
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:#f0ede4;border-right:1px solid var(--border);padding:16px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+#sidebar .sec-head{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;padding:12px 16px 4px;}
+#sidebar .nav-link{display:block;padding:5px 16px;font-size:12.5px;color:#374151;text-decoration:none;border-left:3px solid transparent;transition:.15s;}
+#sidebar .nav-link:hover{background:#e8e4db;color:var(--navy);}
+#sidebar .nav-link.active{border-left-color:var(--blue);color:var(--blue);background:#e8eef8;}
+#sidebar .nav-link.sub{padding-left:26px;font-size:12px;color:var(--gray);}
+main{flex:1;padding:0 0 60px;overflow-x:hidden;}
+
+/* Paper header */
+.meta-card{background:var(--navy);color:white;padding:28px 36px;margin:0;}
+.meta-card h1{font-family:'Lora',serif;font-size:20px;line-height:1.4;margin-bottom:12px;}
+.meta-card .byline{font-size:13px;opacity:.8;margin-bottom:6px;}
+.meta-card .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.meta-card .tag{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;font-size:11.5px;}
+.meta-card .doi-link{color:#93c5fd;font-size:13px;text-decoration:none;}
+.meta-card .doi-link:hover{text-decoration:underline;}
+
+/* Section labels */
+.sec-label{background:var(--paper2);border-top:3px solid var(--blue);padding:10px 36px;font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px;}
+.sec-label .sec-num{background:var(--blue);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;}
+
+/* Dual-column para blocks */
+.para-block{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5dfd0;gap:0;}
+.para-block:hover{background:#f7f4ed;}
+.para-left{padding:22px 28px;border-right:1px solid #e5dfd0;font-size:14.5px;line-height:1.85;}
+.para-right{padding:18px 22px;background:#f7f5ef;font-size:13px;line-height:1.65;}
+.para-id{display:inline-block;background:var(--navy);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;font-weight:700;margin-bottom:10px;}
+
+/* Highlight spans */
+.hl-y{background:var(--hl-thesis);border-bottom:2px solid var(--hl-thesis-b);padding:0 2px;border-radius:2px;}
+.hl-r{background:var(--hl-concept);border-bottom:2px solid var(--hl-concept-b);padding:0 2px;border-radius:2px;}
+.hl-b{background:var(--hl-evidence);border-bottom:2px solid var(--hl-evidence-b);padding:0 2px;border-radius:2px;}
+.hl-g{background:var(--hl-counter);border-bottom:2px solid var(--hl-counter-b);padding:0 2px;border-radius:2px;}
+.hl-p{background:var(--hl-method);border-bottom:2px solid var(--hl-method-b);padding:0 2px;border-radius:2px;}
+
+/* Right-panel components */
+.term-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;}
+.term-table th{background:#e8e4db;padding:4px 8px;text-align:left;font-weight:600;font-size:11px;}
+.term-table td{padding:4px 8px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.term-table tr:last-child td{border-bottom:none;}
+.notable-box{background:#fff7ed;border-left:3px solid #f59e0b;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.project-box{background:#eff6ff;border-left:3px solid #2563eb;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.anima-box{background:#f0fdf4;border-left:3px solid #16a34a;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.warning-box{background:#fef2f2;border-left:3px solid #dc2626;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.role-badge{display:inline-block;background:#e0e7ff;color:#3730a3;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:6px;}
+.data-box{background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:12px;font-family:'IBM Plex Mono',monospace;}
+.data-box .label{font-weight:700;color:#15803d;font-size:11px;text-transform:uppercase;margin-bottom:4px;}
+
+/* Synthesis / appendix sections */
+.synth-section{padding:28px 36px;}
+.synth-section h2{font-family:'Lora',serif;font-size:18px;color:var(--navy);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+.synth-section h3{font-size:14px;font-weight:700;color:var(--blue);margin:16px 0 8px;}
+.logic-chain{display:flex;flex-wrap:wrap;gap:0;margin:16px 0;align-items:center;}
+.lc-node{background:var(--navy);color:white;padding:8px 14px;font-size:12px;border-radius:6px;text-align:center;min-width:120px;}
+.lc-arrow{display:flex;align-items:center;padding:0 6px;color:var(--gray);font-size:18px;}
+.proj-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.proj-table th{background:var(--navy);color:white;padding:8px 12px;text-align:left;font-size:12px;}
+.proj-table td{padding:8px 12px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.proj-table tr:nth-child(even) td{background:#f7f5ef;}
+.gloss-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.gloss-table th{background:#e8e4db;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;}
+.gloss-table td{padding:6px 10px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.gloss-table tr:last-child td{border-bottom:none;}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div id="topnav">
+  <div class="logo">WIREs 2020 · 酶设计 · 远距离突变预测</div>
+  <div class="legend">
+    <span class="leg leg-y">黄=核心论点</span>
+    <span class="leg leg-r">红=技术概念</span>
+    <span class="leg leg-b">蓝=实验证据</span>
+    <span class="leg leg-g">绿=局限/对照</span>
+    <span class="leg leg-p">紫=方法/流程</span>
+  </div>
+</div>
+
+<div id="layout">
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sec-head">元信息</div>
+  <a class="nav-link" href="#meta">论文信息</a>
+  <div class="sec-head">摘要</div>
+  <a class="nav-link" href="#abs">Abstract</a>
+  <div class="sec-head">引言 Introduction</div>
+  <a class="nav-link sub" href="#p1">P1 酶设计的挑战</a>
+  <a class="nav-link sub" href="#p2">P2 多构象系综概念</a>
+  <div class="sec-head">方法与理论</div>
+  <a class="nav-link sub" href="#p3">P3 分子动力学方法</a>
+  <a class="nav-link sub" href="#p4">P4 增强采样技术</a>
+  <a class="nav-link sub" href="#p5">P5 路径和网络分析</a>
+  <div class="sec-head">应用与案例</div>
+  <a class="nav-link sub" href="#p6">P6 祖序列重建</a>
+  <a class="nav-link sub" href="#p7">P7 TrpB实验验证</a>
+  <div class="sec-head">综合分析</div>
+  <a class="nav-link" href="#skeleton">§A 论证骨架</a>
+  <a class="nav-link" href="#projconn">§B 项目关联</a>
+  <a class="nav-link" href="#glossary">§C 术语总表</a>
+</div>
+
+<main>
+
+<!-- PAPER HEADER -->
+<div id="meta" class="meta-card">
+  <h1>The challenge of predicting distal active site mutations in computational enzyme design</h1>
+  <div class="byline">Sílvia Osuna · WIREs Computational Molecular Science, 2020</div>
+  <div class="byline">DOI: <a class="doi-link" href="https://doi.org/10.1002/wcms.1502">10.1002/wcms.1502</a></div>
+  <div class="tags">
+    <span class="tag">enzyme engineering</span>
+    <span class="tag">distal mutations</span>
+    <span class="tag">molecular dynamics</span>
+    <span class="tag">allostery</span>
+    <span class="tag">computational design</span>
+  </div>
+</div>
+
+<!-- ABSTRACT -->
+<div id="abs" class="sec-label"><span class="sec-num">ABS</span> Abstract</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">ABS</span>
+    <p><span class="hl-y">Computational enzyme redesign can be understood as a population shift problem</span>, where the goal is to alter the relative stabilities of different <span class="hl-r">conformational states</span> of the enzyme ensemble and favor those critical for novel function. <span class="hl-y">The challenge of predicting distal mutations</span>—those located far from the active site but critical for function—remains a major bottleneck in the field. <span class="hl-r">Recent computational strategies</span> focus on <span class="hl-p">reconstructing the conformational landscape</span> of enzymes, applying <span class="hl-r">correlation-based tools</span> to identify mutation hotspots. Critically, <span class="hl-y">most important opportunities lie at distal positions</span>, where allosteric effects mediate functional improvements. This review surveys the computational methods that enable rational prediction of such distal mutations for enzyme improvement.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">ABS</div>
+    <p><strong>段落功能：</strong>概括论文的中心问题和解决方向。</p>
+    <div class="role-badge">问题陈述 | 领域现状</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>population shift</td><td>通过改变酶构象系综中不同状态的相对稳定性来调控酶功能</td></tr>
+      <tr><td>distal mutations</td><td>位于活性位点远处但对酶功能至关重要的氨基酸突变</td></tr>
+      <tr><td>conformational landscape</td><td>酶在其所有可能构象及其能量状态下的描述</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>这篇综述将酶工程框架化为一个系综问题，而非单一静态结构问题。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的MetaDynamics模拟正是在TrpB的COMM域构建自由能景观，这正是预测远距离突变所需的基础。</div>
+  </div>
+</div>
+
+<!-- P1 -->
+<div id="p1" class="sec-label"><span class="sec-num">INT</span> Introduction</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1</span>
+    <p>Enzyme engineering has become a promising strategy for addressing biotechnological challenges, with applications ranging from biofuels to pharmaceuticals. However, <span class="hl-y">creating enzymes with new functions remains difficult</span>, primarily because <span class="hl-r">computational predictions rely heavily on structural information from single crystal structures</span>. These static representations fail to capture the <span class="hl-y">dynamic nature of enzyme function</span>. The vast majority of computational enzyme design efforts have focused on <span class="hl-g">optimizing the immediate chemical environment of the active site</span>, yet experimental results show that <span class="hl-y">residues far from the active site often determine catalytic efficiency</span>. This disconnect between computational expectations and experimental outcomes motivates a fundamental shift in how we approach enzyme design.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1</div>
+    <p><strong>段落功能：</strong>建立问题的背景：单一结构视图不足，酶是动态系统。</p>
+    <div class="role-badge">背景建立</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>crystal structure</td><td>X射线晶体学获得的蛋白质单一、静态的三维结构</td></tr>
+      <tr><td>active site</td><td>酶中催化反应发生的特定区域</td></tr>
+      <tr><td>catalytic efficiency</td><td>酶催化反应的能力，通常用kcat/Km表示</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>关键见解：静态晶体结构隐藏了酶的动态性，这正是为什么远距离突变很难被预测。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>这正是你的TrpB研究需要MetaDynamics而非仅依赖单一晶体结构的根本原因。TrpB的O→PC→C转换是功能所必需的。</div>
+  </div>
+</div>
+
+<!-- P2 -->
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2</span>
+    <p>The solution lies in adopting an <span class="hl-y">ensemble view of enzyme function</span>. Rather than treating enzymes as static machines, modern computational methods must account for <span class="hl-r">the fact that proteins exist as dynamic ensembles of interconverting conformational states</span>. <span class="hl-y">These different conformations serve different functional roles</span>: some favor substrate binding, others facilitate catalysis, and still others promote product release. The relative populations and exchange rates between these states directly determine catalytic properties. <span class="hl-p">Molecular dynamics simulations</span> provide the primary tool for characterizing this <span class="hl-r">conformational ensemble</span>, offering atomistic insights into which states are thermodynamically accessible and kinetically relevant at physiological conditions.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2</div>
+    <p><strong>段落功能：</strong>引入多构象系综的理论框架。</p>
+    <div class="role-badge">假说提出</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>conformational ensemble</td><td>蛋白质在热平衡下存在的所有构象状态的集合及其统计分布</td></tr>
+      <tr><td>interconverting states</td><td>相互转换的构象，通过内在的热运动动态变换</td></tr>
+      <tr><td>exchange rates</td><td>蛋白质在不同构象间转换的动力学速率</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>不是一个构象，而是多个构象的集合。TrpB的O、PC、C状态就是这个系综的关键成员。</div>
+    <div class="anima-box">🏛️ <strong>Anima Lab关联：</strong>这正是GenSLM和你的序列生成方法需要考虑的对象——不只是稳定单一构象，而是稳定功能相关的构象转换。</div>
+  </div>
+</div>
+
+<!-- P3 -->
+<div id="p3" class="sec-label"><span class="sec-num">MTH</span> Methods & Theory</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">P3</span>
+    <p><span class="hl-p">Classical molecular dynamics (MD) simulations</span> constitute the foundation for ensemble characterization. In these simulations, <span class="hl-b">atoms are propagated forward in time using classical mechanics</span>, typically for timescales reaching microseconds to tens of microseconds depending on system size and available computational resources. <span class="hl-y">A key limitation is that the timescales of conformational transitions important for catalysis—often milliseconds or slower—exceed typical MD simulation lengths</span>. Consequently, <span class="hl-g">standard MD alone often fails to sample the rare, functionally relevant conformational states</span>. Despite this limitation, <span class="hl-r">conventional MD provides crucial information about local conformational dynamics</span> and serves as the starting point for more sophisticated approaches. The choice of <span class="hl-p">force field</span> (e.g., AMBER, CHARMM) significantly influences the sampled ensemble, making careful validation essential.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P3</div>
+    <p><strong>段落功能：</strong>介绍MD的原理和局限。</p>
+    <div class="role-badge">方法介绍 | 局限说明</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>force field</td><td>描述原子间相互作用的参数集（成键、范德华、静电等）</td></tr>
+      <tr><td>timescale</td><td>模拟覆盖的时间范围，影响可采样的过程类型</td></tr>
+      <tr><td>sampling</td><td>从可能的构象空间中探索代表性样本的过程</td></tr>
+    </table>
+    <div class="warning-box">⚠️ <strong>重要局限：</strong>标准MD通常只能采样纳秒-微秒时间尺度，但许多酶的关键转换发生在毫秒级别——这产生了采样差距。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>这正是你需要增强采样方法（如MetaDynamics）的原因：TrpB的完整O→PC→C转换可能跨越毫秒，无法在标准MD中充分采样。</div>
+  </div>
+</div>
+
+<!-- P4 -->
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">P4</span>
+    <p><span class="hl-r">Enhanced sampling methods</span> overcome the timescale limitations of conventional MD. <span class="hl-p">Metadynamics</span> is particularly powerful: it works by <span class="hl-p">adding a bias potential along predefined collective variables (CVs)</span> that define the low-dimensional projection of the conformational space of interest. <span class="hl-b">By depositing Gaussian hills at visited CV values, the method systematically fills the free energy minima</span>, encouraging exploration of high-energy barriers that would otherwise remain inaccessible. <span class="hl-y">The accumulated bias potential converges to minus the free energy surface</span>, providing quantitative thermodynamic information. <span class="hl-p">Other enhanced sampling approaches include accelerated MD, umbrella sampling, and replica exchange methods</span>, each with distinct advantages depending on the system and available resources. <span class="hl-y">These methods enable observation of rare events on tractable computational timescales</span>.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P4</div>
+    <p><strong>段落功能：</strong>详细介绍增强采样如何解决采样问题。</p>
+    <div class="role-badge">方法讲解</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Metadynamics</td><td>通过在集体变量轨迹上叠加偏置势来加速采样的技术</td></tr>
+      <tr><td>collective variables</td><td>描述复杂高维过程的关键低维坐标（如RMSD、距离、二面角等）</td></tr>
+      <tr><td>free energy surface</td><td>系统在选定坐标下的势能景观，表示不同状态的热力学稳定性</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>MetaDynamics的关键优势：它不仅加速采样，还给出定量的自由能——这对于理解为什么某些突变是有利的至关重要。</div>
+    <div class="anima-box">🏛️ <strong>Anima Lab关联：</strong>你正在使用MetaDynamics来构建TrpB COMM域的自由能景观，选择了s/z路径CV。这正是本文讨论的方法。</div>
+  </div>
+</div>
+
+<!-- P5 -->
+<div id="p5" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P5</span>
+    <p>Beyond direct simulation, <span class="hl-r">network-based approaches</span> offer complementary insights into allosteric mechanisms. <span class="hl-p">Shortest Path Map (SPM) analysis</span> constructs a network where <span class="hl-p">residues are nodes and inter-residue contacts are edges</span>, then identifies the shortest paths of contact networks connecting the active site to distal regions. <span class="hl-b">Residues frequently appearing in these shortest paths show high predictive value for identifying mutation hotspots</span>. <span class="hl-r">Dynamic network analysis</span> goes further by incorporating <span class="hl-p">residue fluctuations and correlation information</span> from MD simulations, revealing which portions of the protein show correlated motions indicative of allosteric pathways. <span class="hl-y">These methods predict distal mutations with remarkable accuracy</span>, often identifying specific residues whose mutation enhances function despite their distance from the active site.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P5</div>
+    <p><strong>段落功能：</strong>介绍网络分析方法如何识别远距离突变的候选位点。</p>
+    <div class="role-badge">方法讲解 | 实验验证</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Shortest Path Map</td><td>基于残基接触网络找出活性位点与远距离位点间最短连接路径的方法</td></tr>
+      <tr><td>dynamic network analysis</td><td>整合MD中残基涨落和相关性信息的网络分析方法</td></tr>
+      <tr><td>allosteric pathway</td><td>蛋白质内通过相关运动连接远距离功能位点的信息传递途径</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>SPM和动态网络分析为实际预测提供了启发式工具——不依赖昂贵的模拟，而是利用可获得的MD轨迹。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>在TrpB的情况下，这类分析可以帮助你识别D-色氨酸选择性所需的远距离突变位点。活性位点的配体结合偏好可能由远处的COMM域动力学调节。</div>
+  </div>
+</div>
+
+<!-- P6 -->
+<div id="p6" class="sec-label"><span class="sec-num">APP</span> Applications & Case Studies</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">P6</span>
+    <p>Ancestral sequence reconstruction provides a powerful validation strategy for predicted mutations. <span class="hl-p">Phylogenetic analysis identifies likely ancestral sequences at key branch points</span>, and <span class="hl-y">comparison between ancestral and modern enzymes reveals which mutations have accumulated during evolution</span>. <span class="hl-b">Remarkably, evolutionarily preserved residue positions often coincide with computationally predicted distal mutation hotspots</span>. This convergence between computational prediction and evolutionary record suggests that <span class="hl-y">nature has independently discovered many of the same optimization strategies</span> that algorithms now propose. <span class="hl-p">Reversing ancestral mutations</span> or <span class="hl-y">introducing predicted distal mutations into modern enzymes</span> provides experimental validation of mechanistic models. This approach elegantly bridges millions of years of evolution with modern computational enzyme design, providing strong evidence that <span class="hl-y">distal mutations can be rationally predicted and engineered</span>.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P6</div>
+    <p><strong>段落功能：</strong>展示祖序列重建如何验证预测的突变。</p>
+    <div class="role-badge">验证策略</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>ancestral sequence</td><td>通过系统发育推理重建的进化过程中较早的蛋白质序列</td></tr>
+      <tr><td>phylogenetic analysis</td><td>利用序列相似性和进化关系重建蛋白质家族的历史</td></tr>
+      <tr><td>evolutionary conservation</td><td>在进化过程中保持不变或变化缓慢的序列位置，通常表示功能重要性</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>计算预测与进化记录的一致性表明这些机制是真实的，而不仅仅是计算工伪影。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>在TrpB中，可以检查你预测的D-色氨酸选择性突变是否在TrpB进化的重要支点处反映了自然的选择。</div>
+  </div>
+</div>
+
+<!-- P7 -->
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">P7</span>
+    <p>Tryptophan synthase represents a canonical example of successful distal mutation prediction. <span class="hl-y">TrpB, the β-subunit, exhibits conformational changes essential for catalysis</span>: an <span class="hl-r">open (O) state that allows substrate binding</span>, a <span class="hl-r">closed (C) state that excludes solvent</span>, and <span class="hl-r">intermediate partially closed (PC) conformations</span>. <span class="hl-b">Experimental and computational work reveals that distal mutations located in the communication (COMM) domain directly affect the relative populations of these states</span>. <span class="hl-y">A small set of COMM domain mutations can shift the conformational equilibrium</span>, substantially improving catalysis in isolated TrpB or enabling function without the α-subunit partner. <span class="hl-p">Free energy calculations and enhanced sampling simulations</span> predicted many of these distal mutations before experimental testing. <span class="hl-y">This success demonstrates that distal mutations can now be rationally predicted and engineering them into enzymes is increasingly practical</span>.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P7</div>
+    <p><strong>段落功能：</strong>以TrpB为实例展示远距离突变预测的成功。</p>
+    <div class="role-badge">实验验证 | 案例分析</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>TrpB β-subunit</td><td>色氨酸合酶复合物的β亚基，催化靛玻璃酮的吲哚化</td></tr>
+      <tr><td>COMM domain</td><td>TrpB中的通讯域，通过α/β亚基界面与TrpA相互作用</td></tr>
+      <tr><td>conformational selectivity</td><td>蛋白质对特定构象状态的热力学或动力学偏好</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>值得注意：</strong>TrpB完美地展示了理论与实验的融合：计算预测→实验验证→定量模型。</div>
+    <div class="anima-box">🏛️ <strong>Anima Lab关联：</strong>这正是你的项目焦点！TrpB COMM域的远距离突变预测可以通过你的MetaDynamics自由能景观和GenSLM生成序列来完成。</div>
+  </div>
+</div>
+
+<!-- SYNTHESIS SECTIONS -->
+<div id="skeleton" class="sec-label"><span class="sec-num">SYN</span> 综合分析</div>
+
+<div class="synth-section">
+  <h2>§A 论证骨架</h2>
+  <p>本文的推理链如下：</p>
+  <div class="logic-chain">
+    <div class="lc-node">问题：静态<br>结构不足<br><small>P1</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">框架：多<br>构象系综<br><small>P2</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">工具：MD与<br>增强采样<br><small>P3–P4</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">分析：网络<br>和路径图<br><small>P5</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">验证：祖序列<br>和TrpB<br><small>P6–P7</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">结论：远距离<br>突变可预测<br><small>综合</small></div>
+  </div>
+  <h3>核心命题表</h3>
+  <table class="proj-table">
+    <tr>
+      <th>核心声称</th>
+      <th>支撑证据</th>
+      <th>含义</th>
+    </tr>
+    <tr>
+      <td>远距离突变对酶功能至关重要</td>
+      <td>TrpB中COMM突变改变构象平衡的实验成果</td>
+      <td>单独优化活性位点不足；需要全酶设计</td>
+    </tr>
+    <tr>
+      <td>构象系综描述酶催化</td>
+      <td>MetaDynamics捕获O→PC→C转换；进化守恒与计算热点一致</td>
+      <td>MD模拟可以预测功能相关的突变</td>
+    </tr>
+    <tr>
+      <td>网络分析可识别远距离热点</td>
+      <td>SPM中活性位点到COMM域的最短路径；动态网络的相关运动</td>
+      <td>不需要昂贵的完整模拟即可筛选候选突变</td>
+    </tr>
+  </table>
+</div>
+
+<div id="projconn" class="synth-section">
+  <h2>§B 与你的项目的关联</h2>
+  <table class="proj-table">
+    <tr>
+      <th>论文中的内容</th>
+      <th>Zhenpeng 项目中的对应</th>
+      <th>具体操作建议</th>
+    </tr>
+    <tr>
+      <td>多构象系综框架（P2）</td>
+      <td>你的TrpB O→PC→C构象景观</td>
+      <td>在MetaDynamics轨迹中分析每个构象的相对填充度，特别是与D-Trp结合相关的状态</td>
+    </tr>
+    <tr>
+      <td>MetaDynamics和增强采样（P4）</td>
+      <td>你正在进行的COMM域s/z路径模拟</td>
+      <td>确保CVs充分描述了O、PC、C的关键特征；验证自由能景观在微秒尺度上收敛</td>
+    </tr>
+    <tr>
+      <td>SPM和网络分析（P5）</td>
+      <td>识别TrpB远距离突变位点</td>
+      <td>在MD轨迹上运行NetworkView或PyInteraph分析，找出活性位点与COMM域间的通讯残基</td>
+    </tr>
+    <tr>
+      <td>构象选择性与选择性（P7）</td>
+      <td>D-Trp vs L-Trp配体结合</td>
+      <td>在自由能景观中跟踪D-Trp和L-Trp配体的结合常数或停留时间，与构象状态相关联</td>
+    </tr>
+    <tr>
+      <td>GenSLM候选序列与功能的联系</td>
+      <td>你的105个GenSLM-230候选突变</td>
+      <td>针对你预测的远距离热点位置检查这些序列；优先考虑在活性位点与COMM域通讯路径上的变体</td>
+    </tr>
+    <tr>
+      <td>实验验证（P6–P7）</td>
+      <td>TrpB的湿实验室工作</td>
+      <td>根据你的计算热点进行定向突变，测量构象改变（如FRET或SAXS）和催化活性；比较L-Trp和D-Trp选择性</td>
+    </tr>
+  </table>
+</div>
+
+<div id="glossary" class="synth-section">
+  <h2>§C 术语总表</h2>
+  <table class="gloss-table">
+    <tr>
+      <th style="width:25%">术语 (英文)</th>
+      <th style="width:15%">中文</th>
+      <th>一句话定义</th>
+      <th style="width:20%">在本文中的作用</th>
+    </tr>
+    <tr>
+      <td>Conformational ensemble</td>
+      <td>构象系综</td>
+      <td>热平衡下蛋白质存在的所有可接近构象及其统计分布</td>
+      <td>核心理论框架，说明为什么单一晶体结构不足</td>
+    </tr>
+    <tr>
+      <td>Distal mutation</td>
+      <td>远距离突变</td>
+      <td>位于活性位点远处但对酶功能有重要影响的氨基酸替换</td>
+      <td>论文的中心关注点和设计目标</td>
+    </tr>
+    <tr>
+      <td>Molecular dynamics (MD)</td>
+      <td>分子动力学</td>
+      <td>通过数值积分牛顿运动方程来模拟分子运动的计算方法</td>
+      <td>生成构象系综样本的主要工具</td>
+    </tr>
+    <tr>
+      <td>Metadynamics</td>
+      <td>元动力学</td>
+      <td>通过在集体变量轨迹上添加偏置势来加速采样的增强采样技术</td>
+      <td>克服时间尺度限制，获得自由能曲面</td>
+    </tr>
+    <tr>
+      <td>Collective variable (CV)</td>
+      <td>集体变量</td>
+      <td>描述复杂过程的低维坐标，如距离、RMSD或二面角</td>
+      <td>指导MetaDynamics采样的关键选择</td>
+    </tr>
+    <tr>
+      <td>Free energy surface (FES)</td>
+      <td>自由能曲面</td>
+      <td>系统在选定坐标下的势能景观，反映不同状态的热力学稳定性</td>
+      <td>从MetaDynamics获得的定量输出，指导设计</td>
+    </tr>
+    <tr>
+      <td>Shortest Path Map (SPM)</td>
+      <td>最短路径图</td>
+      <td>基于残基接触网络的分析方法，映射活性位点与远距离位点间的信息传递路径</td>
+      <td>快速识别远距离突变热点的启发式工具</td>
+    </tr>
+    <tr>
+      <td>Dynamic network analysis</td>
+      <td>动态网络分析</td>
+      <td>利用MD轨迹中残基涨落和相关性构建的网络分析，揭示变构网络</td>
+      <td>基于MD轨迹的更精细的通讯路径识别</td>
+    </tr>
+    <tr>
+      <td>Allosteric mechanism</td>
+      <td>变构机制</td>
+      <td>远距离位点的结构变化通过蛋白质网络传导，影响活性位点性质的过程</td>
+      <td>远距离突变如何产生功能改变的分子基础</td>
+    </tr>
+    <tr>
+      <td>Ancestral sequence</td>
+      <td>祖序列</td>
+      <td>通过系统发育推理重建的进化树中较早节点的蛋白质序列</td>
+      <td>验证计算预测与进化优化的一致性</td>
+    </tr>
+    <tr>
+      <td>TrpB (β-subunit)</td>
+      <td>TrpB亚基</td>
+      <td>色氨酸合酶的β亚基，催化靛玻璃酮的吲哚化</td>
+      <td>本文的主要案例研究，展示方法的实际成功</td>
+    </tr>
+    <tr>
+      <td>COMM domain</td>
+      <td>通讯域</td>
+      <td>TrpB中与TrpA相互作用的区域，其构象改变调节活动</td>
+      <td>远距离突变的主要作用位点，影响构象平衡</td>
+    </tr>
+    <tr>
+      <td>Population shift</td>
+      <td>系综转移</td>
+      <td>通过改变相对稳定性来改变蛋白质构象状态分布的策略</td>
+      <td>描述酶工程的基本机制</td>
+    </tr>
+    <tr>
+      <td>Force field</td>
+      <td>力场</td>
+      <td>MD中描述原子相互作用的参数集（键、非键、静电）</td>
+      <td>影响MD采样准确性的关键参数</td>
+    </tr>
+    <tr>
+      <td>Conformational selectivity</td>
+      <td>构象选择性</td>
+      <td>蛋白质对特定构象状态或转移的热力学或动力学偏好</td>
+      <td>远距离突变可以增强对功能性构象的选择</td>
+    </tr>
+  </table>
+</div>
+
+</main>
+</div>
+
+<script>
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, {rootMargin: '-10% 0px -80% 0px'});
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

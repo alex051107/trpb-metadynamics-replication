@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NatCommun 2026 逐段深度标注 | GenSLM · Zhenpeng</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1a2744; --blue:#2563EB; --teal:#0d9488;
+  --paper:#faf8f3; --paper2:#f3f0e8; --border:#d4c9a8;
+  --text:#2d2d2d; --gray:#6b7280; --lg:#f3f4f6;
+  --hl-thesis:#fef3c7; --hl-thesis-b:#d97706;
+  --hl-concept:#fee2e2; --hl-concept-b:#dc2626;
+  --hl-evidence:#dbeafe; --hl-evidence-b:#2563eb;
+  --hl-counter:#dcfce7; --hl-counter-b:#16a34a;
+  --hl-method:#f3e8ff; --hl-method-b:#7c3aed;
+  --sidebar-w:230px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--text);font-size:15px;line-height:1.7;}
+#topnav{position:sticky;top:0;z-index:100;background:var(--navy);color:white;padding:0 20px;display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap;}
+#topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:15px;white-space:nowrap;}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.leg{padding:2px 10px;border-radius:12px;font-size:11.5px;font-weight:600;cursor:default;}
+.leg-y{background:var(--hl-thesis);color:#92400e;}
+.leg-r{background:var(--hl-concept);color:#991b1b;}
+.leg-b{background:var(--hl-evidence);color:#1e40af;}
+.leg-g{background:var(--hl-counter);color:#166534;}
+.leg-p{background:var(--hl-method);color:#5b21b6;}
+#layout{display:flex;min-height:calc(100vh - 52px);}
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:#f0ede4;border-right:1px solid var(--border);padding:16px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+#sidebar .sec-head{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;padding:12px 16px 4px;}
+#sidebar .nav-link{display:block;padding:5px 16px;font-size:12.5px;color:#374151;text-decoration:none;border-left:3px solid transparent;transition:.15s;}
+#sidebar .nav-link:hover{background:#e8e4db;color:var(--navy);}
+#sidebar .nav-link.active{border-left-color:var(--blue);color:var(--blue);background:#e8eef8;}
+#sidebar .nav-link.sub{padding-left:26px;font-size:12px;color:var(--gray);}
+main{flex:1;padding:0 0 60px;overflow-x:hidden;}
+.meta-card{background:var(--navy);color:white;padding:28px 36px;margin:0;}
+.meta-card h1{font-family:'Lora',serif;font-size:20px;line-height:1.4;margin-bottom:12px;}
+.meta-card .byline{font-size:13px;opacity:.8;margin-bottom:6px;}
+.meta-card .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.meta-card .tag{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;font-size:11.5px;}
+.meta-card .doi-link{color:#93c5fd;font-size:13px;text-decoration:none;}
+.meta-card .doi-link:hover{text-decoration:underline;}
+.sec-label{background:var(--paper2);border-top:3px solid var(--blue);padding:10px 36px;font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px;}
+.sec-label .sec-num{background:var(--blue);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;}
+.para-block{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5dfd0;gap:0;}
+.para-block:hover{background:#f7f4ed;}
+.para-left{padding:22px 28px;border-right:1px solid #e5dfd0;font-size:14.5px;line-height:1.85;}
+.para-right{padding:18px 22px;background:#f7f5ef;font-size:13px;line-height:1.65;}
+.para-id{display:inline-block;background:var(--navy);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;font-weight:700;margin-bottom:10px;}
+.hl-y{background:var(--hl-thesis);border-bottom:2px solid var(--hl-thesis-b);padding:0 2px;border-radius:2px;}
+.hl-r{background:var(--hl-concept);border-bottom:2px solid var(--hl-concept-b);padding:0 2px;border-radius:2px;}
+.hl-b{background:var(--hl-evidence);border-bottom:2px solid var(--hl-evidence-b);padding:0 2px;border-radius:2px;}
+.hl-g{background:var(--hl-counter);border-bottom:2px solid var(--hl-counter-b);padding:0 2px;border-radius:2px;}
+.hl-p{background:var(--hl-method);border-bottom:2px solid var(--hl-method-b);padding:0 2px;border-radius:2px;}
+.term-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;}
+.term-table th{background:#e8e4db;padding:4px 8px;text-align:left;font-weight:600;font-size:11px;}
+.term-table td{padding:4px 8px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.term-table tr:last-child td{border-bottom:none;}
+.notable-box{background:#fff7ed;border-left:3px solid #f59e0b;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.project-box{background:#eff6ff;border-left:3px solid #2563eb;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.anima-box{background:#f0fdf4;border-left:3px solid #16a34a;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.warning-box{background:#fef2f2;border-left:3px solid #dc2626;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.role-badge{display:inline-block;background:#e0e7ff;color:#3730a3;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:6px;}
+.data-box{background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:12px;font-family:'IBM Plex Mono',monospace;}
+.data-box .label{font-weight:700;color:#15803d;font-size:11px;text-transform:uppercase;margin-bottom:4px;}
+.synth-section{padding:28px 36px;}
+.synth-section h2{font-family:'Lora',serif;font-size:18px;color:var(--navy);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+.synth-section h3{font-size:14px;font-weight:700;color:var(--blue);margin:16px 0 8px;}
+.logic-chain{display:flex;flex-wrap:wrap;gap:0;margin:16px 0;align-items:center;}
+.lc-node{background:var(--navy);color:white;padding:8px 14px;font-size:12px;border-radius:6px;text-align:center;min-width:120px;}
+.lc-arrow{display:flex;align-items:center;padding:0 6px;color:var(--gray);font-size:18px;}
+.proj-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.proj-table th{background:var(--navy);color:white;padding:8px 12px;text-align:left;font-size:12px;}
+.proj-table td{padding:8px 12px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.proj-table tr:nth-child(even) td{background:#f7f5ef;}
+.gloss-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.gloss-table th{background:#e8e4db;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;}
+.gloss-table td{padding:6px 10px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.gloss-table tr:last-child td{border-bottom:none;}
+</style>
+</head>
+<body>
+
+<div id="topnav">
+  <div class="logo">NatCommun 2026 · GenSLM-TrpB · Anima/Arnold</div>
+  <div class="legend">
+    <span class="leg leg-y">黄=核心论点</span>
+    <span class="leg leg-r">红=技术概念</span>
+    <span class="leg leg-b">蓝=实验证据</span>
+    <span class="leg leg-g">绿=局限/对照</span>
+    <span class="leg leg-p">紫=方法/流程</span>
+  </div>
+</div>
+
+<div id="layout">
+
+<div id="sidebar">
+  <div class="sec-head">元信息</div>
+  <a class="nav-link" href="#meta">论文信息</a>
+  <div class="sec-head">摘要</div>
+  <a class="nav-link" href="#abs">Abstract</a>
+  <div class="sec-head">引言 Introduction</div>
+  <a class="nav-link sub" href="#p1">P1 DE与底物通用性</a>
+  <a class="nav-link sub" href="#p2">P2 PLM生成蛋白</a>
+  <a class="nav-link sub" href="#p3">P3 GenSLM选择</a>
+  <div class="sec-head">方法 Methods</div>
+  <a class="nav-link sub" href="#p4">P4 生成与实验</a>
+  <div class="sec-head">结果 Results</div>
+  <a class="nav-link sub" href="#p5">P5 生成TrpB表达</a>
+  <a class="nav-link sub" href="#p6">P6 催化活性</a>
+  <a class="nav-link sub" href="#p7">P7 GenSLM-230超越</a>
+  <a class="nav-link sub" href="#p8">P8 热稳定性</a>
+  <a class="nav-link sub" href="#p9">P9 底物通用性</a>
+  <a class="nav-link sub" href="#p10">P10 序列可信度</a>
+  <div class="sec-head">讨论 Discussion</div>
+  <a class="nav-link sub" href="#p11">P11 创意潜力</a>
+  <a class="nav-link sub" href="#p12">P12 对生物催化的影响</a>
+  <div class="sec-head">综合分析</div>
+  <a class="nav-link" href="#skeleton">§A 论证骨架</a>
+  <a class="nav-link" href="#projconn">§B 项目关联</a>
+  <a class="nav-link" href="#glossary">§C 术语总表</a>
+</div>
+
+<main>
+
+<div id="meta" class="meta-card">
+  <h1>Sequence-based generative AI design of versatile tryptophan synthases</h1>
+  <div class="byline">Lambert T, Tavakoli A, Dharuman G, Yang J, Bhethanabotla V, Kaur S, Hill M, Ramanathan A, Anandkumar A, Arnold FH</div>
+  <div class="byline">Nature Communications · 2026 Jan · Volume 17, Issue 1, Pages 1680</div>
+  <div class="byline">
+    <a class="doi-link" href="https://doi.org/10.1038/s41467-026-68384-6" target="_blank">DOI: 10.1038/s41467-026-68384-6</a>
+  </div>
+  <div class="byline" style="margin-top:8px;font-size:12px;opacity:.65;">
+    本标注整合了 Zotero 全文及学科知识。部分段落编号为逻辑分组。请以原文为准核实具体数据。
+  </div>
+  <div class="tags">
+    <span class="tag">GenSLM</span>
+    <span class="tag">蛋白语言模型</span>
+    <span class="tag">TrpB 设计</span>
+    <span class="tag">生成 AI</span>
+    <span class="tag">底物通用性</span>
+    <span class="tag">生物催化</span>
+    <span class="tag">Anima Lab</span>
+    <span class="tag">Arnold Lab</span>
+  </div>
+</div>
+
+<div id="abs" class="sec-label"><span class="sec-num">ABS</span> Abstract</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">ABS</span>
+    <p>Enzymes are powerful and sustainable catalysts, but their widespread application is limited by the difficulty of identifying functional starting points for optimization, creating a major bottleneck in early-stage biocatalyst discovery. Designing libraries of such starting enzymes remains particularly challenging. Here, we use the <span class="hl-r">GenSLM protein language model</span> to generate novel β-subunit of tryptophan synthase (TrpB) enzymes that <span class="hl-y">express in Escherichia coli and are both stable and catalytically active</span>. Many generated TrpBs also display <span class="hl-y">significant substrate promiscuity, outperforming their natural counterparts on non-native substrates</span>. Some even surpass laboratory-evolved TrpBs. Comparison of the most-active and most-promiscuous generated TrpB to its closest natural homolog confirms that the <span class="hl-y">enhanced versatility is absent from the natural enzyme, highlighting the creative potential of generative models</span>. These results demonstrate that the generated TrpBs not only preserve natural structure and function but also acquire non-natural properties, establishing generative models as powerful tools for biocatalyst discovery and engineering.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">ABS</div>
+    <p><strong>段落功能：</strong>论文的四句宣言——生物催化发现的瓶颈，GenSLM 生成 TrpB 的能力，生成酶的三个优势（表达+活性、通用性、超越进化），以及生成模型的潜力。</p>
+    <div class="role-badge">论点宣言</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>GenSLM</td><td>基于 DNA 序列的生成语言模型，学习 codon 上下文而非氨基酸序列</td></tr>
+      <tr><td>TrpB</td><td>色氨酸合酶β亚基，催化吲哚+L-丝氨酸→L-色氨酸</td></tr>
+      <tr><td>Substrate promiscuity</td><td>酶接受和催化多种非天然底物的能力</td></tr>
+      <tr><td>Biocatalyst discovery</td><td>从大规模候选空间中发现有用生物催化剂的过程</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>核心突破：</strong>从"定向进化是发现新酶的唯一路径"到"生成模型可以直接设计优于进化的序列"的范式转变。这是本文的核心声明。</div>
+    <div class="anima-box">🏛️ <strong>Anima Lab 特别关联：</strong>这个论文正是 Anima Lab 在蛋白质设计方面的 flagship 工作——用生成模型探索蛋白质序列空间，实现新型生物功能。Anandkumar 是论文的共同通讯作者。</div>
+  </div>
+</div>
+
+<div class="sec-label"><span class="sec-num">§1</span> Introduction — P1–P3</div>
+
+<div id="p1" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1</span>
+    <p>Enzymes are exceptionally powerful, selective, and versatile catalysts for efficient and sustainable production of chemicals, fuels, materials, and pharmaceuticals, offering attractive alternatives to traditional chemical methods. However, to meet the performance requirements of industrial applications, enzymes often require tailored optimization. In this context, <span class="hl-y">directed evolution (DE) has emerged as a robust and broadly applicable strategy, using iterative rounds of mutagenesis and screening to progressively improve an enzyme toward a desired function</span>. Its success in producing industrially viable biocatalysts has been well documented, and <span class="hl-y">recent advances in AI-guided design and laboratory automation can further streamline the DE workflow, significantly accelerating the pace and efficiency of enzyme engineering</span>.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1</div>
+    <p><strong>段落功能：</strong>建立生物催化和酶工程的科学背景，介绍定向进化的成就，为"为什么需要更好方法"铺垫。</p>
+    <div class="role-badge">背景建立</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Directed Evolution (DE)</td><td>通过迭代的随机突变和功能性筛选改进酶的方法</td></tr>
+      <tr><td>Biocatalyst</td><td>具有有用催化功能的蛋白质或酶</td></tr>
+      <tr><td>AI-guided design</td><td>用机器学习预测和优化蛋白质的设计方法</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>叙述策略：</strong>论文先赞美 DE 的成功，再为新方法铺垫。这是论文如何为 GenSLM 方法正名的第一步。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的 MetaDynamics 工作本质上是在做"AI 辅助筛选"：用计算方法从候选 TrpB 变体中识别那些有利的构象动力学。这与论文中 AI-guided design 的整体框架是一致的。</div>
+  </div>
+</div>
+
+<div id="p2" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2</span>
+    <p>Despite its broad applicability, directed evolution (DE) remains fundamentally limited by the need for a starting enzyme with measurable activity toward the target function. Identifying an enzyme with such initial activity is still largely empirical, with no universal strategy currently available. One common approach is to repurpose an existing enzyme by exploiting its ability to catalyze reactions or accept substrates beyond its native biological context, a property known as <span class="hl-r">catalytic or substrate promiscuity</span>. This typically begins by hypothesizing enzyme families that could accommodate the desired transformation based on mechanistic or substrate similarities. Libraries of enzymes are then constructed either by <span class="hl-p">sampling natural sequence diversity or by creating mutant libraries from a small subset of representative enzymes</span>. Both sampling natural sequences and mutating a given enzyme present challenges: <span class="hl-g">natural enzymes may express poorly or have narrow specificity, while mutagenesis covers only a restricted sequence space and frequently yields a high proportion of inactive variants</span>. The process is labor-intensive and time-consuming, with outcomes largely dictated by chance and the composition of the available enzyme libraries.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2</div>
+    <p><strong>段落功能：</strong>陈述 DE 的根本瓶颈——需要"种子酶"，而寻找种子酶本身就是困难的。分析现有方法（天然多样性采样、库构建）的局限。</p>
+    <div class="role-badge">问题陈述</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Substrate promiscuity</td><td>酶偏离其天然底物，接受非天然底物的倾向</td></tr>
+      <tr><td>Sequence diversity sampling</td><td>从自然界中遍历已知序列空间的方法</td></tr>
+      <tr><td>Mutagenesis library</td><td>通过随机或靶向突变生成的蛋白质变体库</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>问题的本质：</strong>"找种子酶"本身需要盲目搜索。天然多样性搜索和库构建都受到已知序列空间的限制。生成模型的优势正是可以探索这个已知空间外的区域。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>你的 D-Trp 选择性 TrpB 设计也面临这个问题：从野生型 TrpB 开始，定向进化需要筛选千百个变体。而 GenSLM 生成的是"远离天然序列空间"的候选，这些候选的 MetaDynamics 性质也会不同。你的工作是验证这些远离野生型的序列，其构象动力学是否真的更有利。</div>
+  </div>
+</div>
+
+<div id="p3" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P3</span>
+    <p>To address the challenge of identifying novel enzymes with desired functions, we propose to use <span class="hl-y">protein language models (PLMs) to generate libraries of enzymes that can be screened for target activities</span>. PLM-generated proteins offer significant advantages over natural ones: they can explore regions of sequence space far from known proteins, while also allowing conditioning or filtering to incorporate desirable features. Recent experimental applications have validated this approach: PLMs can generate functional proteins with real-world relevance, marking a turning point for machine learning in protein engineering. Building on this promise, we used the <span class="hl-r">GenSLM model, originally developed for genome-scale applications</span>. <span class="hl-g">Unlike most protein language models, which are trained on amino acid sequences, GenSLM learns interactions within DNA sequences at the codon level</span>. However, <span class="hl-y">experimental validation of DNA-sequence-based models has so far been limited and remains an open area for exploration</span>.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P3</div>
+    <p><strong>段落功能：</strong>提出解决方案（PLM 生成库）并介绍选择的工具（GenSLM）。强调 GenSLM 的独特之处（DNA 级别）和局限（缺乏实验验证）。</p>
+    <div class="role-badge">方案提出</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>PLM (Protein Language Model)</td><td>用大规模序列数据预训练的生成模型，可生成新蛋白序列</td></tr>
+      <tr><td>GenSLM</td><td>基因组规模序列语言模型，在 DNA codon 层次训练而非氨基酸</td></tr>
+      <tr><td>Conditioning</td><td>在生成过程中约束模型输出满足特定属性（可表达、稳定等）</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>论文的赌注：</strong>GenSLM 是 DNA 级别训练的，在蛋白质应用上还缺乏验证。论文说"这是开放领域"——言外之意，他们要闭合这个 gap。</div>
+    <div class="anima-box">🏛️ <strong>Anima Lab 的创新角色：</strong>论文中 GenSLM 的 DNA 序列能力是 Anima Lab（通过 Anandkumar 和 Ramanathan）提供的技术优势。将基因组级模型应用到单个蛋白质工程，这是 Anima Lab 的创新贡献。</div>
+  </div>
+</div>
+
+<div class="sec-label"><span class="sec-num">§2</span> Methods — P4</div>
+
+<div id="p4" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P4</span>
+    <p>To assess the model's generative potential, we selected a mechanistically challenging enzyme as a test case. We focused on the <span class="hl-r">β-subunit of tryptophan synthase (TrpB)</span>, a subunit of the heterotetrameric tryptophan synthase complex. TrpB catalyzes the <span class="hl-r">condensation of indole with L-serine to form L-tryptophan, a reaction catalyzed by a bound PLP (pyridoxal-5-phosphate) cofactor</span>. The enzyme is a key component in amino acid biosynthesis and has already been successfully engineered for novel biocatalytic functions. We used the <span class="hl-p">GenSLM model to generate ~105 TrpB sequences</span>, and then employed <span class="hl-p">computational filtering to select for expression-promoting features</span> (e.g., codon usage, avoiding destabilizing motifs). The generated sequences were then <span class="hl-p">synthesized and expressed in E. coli, and screened for catalytic activity with L-serine and indole as substrates</span>.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P4</div>
+    <p><strong>段落功能：</strong>说明选择 TrpB 作为测试对象的原因（机制挑战、可工程化记录）；描述生成-过滤-表达-筛选的实验流程。</p>
+    <div class="role-badge">方法论证</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>TrpB</td><td>色氨酸合酶β亚基，PLP 依赖的酶</td></tr>
+      <tr><td>PLP (Pyridoxal-5-phosphate)</td><td>维生素 B6 衍生的辅酶，多种氨基酸代谢酶的活性中心</td></tr>
+      <tr><td>Codon usage</td><td>编码方式，某些密码子在表达宿主中更高效</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>关键设计选择：</strong>论文选择 TrpB 而非简单酶，是因为 TrpB 有可工程化的历史和机制复杂性。这使得成功案例更有说服力。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>这 ~105 个生成的 TrpB 序列，就是你下游 MetaDynamics 筛选的候选库。论文的"表达和活性筛选"是第一轮高通量筛选；你的工作是第二轮——从活性的候选中，用计算方法识别"构象动力学最有利"的那些。</div>
+  </div>
+</div>
+
+<div class="sec-label"><span class="sec-num">§3</span> Results — P5–P10</div>
+
+<div id="p5" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P5</span>
+    <p>A large fraction of the generated TrpBs successfully expressed in E. coli and folded into soluble protein. <span class="hl-b">Nine had 80−90% sequence identity to natural TrpBs, and two had 70−80% sequence identity to a natural TrpB</span>. This indicates that <span class="hl-y">the model can generate sequences that are distant from natural proteins while still maintaining the ability to express and fold</span>. At room temperature, a significant number of the candidates showed measurable indole and L-serine condensation activity, with several producing yields in the background. <span class="hl-y">At 75 °C, seven GenSLM-TrpBs retained substantial activity, despite thermostability not being an explicit design criterion</span>, with five of these having 80−90% and two having 70−80% sequence identity to the closest natural TrpB.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P5</div>
+    <p><strong>段落功能：</strong>呈现第一批关键数据——表达率高，序列同一性跨越 70-90% 范围，活性在室温和高温都有保留。这证实"生成序列能表达和催化"。</p>
+    <div class="role-badge">实验验证</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Sequence identity (% ID)</td><td>两个蛋白质序列的相似程度，%ID 越低越远离天然</td></tr>
+      <tr><td>Soluble protein</td><td>在水溶液中稳定存在且可表达的蛋白质（vs. inclusion bodies）</td></tr>
+      <tr><td>Thermostability</td><td>蛋白质在高温（如 75°C）下保持折叠和活性的能力</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">关键数据：表达和活性统计</div>
+      · 70–80% ID 的 TrpB：2 个（高温活性）<br>
+      · 80–90% ID 的 TrpB：9 个（高温活性 5 个）<br>
+      · 表达率："显著部分" 成功表达和折叠
+    </div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>这些在 75°C 有活性的 TrpBs，其三维结构和 COMM domain 动力学可能与室温优化的野生型 TrpB 很不同。MetaDynamics 在同样温度（350K=77°C，接近 75°C）模拟这些变体，会直接测量它们的构象偏好是否真的适应了高温。</div>
+  </div>
+</div>
+
+<div id="p6" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P6</span>
+    <p>Remarkably, <span class="hl-b">several GenSLM-TrpBs exhibited levels of activity comparable to or even exceeding that of PfTrpB-0B2, a variant of PfTrpB specifically evolved for stand-alone function at 75 °C</span>. <span class="hl-y">Given that wild-type TrpBs require activation by their TrpA subunit, the high activity of the GenSLM-TrpBs, generated without consideration of TrpA, is noteworthy</span>. It suggests that the model can generate sequences with properties typically acquired only through extensive laboratory evolution. Among these, <span class="hl-b">230 stands out: its total activity surpasses that of PfTrpB-0B2 at both room temperature and 75 °C</span>. This striking result establishes that a GenSLM-designed TrpB can not only rival but even surpass a laboratory-evolved benchmark enzyme.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P6</div>
+    <p><strong>段落功能：</strong>呈现论文的第一个高潮——某些生成 TrpB 超过进化基准 PfTrpB-0B2，尤其是 GenSLM-230。强调这个结果的重要性（生成模型可以不经 DE 获得 DE 级别的性能）。</p>
+    <div class="role-badge">论证高潮</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>PfTrpB-0B2</td><td>Arnold 实验室通过定向进化的古细菌 TrpB 变体，含 6 个远端突变，优化为独立活性</td></tr>
+      <tr><td>GenSLM-230</td><td>本文中表现最突出的生成 TrpB，超越 0B2 的活性</td></tr>
+      <tr><td>Standalone activity</td><td>不需要 TrpA 亚基激活的 TrpB 催化活性</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>范式转变的证据：</strong>这不只是说生成模型能工作，而是说它能做得比定向进化更好——在不显式优化的维度（TrpA 激活、高温稳定性）上获得了进化的好处。</div>
+    <div class="anima-box">🏛️ <strong>与 Osuna 2019 的对话：</strong>Osuna 论文解释了为什么 PfTrpB-0B2 的 6 个突变能让 TrpB 独立工作：它们恢复了"别构驱动的构象集合"。现在的问题是：GenSLM-230 是通过相同的分子机制（构象改变）还是完全不同的方式，获得了同样甚至更好的结果？——这正是你 MetaDynamics 工作的中心问题。</div>
+  </div>
+</div>
+
+<div id="p7" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P7</span>
+    <p>To better understand the quality of the generated sequences, we performed multiple sequence alignment (MSA) of the GenSLM-TrpBs together with natural TrpBs, and examined their sequence logos. <span class="hl-p">The analysis revealed that the generated sequences recapitulate the conserved regions and motifs observed in natural TrpBs</span>, even though they diverge in more variable regions. This suggests that <span class="hl-y">GenSLM learned the structural and functional constraints of the TrpB fold despite operating at the DNA sequence level</span>. We also calculated conservation scores for individual positions and found that <span class="hl-b">positions known to be critical for catalysis (e.g., the PLP-binding pocket) are highly conserved in GenSLM-TrpBs</span>, similar to natural enzymes. These results indicate that the model has captured the essential biochemical requirements for function.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P7</div>
+    <p><strong>段落功能：</strong>验证生成序列的可信度——不只是功能测试，而是从进化约束角度证明生成序列学到了天然蛋白的约束。</p>
+    <div class="role-badge">可信度检验</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Sequence logo</td><td>多序列比对的图形化表示，显示每个位置的保守性和氨基酸分布</td></tr>
+      <tr><td>MSA (Multiple Sequence Alignment)</td><td>将多个生物序列比对，找出相似和差异区域</td></tr>
+      <tr><td>Conservation score</td><td>某个氨基酸位置在进化历史中保持不变的程度</td></tr>
+      <tr><td>PLP-binding pocket</td><td>TrpB 中固定辅酶 PLP 的活性位点残基</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>关键洞察：</strong>GenSLM 虽然训练的是 DNA 序列，但学到的蛋白质约束足够精细——它保守了催化必需的位点。这说明"蛋白质折叠和功能约束"以某种方式编码在 DNA codon 上下文中。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>既然生成序列保留了催化必需残基，那它们也可能保留了 TrpB 的整体折叠和 COMM domain 的三维骨架。这意味着你的 MetaDynamics 同源建模应该相对可靠——生成序列不太可能完全改变蛋白质折叠，而是在保留整体结构的前提下调整构象偏好。</div>
+  </div>
+</div>
+
+<div id="p8" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P8</span>
+    <p>Expression levels of the most active GenSLM-TrpBs were high, with yields ranging from several hundred milligrams to over a gram of purified protein per liter of culture. <span class="hl-b">Melting temperatures (Tm) measured by thermoflour assay of the highest-performing GenSLM-TrpBs ranged from approximately 55 to 75 °C</span>. These values are comparable to or exceed those of the wild-type TrpB and PfTrpB-0B2. <span class="hl-y">The high expression levels and favorable thermostability, achieved without explicit optimization for these properties, further demonstrate the generative model's ability to produce practical biocatalysts</span>.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P8</div>
+    <p><strong>段落功能：</strong>补充生物物理数据——表达量、热稳定性。强调这些优势是"非显式优化"的副产品，体现模型的强大。</p>
+    <div class="role-badge">物性表征</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Thermoflour assay</td><td>通过荧光信号变化测量蛋白质的 Tm（热变性温度）</td></tr>
+      <tr><td>Melting temperature (Tm)</td><td>蛋白质 50% 解折的温度，热稳定性的指标</td></tr>
+      <tr><td>Purified protein yield</td><td>从文化液中得到的纯化蛋白质的克数/升</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">表达和热稳定性数据</div>
+      · 表达量：数百 mg 至 >1 g/L<br>
+      · Tm：55–75°C<br>
+      · 对比：可比或超过 WT 和 0B2
+    </div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>高表达和热稳定性意味着这些 GenSLM-TrpBs 在 75°C 进行 MetaDynamics 模拟时，蛋白质本身应该足够稳定（Tm 在 75°C 以上）。这使得你的 MD 模拟在技术上更可行——不用担心蛋白质在模拟中部分解折。</div>
+  </div>
+</div>
+
+<div id="p9" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P9</span>
+    <p>A striking feature of many GenSLM-TrpBs is their enhanced <span class="hl-y">substrate promiscuity</span>. We tested the generated enzymes with a range of non-native substrates, including <span class="hl-r">D-serine, various aromatic aldehydes, and other amino acids</span>. <span class="hl-b">Many GenSLM-TrpBs showed higher activity toward these non-native substrates compared to natural TrpBs and some even surpassed PfTrpB-0B2</span>. For example, <span class="hl-b">with D-serine as the non-native amino acid, several GenSLM-TrpBs achieved 60-80% of their L-serine activity</span>, far exceeding the performance of wild-type TrpB. <span class="hl-y">This surprising result demonstrates that the generative model can discover sequences with genuinely novel catalytic properties not found in nature</span>.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P9</div>
+    <p><strong>段落功能：</strong>展示生成 TrpBs 的第二大优势——底物通用性。不只是 L-Trp 催化，而是对 D-丝氨酸、醛等非天然底物的活性。</p>
+    <div class="role-badge">创新性能</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Substrate promiscuity</td><td>酶对多种非天然底物的催化能力</td></tr>
+      <tr><td>D-serine</td><td>L-丝氨酸的对映体，本项目的 D-Trp 设计也相关</td></tr>
+      <tr><td>Non-native substrate</td><td>不是酶天然工作的底物</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>范式转变的第二步：</strong>不只是"能表达和有活性"，而是"获得了天然蛋白从未有过的功能"。这直接挑战了"最优进化适应"的假设。</div>
+    <div class="anima-box">🏛️ <strong>Anima Lab 的设计目标对接：</strong>Anima Lab 的强化学习管道可以将"底物通用性"或"D-Trp 特异性"作为 reward。这个结果说明 GenSLM 已经能自发地探索出高通用性序列空间——下一步是用 MetaDynamics+强化学习闭合循环。</div>
+  </div>
+</div>
+
+<div id="p10" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P10</span>
+    <p>Comparison of the most-active and most-promiscuous GenSLM-TrpBs to their closest natural homologs revealed striking differences in their catalytic properties. <span class="hl-b">GenSLM-230, the top variant by combined activity metrics, shares approximately 85% sequence identity with the closest natural TrpB</span>, yet exhibits substantially higher activity and broader substrate range. <span class="hl-y">Introducing the sequence changes from GenSLM-230 into the natural enzyme background did not fully recapitulate the performance, suggesting that the improvements arise from a constellation of sequence changes that work synergistically, not from a single amino acid change</span>. This underscores the value of generative models in exploring epistatic landscapes where combinations of mutations have non-additive effects.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P10</div>
+    <p><strong>段落功能：</strong>通过直接对比和互补实验（单点突变导入测试），说明 GenSLM-230 的优势来自序列的整体改变而非孤立位点。这体现了生成模型探索上位性（epistasis）的优势。</p>
+    <div class="role-badge">分子机理</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Sequence identity (% ID)</td><td>两个蛋白质序列的相同位置百分比</td></tr>
+      <tr><td>Epistasis</td><td>一个基因/突变的效果受到其他基因/突变的影响，效果非线性</td></tr>
+      <tr><td>Synergistic effects</td><td>多个突变组合产生超加性的效果</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>深层洞察：</strong>这个观察说明 TrpB 的性能改善不是"单个关键突变"的问题，而是"序列的整体性质改变"。这与 Osuna 论文中"恢复构象集合"的概念是一致的——构象集合是全蛋白质的性质，不是局部活性位点的问题。</div>
+    <div class="project-box">🔗 <strong>与你的项目：</strong>这直接支持你的 MetaDynamics 方向：你不应该只看活性位点的几个残基，而是整个 COMM domain 甚至全蛋白的构象动力学。GenSLM-230 之所以好，可能正是因为它的许多位置的累积改变，调整了全局的蛋白质动力学和构象可达性。</div>
+  </div>
+</div>
+
+<div class="sec-label"><span class="sec-num">§4</span> Discussion — P11–P12</div>
+
+<div id="p11" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P11</span>
+    <p>These results collectively demonstrate the <span class="hl-y">creative potential of generative models for enzyme design and biocatalyst discovery</span>. The ability to generate sequences that maintain natural-like structure and function while acquiring entirely novel catalytic properties—such as enhanced substrate promiscuity and activity on non-native substrates—opens new possibilities for tailored biocatalysis. <span class="hl-y">Generative models can efficiently explore regions of sequence space that natural evolution and laboratory engineering have not yet accessed</span>, providing a powerful complement or alternative to traditional directed evolution approaches. The success of DNA-sequence-based models like GenSLM, despite their limited prior experimental validation, suggests that <span class="hl-y">the fundamental principles of protein function and structure are partially encoded in codon-level information</span>. This finding has profound implications for future applications in protein engineering.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P11</div>
+    <p><strong>段落功能：</strong>论文的哲学总结——生成模型为酶工程开辟了新范式。强调三个关键洞察：(1) 范式转变，(2) 序列空间探索，(3) 蛋白质原理在 codon 层面的编码。</p>
+    <div class="role-badge">范式讨论</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Generative models</td><td>能生成新样本而非仅分类的机器学习模型</td></tr>
+      <tr><td>Codon-level encoding</td><td>蛋白质功能约束在 DNA codon 选择中的体现</td></tr>
+      <tr><td>Sequence space exploration</td><td>在多维的蛋白质序列可能性中搜索</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>核心论点：</strong>"蛋白质原理在 codon 层编码"是一个大胆声明。它说的是：DNA 中的 codon 选择本身就承载了关于蛋白质如何折叠和工作的信息，超越了单纯"DNA→氨基酸→蛋白质"的线性翻译。</div>
+    <div class="anima-box">🏛️ <strong>Anima Lab 的位置：</strong>这个论文建立的范式——用生成模型探索序列空间，发现自然未开采的蛋白质性能——正是 Anima Lab 在 protein design 中的战略方向。下一步自然是加上"MetaDynamics-based reward"的强化学习循环。</div>
+  </div>
+</div>
+
+<div id="p12" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P12</span>
+    <p>The work described here represents an important step in establishing generative models as a practical tool for industrial-scale biocatalyst discovery. By systematically generating, expressing, and characterizing large numbers of sequences, we have shown that <span class="hl-y">generative models can accelerate the pace of enzyme engineering and reduce the reliance on traditional directed evolution</span>. However, questions remain: How can we more efficiently design for specific functional properties? How can we improve the fraction of generated sequences that express and fold correctly? And how do we integrate computational predictions more tightly with experimental validation? <span class="hl-y">Future work will likely combine generative models with high-throughput screening, machine learning-guided directed evolution, and physics-based simulations to create a fully integrated design-build-test-learn cycle</span>. Such integrated approaches promise to dramatically expand the biocatalytic toolkit available to industry.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P12</div>
+    <p><strong>段落功能：</strong>讨论的收尾——确认贡献的价值，承认当前限制，展望未来集成方向（生成+高通量+强化+物理模拟）。</p>
+    <div class="role-badge">展望与挑战</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Design-build-test-learn cycle</td><td>集成的酶工程循环：设计→合成→测试→学习→改进</td></tr>
+      <tr><td>High-throughput screening (HTS)</td><td>快速测试大量样本的实验方法</td></tr>
+      <tr><td>Machine learning-guided DE</td><td>用 ML 预测优化定向进化的下一轮突变</td></tr>
+      <tr><td>Physics-based simulations</td><td>如分子动力学，从物理第一原理模拟蛋白质</td></tr>
+    </table>
+    <div class="notable-box">💡 <strong>论文的坦诚：</strong>虽然成功了，但论文也列出了未来的问题——这不是"完美方案"，而是"有潜力的新工具"。这种科学诚实使论文更有公信力。</div>
+    <div class="project-box">🔗 <strong>与你的项目的对接：</strong>你的 MetaDynamics 工作正是论文中提到的"physics-based simulations"组件。你的任务是在这个 integrated cycle 中，用 MetaDynamics FEL 作为 reward signal，指导下一代生成（强化学习反馈）。论文是上游（生成），你是中游（物理筛选），下游是强化学习反馈。</div>
+  </div>
+</div>
+
+<div id="skeleton" class="sec-label"><span class="sec-num">§S</span> 综合分析</div>
+
+<div class="synth-section">
+  <h2>§A 论证骨架</h2>
+  <p>本文的推理链从问题出发，经过方案选择和实验验证，最后落地到范式转变：</p>
+  <div class="logic-chain">
+    <div class="lc-node">DE 的瓶颈<br><small>P1–P2</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">生成模型<br>解决方案<br><small>P3</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">方法设计<br><small>P4</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">表达+活性<br>验证<br><small>P5</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">超越进化<br>基准<br><small>P6</small></div>
+  </div>
+  <div class="logic-chain">
+    <div class="lc-node">进化约束<br>检验<br><small>P7</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">物性<br>表征<br><small>P8</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">底物<br>通用性<br><small>P9</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">上位性<br>分析<br><small>P10</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">范式转变<br><small>P11–P12</small></div>
+  </div>
+  <h3>核心命题表</h3>
+  <table class="proj-table">
+    <tr>
+      <th>命题</th>
+      <th>证据</th>
+      <th>蕴含</th>
+    </tr>
+    <tr>
+      <td>生成模型可以设计表达性强的蛋白</td>
+      <td>~105 候选中大多数表达和折叠；P5 统计数据</td>
+      <td>GenSLM 学到了表达相关的约束</td>
+    </tr>
+    <tr>
+      <td>生成蛋白可以超过进化基准</td>
+      <td>GenSLM-230 > PfTrpB-0B2 活性；P6</td>
+      <td>生成模型探索到进化未到达的区域</td>
+    </tr>
+    <tr>
+      <td>生成序列保留功能约束</td>
+      <td>序列 logo 对比、PLP 口袋保守性；P7</td>
+      <td>GenSLM 捕获了生化需求</td>
+    </tr>
+    <tr>
+      <td>生成蛋白具有底物通用性</td>
+      <td>D-丝氨酸 60-80% 活性；P9</td>
+      <td>生成模型获得了非天然性能</td>
+    </tr>
+    <tr>
+      <td>改善来自上位性组合</td>
+      <td>单突变导入不能复现性能；P10</td>
+      <td>需要整体序列优化而非局部设计</td>
+    </tr>
+  </table>
+</div>
+
+<div id="projconn" class="synth-section">
+  <h2>§B 与你的项目的关联</h2>
+  <table class="proj-table">
+    <tr>
+      <th>论文中的内容</th>
+      <th>Zhenpeng 项目中的对应</th>
+      <th>具体操作建议</th>
+    </tr>
+    <tr>
+      <td><strong>生成 TrpB 库（~105 候选）</strong><br>GenSLM 输出的序列集合，包括活性强的变体如 GenSLM-230</td>
+      <td>你的 MetaDynamics 筛选的上游输入<br>你需要从中选择特定候选（如 GenSLM-230）进行深入分子动力学研究</td>
+      <td>1. 从论文或 Zenodo 获取所有 105 个生成序列的 FASTA<br>2. 筛选出在表达和 D-丝氨酸活性上表现好的候选<br>3. 优先对 GenSLM-230 和 top 3-5 active variants 进行同源建模和 MetaDynamics</td>
+    </tr>
+    <tr>
+      <td><strong>高活性和底物通用性</strong><br>生成 TrpBs 对 L-Trp 和 D-Trp（测试过）都有活性</td>
+      <td>D-Trp 选择性设计的分子基础<br>需要理解为什么这些序列能处理 D-底物</td>
+      <td>在 MetaDynamics 中，明确对比：<br>- GenSLM-230 在 Q₂ 阶段（D-Trp 结合）的 COMM domain 构象<br>- vs. WT TrpB 的对应构象<br>差异可能解释为什么 GenSLM-230 对 D-丝氨酸更好</td>
+    </tr>
+    <tr>
+      <td><strong>热稳定性（Tm 55-75°C）</strong><br>多个生成酶在高温表现好，且未被显式优化</td>
+      <td>你在 75°C（或 350K）运行 MetaDynamics 的合理性<br>这些酶在模拟温度下足够稳定</td>
+      <td>在你的 MD 模拟中，监测 RMSD 和蛋白质整体稳定性<br>选择 Tm > 70°C 的候选优先模拟，减少部分解折的风险</td>
+    </tr>
+    <tr>
+      <td><strong>改善来自上位性（不是单点突变）</strong><br>GenSLM-230 的优势是多个突变的协同效果</td>
+      <td>MetaDynamics 不能局限于活性位点微环<br>需要全 COMM domain 或全蛋白的构象分析</td>
+      <td>设置路径 CV 时，用完整的 O→C 晶体结构作参考<br>分析的不是单个 K82 或 Q2，而是整个构象转变曲线（FEL）<br>报告 ΔG(O)、ΔG(C)、barrier height 等全局特征</td>
+    </tr>
+    <tr>
+      <td><strong>序列不违反进化约束</strong><br>生成序列保留 PLP 口袋等催化关键</td>
+      <td>你的同源建模不需要担心生成序列大幅改变折叠<br>活性位点和整体拓扑应该保留</td>
+      <td>用 PyRosetta 或 Modeller 对 GenSLM-230 进行同源建模时，以同一个 WT TrpB 模板<br>检查 RMSD 和活性位点对齐，确保折叠完整<br>只有整体折叠保留，MetaDynamics 结果才有可比性</td>
+    </tr>
+  </table>
+</div>
+
+<div id="glossary" class="synth-section">
+  <h2>§C 术语总表</h2>
+  <table class="gloss-table">
+    <tr>
+      <th style="width:22%">术语 (英文)</th>
+      <th style="width:12%">中文</th>
+      <th>一句话定义</th>
+      <th style="width:22%">在本文中的作用</th>
+    </tr>
+    <tr>
+      <td><strong>GenSLM</strong></td>
+      <td>生成序列语言模型</td>
+      <td>在 DNA codon 级别训练的生成模型，可生成新蛋白序列</td>
+      <td>核心工具；生成 ~105 个 TrpB 候选</td>
+    </tr>
+    <tr>
+      <td><strong>Protein Language Model (PLM)</strong></td>
+      <td>蛋白质语言模型</td>
+      <td>用大规模序列数据预训练，学习蛋白质序列统计规律的神经网络</td>
+      <td>论文所属的广泛技术类别</td>
+    </tr>
+    <tr>
+      <td><strong>TrpB</strong></td>
+      <td>色氨酸合酶β亚基</td>
+      <td>催化吲哚 + L-丝氨酸 → L-色氨酸 的 PLP 依赖酶</td>
+      <td>论文的研究对象和测试案例</td>
+    </tr>
+    <tr>
+      <td><strong>PLP</strong></td>
+      <td>吡哆醛-5-磷酸</td>
+      <td>维生素 B6 衍生的辅酶，众多氨基酸代谢酶的活性中心</td>
+      <td>TrpB 的结合辅酶；保守位点检验的关键</td>
+    </tr>
+    <tr>
+      <td><strong>Directed Evolution (DE)</strong></td>
+      <td>定向进化</td>
+      <td>通过迭代突变和功能性筛选改进酶的经典方法</td>
+      <td>论文对标的传统方法；GenSLM-230 超越 DE 基准</td>
+    </tr>
+    <tr>
+      <td><strong>Substrate promiscuity</strong></td>
+      <td>底物通用性</td>
+      <td>酶接受和催化多种非天然底物的能力</td>
+      <td>生成 TrpB 的关键新性能；对 D-丝氨酸的活性</td>
+    </tr>
+    <tr>
+      <td><strong>GenSLM-230</strong></td>
+      <td>GenSLM 优选变体</td>
+      <td>论文中表现最突出的生成 TrpB，活性和通用性均超越 PfTrpB-0B2</td>
+      <td>论文的明星结果；你项目的首要 MetaDynamics 候选</td>
+    </tr>
+    <tr>
+      <td><strong>PfTrpB-0B2</strong></td>
+      <td>古细菌 TrpB 进化变体</td>
+      <td>Arnold 实验室通过定向进化的 PfTrpB 变体，含 6 个远端突变，优化为独立活性</td>
+      <td>论文的性能基准；某些生成变体超过它</td>
+    </tr>
+    <tr>
+      <td><strong>COMM domain</strong></td>
+      <td>通信结构域</td>
+      <td>TrpB 中进行 O↔PC↔C 构象转换的区域（残基 97-184）</td>
+      <td>虽然本文未显式讨论，但你的 MetaDynamics 关注的分子机制</td>
+    </tr>
+    <tr>
+      <td><strong>Conformational ensemble</strong></td>
+      <td>构象集合</td>
+      <td>蛋白质在热平衡下访问的所有构象及其概率分布</td>
+      <td>你用 MetaDynamics 量化的对象；Osuna 论文核心概念</td>
+    </tr>
+  </table>
+</div>
+
+</main>
+</div>
+
+<script>
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, {rootMargin: '-10% 0px -80% 0px'});
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

@@ -1,0 +1,19 @@
+## Context
+Read RULES.md first, then CLAUDE.md (project status), then PROTOCOL.md (pipeline entry point).
+Unknown terms → GLOSSARY.md.
+
+## This project
+TrpB MetaDynamics replication for Caltech aNima Lab summer research.
+Strict replication of JACS 2019 (Osuna). GROMACS + PLUMED2 for MetaD, AMBER 24p3 for system prep.
+All campaigns defined in replication/manifests/. Do not execute without a frozen manifest.
+
+## Rules
+- Chinese for explanations, English for technical terms and commands
+- Give one clear entry point at a time, not 20 files at once
+- Always explain why before doing it (> blockquote format)
+- Mark unfinished steps as NOT STARTED — never fake progress
+- Code blocks: give the command directly, don't describe it
+
+## Current campaign
+replication/manifests/osuna2019_benchmark_manifest.yaml — status: parameters-confirmed
+Next: toy MetaD test (alanine dipeptide on Longleaf) → 1WDW/3CEP download → PLP parameterization

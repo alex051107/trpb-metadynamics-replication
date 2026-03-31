@@ -1,0 +1,226 @@
+================================================================================
+QUICK START: Osuna JACS 2019 TrpB MetaDynamics Replication
+================================================================================
+
+PAPER: DOI 10.1021/jacs.9b03646
+Maria-Solano, Iglesias-Fernandez, Osuna (2019) JACS 141(33):13049-13056
+
+WHAT YOU NEED (In Order of Priority)
+================================================================================
+
+1. PDB STRUCTURES (Download from RCSB, Free)
+   - 5DVZ: WT TrpB holo state (1.69 Å resolution)
+   - 5DW3: TrpB with L-Trp product (open state, 1.74 Å)
+   - 5DW0: TrpB with L-serine (Aex1 state)
+   
+   Download: wget https://files.rcsb.org/download/{5DVZ,5DW3,5DW0}.pdb
+
+2. PAPER SUPPORTING INFORMATION (From ACS)
+   URL: https://pubs.acs.org/doi/10.1021/jacs.9b03646
+   
+   Expected to contain:
+   - PLUMED input file (plumed.dat)
+   - AMBER input files (*.in)
+   - PLP force field parameters (or reference)
+   - Exact CV parameter values
+   - Detailed methods
+
+3. SOFTWARE (Installation Required)
+   
+   AMBER/AmberTools:
+   - Download from: https://ambermd.org/
+   - Compilation: 1-2 hours
+   - Required for: Topology preparation, MD engine (pmemd)
+   
+   PLUMED:
+   - Download from: https://www.plumed.org/
+   - Requires patching AMBER source
+   - Compilation: 1-2 hours
+   - Required for: MetaDynamics biasing
+   
+   Status on this system: NOT INSTALLED
+
+4. COMPUTATIONAL RESOURCES
+   - Estimated time per intermediate: 10-100 GPU hours
+   - Or 100-1000 CPU hours (if GPU unavailable)
+   - Need storage for trajectories: ~10-100 GB
+
+TYPICAL SIMULATION PROTOCOL
+================================================================================
+
+Step 1: Prepare structures
+  - Download 5DVZ, 5DW3, 5DW0 from RCSB
+  - Align by COMM domain (residues 102-189)
+  - Output: aligned_open.pdb, aligned_closed.pdb
+
+Step 2: Build AMBER system
+  - Create AMBER topology (prmtop) from PDB
+  - Add PLP cofactor parameters (from SI or literature)
+  - Solvate and neutralize: TIP3P water, Na+ ions
+  - Minimize and equilibrate (~100 ps NVT)
+
+Step 3: Create PLUMED input (plumed.dat)
+  - Define PATH CV with open/closed references
+  - Set up well-tempered MetaDynamics bias
+  - Typical: LAMBDA=50, HEIGHT=0.5 kJ/mol, PACE=1000 steps
+
+Step 4: Run MetaDynamics production
+  - Use AMBER MD engine with PLUMED plugin
+  - Run 10-100 ns (or until FES converges)
+  - Monitor: colvar.txt, HILLS file, bias potential
+
+Step 5: Analyze free energy surface
+  - plumed sum_hills --hills HILLS --outfile fes.dat
+  - Plot: s (progress) vs z (distance) landscape
+  - Extract transition barriers and state populations
+
+CRITICAL PARAMETERS (Typical Values)
+================================================================================
+
+PATH Collective Variable:
+  REFERENCE = open_state.pdb
+  LAMBDA    = 50.0        (adjust 30-100 based on system)
+
+Well-Tempered MetaDynamics:
+  HEIGHT    = 0.5 kJ/mol  (smaller = more sampling, slower convergence)
+  SIGMA     = 0.1, 0.1    (Gaussian width for s and z)
+  PACE      = 1000 steps  (deposition interval)
+  BIASFACTOR = 15.0       (well-tempered ensemble ratio)
+  TEMP      = 300 K
+
+AMBER MD:
+  timestep  = 2 fs
+  thermostat = Langevin (gamma_ln = 2.0)
+  temperature = 300 K
+  water model = TIP3P
+
+KEY INTERMEDIATE STATES
+================================================================================
+
+E(Ain):   Initial aminoacrylate (external aldimine with substrate)
+E(Aex1):  External aldimine (serine external aldimine) → Use 5DW0 or homology
+E(A-A):   Aminoacrylate (product-like intermediate) → Search for/model
+E(Q2):    Gem-diamine/quinonoid (requires modeling or related structures)
+
+COMM DOMAIN CONFORMATIONAL CHANGES
+================================================================================
+
+OPEN State (PLP accessible to solvent):
+  - COMM domain distant from active site
+  - PLP solvent-exposed
+  - No β Asp305-β Arg141 salt bridge
+
+CLOSED State (PLP shielded):
+  - COMM domain moves toward active site
+  - PLP shielded from solvent
+  - β Asp305-β Arg141 salt bridge forms
+  - Indole trapped in active site
+
+The path CV (s, z) tracks this COMM domain transition:
+  s = 0 (open) → s = 1 (closed)
+  z = perpendicular distance from transition path
+
+COMMON PITFALLS & SOLUTIONS
+================================================================================
+
+Problem: No transition between open/closed states
+  → Try: Lower HEIGHT (0.5 → 0.1 kJ/mol)
+  → Try: Increase PACE (1000 → 500 steps)
+  → Try: Run longer (10 ns → 100 ns)
+  → Check: Reference structures truly open/closed?
+
+Problem: PLP cofactor causes simulation crashes
+  → Check: Lys-PLP Schiff base connectivity
+  → Check: Partial charges and protonation state
+  → Try: Run energy minimization before MD
+  → Try: Constrain PLP atoms initially, then release
+
+Problem: FES reconstruction fails (plumed sum_hills)
+  → Check: HILLS file being written (tail HILLS)
+  → Check: Coordinate ranges reasonable
+  → Try: --mintozero option
+  → Try: Exclude early unequilibrated HILLS entries
+
+CONTACT INFORMATION
+================================================================================
+
+Osuna Research Group:
+  Website: https://www.osunalab.com/
+  Institution: Universitat de Girona, IQCC (Institut de Química Computacional i Catàlisis)
+  → Recommended: Contact directly for SI clarifications or PLP parameters
+
+Key Online Resources:
+  AMBER: https://ambermd.org/
+  PLUMED: https://www.plumed.org/
+  RCSB PDB: https://www.rcsb.org/
+  PLUMED-NEST: https://www.plumed-nest.org/ (published simulations)
+  PubMed: https://pubmed.ncbi.nlm.nih.gov/
+
+PLUMED Tutorials:
+  Belfast Metadynamics: https://www.plumed.org/doc-v2.9/user-doc/html/belfast-6.html
+  Masterclass 22.9 (Path CVs): https://www.plumed.org/doc-v2.9/user-doc/html/masterclass-22-9.html
+
+ESTIMATED TIMELINE
+================================================================================
+
+If starting from scratch:
+
+Week 1:
+  - Acquire/access supporting information
+  - Download AMBER and PLUMED source code
+  - Review literature (ff14SB, PLP parameters, path CVs)
+
+Week 2:
+  - Install AMBER/AmberTools
+  - Install PLUMED and patch AMBER
+  - Test compilation
+
+Week 3:
+  - Prepare protein structures (align, set up topology)
+  - Obtain/parameterize PLP cofactor
+  - Create test PLUMED/AMBER input files
+
+Week 4:
+  - Run test simulation (1 ns, single intermediate)
+  - Validate against paper's published data
+  - Debug any issues
+
+Weeks 5-8:
+  - Optimize CV parameters
+  - Run production simulations (10-100 ns per state)
+  - Analyze free energy surfaces
+  - Compare to published results
+
+Total: ~2 months (excluding troubleshooting or long equilibrations)
+
+CHECKLIST FOR GETTING STARTED
+================================================================================
+
+Before simulations:
+  [ ] Access paper Supporting Information from ACS
+  [ ] Download PDB files (5DVZ, 5DW3, 5DW0)
+  [ ] Obtain or derive PLP force field parameters
+  [ ] Install AMBER and AmberTools
+  [ ] Install PLUMED and compile with AMBER support
+  [ ] Test plumed -v and pmemd executables work
+  [ ] Review PLUMED PATH documentation
+  [ ] Review paper methods section carefully
+
+Test run:
+  [ ] Prepare single intermediate (e.g., 5DW0)
+  [ ] Create AMBER topology with PLP cofactor
+  [ ] Create minimal plumed.dat with PATH CV
+  [ ] Run short test MD (1 ns)
+  [ ] Check colvar.txt and HILLS file generated
+  [ ] Reconstruct FES with plumed sum_hills
+  [ ] Compare to paper's published results
+
+Full production:
+  [ ] Set up all 3 variants (PfTrpS complex, PfTrpB WT, PfTrpB0B2)
+  [ ] Set up all 4 intermediates (E(Ain), E(Aex1), E(A-A), E(Q2))
+  [ ] Run production simulations (10-100 ns each)
+  [ ] Analyze and compare to paper results
+
+================================================================================
+For full details, see: MetaDynamics_Setup_Notes.md
+================================================================================

@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrpB + MetaDynamics 完整学习指南 | Zhenpeng Liu · aNima Lab · Caltech</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1a2744;
+    --blue: #2563EB;
+    --teal: #0d9488;
+    --paper: #faf8f3;
+    --paper2: #f3f0e8;
+    --border: #d4c9a8;
+    --text: #2d2d2d;
+    --gray: #6b7280;
+    --lightgray: #f3f4f6;
+    /* highlight colors */
+    --hl-thesis: #fef3c7;    /* yellow - core thesis */
+    --hl-concept: #fee2e2;   /* red - key concepts */
+    --hl-evidence: #dbeafe;  /* blue - evidence/data */
+    --hl-counter: #dcfce7;   /* green - counterargument */
+    --hl-method: #f3e8ff;    /* purple - methodology */
+    --hl-thesis-border: #d97706;
+    --hl-concept-border: #dc2626;
+    --hl-evidence-border: #2563eb;
+    --hl-counter-border: #16a34a;
+    --hl-method-border: #7c3aed;
+    --sidebar-w: 240px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--paper);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  /* ── TOP NAV ─────────────────────────────────── */
+  #topnav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--navy);
+    color: white;
+    padding: 0 24px;
+    display: flex; align-items: center; gap: 20px;
+    min-height: 54px; flex-wrap: wrap;
+    box-shadow: 0 2px 12px rgba(0,0,0,.35);
+  }
+  #topnav .title {
+    font-size: 14px; font-weight: 700; letter-spacing: .4px;
+    white-space: nowrap;
+    padding: 10px 0;
+  }
+  .legend {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    padding: 8px 0;
+    border-left: 1px solid rgba(255,255,255,.2);
+    padding-left: 20px;
+  }
+  .leg-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11.5px; font-weight: 500;
+  }
+  .leg-dot {
+    width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0;
+  }
+
+  /* ── LAYOUT ─────────────────────────────────── */
+  #layout { display: flex; }
+
+  /* ── SIDEBAR ─────────────────────────────────── */
+  #sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    position: sticky;
+    top: 54px;
+    height: calc(100vh - 54px);
+    overflow-y: auto;
+    background: #1e2e52;
+    color: #c5d5f0;
+    padding: 16px 0;
+    flex-shrink: 0;
+    scrollbar-width: thin;
+  }
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-track { background: transparent; }
+  #sidebar::-webkit-scrollbar-thumb { background: #3d5a8a; border-radius: 2px; }
+  .nav-section { padding: 6px 16px 2px; font-size: 10px; font-weight: 700; letter-spacing: 1px; color: #7a9cc5; text-transform: uppercase; }
+  .nav-link {
+    display: block; padding: 7px 20px; font-size: 12.5px; color: #c5d5f0;
+    text-decoration: none; border-left: 3px solid transparent;
+    transition: all .15s; line-height: 1.4;
+  }
+  .nav-link:hover { background: rgba(255,255,255,.07); color: white; border-left-color: #60a5fa; }
+  .nav-link.active { background: rgba(96,165,250,.15); color: white; border-left-color: #60a5fa; font-weight: 600; }
+  .nav-sub { padding-left: 32px; font-size: 11.5px; color: #8aadcc; }
+
+  /* ── MAIN CONTENT ─────────────────────────────── */
+  #main {
+    flex: 1;
+    min-width: 0;
+    padding: 0 0 80px;
+  }
+
+  /* ── SECTION WRAPPER ─────────────────────────── */
+  .section {
+    padding: 40px 32px 32px;
+    border-bottom: 2px solid var(--border);
+  }
+  .section:last-child { border-bottom: none; }
+
+  .section-header {
+    display: flex; align-items: baseline; gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--navy);
+  }
+  .section-num {
+    font-size: 13px; font-weight: 700; color: white;
+    background: var(--navy); padding: 2px 10px; border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .section-title {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 22px; font-weight: 700; color: var(--navy);
+    line-height: 1.3;
+  }
+  .section-subtitle {
+    font-size: 13px; color: var(--gray); margin-top: 4px;
+    font-style: italic;
+  }
+
+  /* ── PAPER META ─────────────────────────────── */
+  .paper-meta {
+    background: var(--navy);
+    color: white;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .paper-meta .meta-full { grid-column: 1/-1; }
+  .meta-label { color: #90b4e0; font-weight: 600; margin-right: 6px; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-size: 11px; font-weight: 700; margin-left: 6px;
+  }
+  .badge-open { background: #16a34a; color: white; }
+  .badge-inst { background: #7c3aed; color: white; }
+  .badge-key  { background: #d97706; color: white; }
+
+  /* ── TWO-COLUMN ANNOTATED LAYOUT ─────────────── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .col-header {
+    padding: 10px 16px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .8px; color: white;
+    background: var(--navy);
+  }
+  .col-left { border-right: 1px solid var(--border); }
+  .col-right { background: #f8f5ee; }
+
+  /* Paper paragraph blocks */
+  .p-block {
+    display: contents;
+  }
+  .p-text {
+    padding: 14px 18px;
+    font-family: 'Lora', serif;
+    font-size: 13.5px;
+    line-height: 1.8;
+    border-bottom: 1px solid #e8e2d4;
+    background: white;
+  }
+  .p-text:last-child { border-bottom: none; }
+  .p-annot {
+    padding: 12px 16px;
+    border-bottom: 1px solid #ded8cc;
+    background: #f8f5ee;
+    font-size: 12.5px;
+  }
+  .p-annot:last-child { border-bottom: none; }
+
+  /* Annotation card */
+  .ann-tag {
+    display: inline-block; padding: 1px 7px; border-radius: 3px;
+    font-size: 10.5px; font-weight: 700; margin-bottom: 5px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .ann-func { background: #1a2744; color: white; }
+  .ann-role { background: #0d9488; color: white; }
+  .ann-note { background: #d97706; color: white; }
+  .ann-body { font-size: 12.5px; line-height: 1.6; color: #3d3d3d; margin-top: 4px; }
+  .ann-label { font-weight: 700; color: var(--navy); margin-right: 4px; }
+
+  /* Highlights */
+  mark.thesis   { background: var(--hl-thesis);   padding: 1px 3px; border-bottom: 2px solid var(--hl-thesis-border); }
+  mark.concept  { background: var(--hl-concept);  padding: 1px 3px; border-bottom: 2px solid var(--hl-concept-border); }
+  mark.evidence { background: var(--hl-evidence); padding: 1px 3px; border-bottom: 2px solid var(--hl-evidence-border); }
+  mark.counter  { background: var(--hl-counter);  padding: 1px 3px; border-bottom: 2px solid var(--hl-counter-border); }
+  mark.method   { background: var(--hl-method);   padding: 1px 3px; border-bottom: 2px solid var(--hl-method-border); }
+
+  /* ── CALLOUT BOXES ─────────────────────────── */
+  .callout {
+    border-radius: 6px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid;
+    font-size: 13.5px;
+  }
+  .callout-blue   { background: #eff6ff; border-color: #2563eb; }
+  .callout-orange { background: #fffbeb; border-color: #d97706; }
+  .callout-green  { background: #f0fdf4; border-color: #16a34a; }
+  .callout-red    { background: #fef2f2; border-color: #dc2626; }
+  .callout-purple { background: #faf5ff; border-color: #7c3aed; }
+  .callout-title  { font-weight: 700; margin-bottom: 6px; font-size: 13px; }
+
+  /* ── DIAGRAM BOXES ─────────────────────────── */
+  .diagram {
+    background: #0d1b2a; color: #c8e6ff;
+    border-radius: 6px; padding: 16px 20px; margin: 16px 0;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;
+    line-height: 1.7; overflow-x: auto;
+    border: 1px solid #1e3a5f;
+  }
+
+  /* ── TABLES ─────────────────────────────────── */
+  .styled-table {
+    width: 100%; border-collapse: collapse;
+    margin: 16px 0; font-size: 13px;
+    border-radius: 6px; overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .styled-table th {
+    background: var(--navy); color: white;
+    padding: 10px 14px; text-align: left;
+    font-weight: 600; font-size: 12px;
+    letter-spacing: .3px;
+  }
+  .styled-table td {
+    padding: 9px 14px; border-bottom: 1px solid #e5e0d4;
+    vertical-align: top;
+  }
+  .styled-table tr:nth-child(even) td { background: var(--paper2); }
+  .styled-table tr:hover td { background: #ebe5d5; }
+
+  /* ── SUMMARY SKELETON ─────────────────────── */
+  .skeleton-box {
+    background: white; border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px 24px; margin: 16px 0;
+  }
+  .skeleton-box h4 { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 10px; }
+  .strong-weak {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;
+  }
+  .sw-box { padding: 12px 16px; border-radius: 6px; font-size: 12.5px; }
+  .sw-strong { background: #f0fdf4; border: 1px solid #86efac; }
+  .sw-weak   { background: #fff7ed; border: 1px solid #fdba74; }
+  .sw-label  { font-weight: 700; font-size: 12px; margin-bottom: 6px; }
+
+  /* ── TIMELINE ───────────────────────────────── */
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 8px; top: 0; bottom: 0;
+    width: 2px; background: var(--border);
+  }
+  .tl-item {
+    position: relative; margin-bottom: 20px;
+    background: white; border: 1px solid var(--border);
+    border-radius: 6px; padding: 12px 16px;
+  }
+  .tl-item::before {
+    content: ''; position: absolute; left: -24px; top: 16px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--navy); border: 2px solid var(--paper);
+    box-shadow: 0 0 0 2px var(--navy);
+  }
+  .tl-year { font-weight: 700; color: var(--navy); font-size: 13px; margin-bottom: 4px; }
+  .tl-title { font-weight: 600; font-size: 13.5px; margin-bottom: 4px; }
+  .tl-desc { font-size: 12.5px; color: #555; }
+
+  /* ── SKILL CARD ─────────────────────────────── */
+  .skill-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px; margin: 16px 0;
+  }
+  .skill-card {
+    background: white; border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px;
+    border-top: 3px solid var(--navy);
+  }
+  .skill-card h4 { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+  .skill-card p  { font-size: 12.5px; color: #555; line-height: 1.6; }
+  .skill-card .tag {
+    display: inline-block; background: var(--paper2);
+    border: 1px solid var(--border); border-radius: 3px;
+    padding: 1px 7px; font-size: 11px; margin-top: 8px; margin-right: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── CHECKLIST ─────────────────────────────── */
+  .checklist { list-style: none; padding: 0; margin: 12px 0; }
+  .checklist li {
+    padding: 6px 0 6px 28px; position: relative;
+    font-size: 13.5px; border-bottom: 1px solid #ede8de;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist li::before {
+    content: '☐'; position: absolute; left: 0; color: var(--navy);
+    font-size: 16px; line-height: 1;
+  }
+  .checklist li.done::before { content: '☑'; color: #16a34a; }
+
+  /* ── ANALYSIS SKILLSET ─────────────────────── */
+  .prompt-block {
+    background: #0f172a; color: #e2e8f0;
+    border-radius: 8px; padding: 20px 24px; margin: 16px 0;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    line-height: 1.75; overflow-x: auto;
+    border: 1px solid #1e3a5f;
+    white-space: pre-wrap;
+  }
+  .prompt-block .comment { color: #6b8cba; }
+  .prompt-block .keyword { color: #93c5fd; font-weight: 600; }
+  .prompt-block .value   { color: #86efac; }
+
+  /* ── RESPONSIVE ─────────────────────────────── */
+  @media (max-width: 900px) {
+    #sidebar { display: none; }
+    .two-col { grid-template-columns: 1fr; }
+    .col-right { border-top: 2px solid var(--navy); }
+    .paper-meta { grid-template-columns: 1fr; }
+    .strong-weak { grid-template-columns: 1fr; }
+    .section { padding: 24px 16px; }
+  }
+  @media (max-width: 600px) {
+    #topnav { flex-direction: column; align-items: flex-start; padding: 10px 16px; }
+    .legend { padding-left: 0; border-left: none; }
+  }
+
+  /* ── MISC ───────────────────────────────────── */
+  h3.subhead { font-size: 17px; font-weight: 700; color: var(--navy); margin: 24px 0 10px; }
+  h4.subhead2 { font-size: 14px; font-weight: 700; color: var(--teal); margin: 16px 0 8px; }
+  p.body { font-size: 13.5px; line-height: 1.8; margin-bottom: 12px; }
+  .doi { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #666; }
+  .key-box {
+    background: #1a2744; color: #e2eaf8;
+    border-radius: 6px; padding: 12px 16px; margin: 12px 0;
+    font-size: 13px; font-style: italic; font-weight: 500;
+    border-left: 4px solid #60a5fa;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     TOP NAV
+════════════════════════════════════════════════════════ -->
+<nav id="topnav">
+  <div class="title">📚 TrpB + MetaDynamics 完整学习指南 · aNima Lab · Caltech · 2026</div>
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:#f59e0b"></div>核心论点 Thesis</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#ef4444"></div>关键概念 Concept</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#3b82f6"></div>实验证据 Evidence</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#22c55e"></div>反驳/让步 Counter</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#a855f7"></div>方法论 Method</div>
+  </div>
+</nav>
+
+<div id="layout">
+
+<!-- ════════════════════════════════════════════════════════
+     SIDEBAR
+════════════════════════════════════════════════════════ -->
+<nav id="sidebar">
+  <div class="nav-section">前置背景</div>
+  <a class="nav-link" href="#s0">§0 TrpB 入门背景</a>
+  <a class="nav-link nav-sub" href="#s0-what">酶是什么？</a>
+  <a class="nav-link nav-sub" href="#s0-trpb">TrpB 的机制</a>
+  <a class="nav-link nav-sub" href="#s0-dtrp">D-色氨酸挑战</a>
+  <a class="nav-link nav-sub" href="#s0-timeline">领域时间线</a>
+
+  <div class="nav-section">关键文献</div>
+  <a class="nav-link" href="#s1">§1 Osuna JACS 2019</a>
+  <a class="nav-link nav-sub" href="#s1-annot">双栏批注</a>
+  <a class="nav-link nav-sub" href="#s1-skel">论证骨架</a>
+
+  <a class="nav-link" href="#s2">§2 Osuna ACS Catal 2021</a>
+  <a class="nav-link nav-sub" href="#s2-annot">双栏批注</a>
+  <a class="nav-link nav-sub" href="#s2-skel">论证骨架</a>
+
+  <a class="nav-link" href="#s3">§3 Osuna Prot Sci 2022</a>
+  <a class="nav-link nav-sub" href="#s3-annot">双栏批注</a>
+
+  <a class="nav-link" href="#s4">§4 RFDiffusion2 2025</a>
+  <a class="nav-link nav-sub" href="#s4-annot">双栏批注</a>
+
+  <a class="nav-link" href="#s5">§5 aNima GenSLM-TrpB</a>
+  <a class="nav-link nav-sub" href="#s5-annot">双栏批注</a>
+
+  <div class="nav-section">综合分析</div>
+  <a class="nav-link" href="#s6">§6 aNima ↔ Osuna 关联图</a>
+  <a class="nav-link" href="#s7">§7 MetaDynamics 的角色</a>
+  <a class="nav-link" href="#s8">§8 学习路径 + 复习计划</a>
+  <a class="nav-link" href="#s9">§9 Analysis Skillset</a>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════
+     MAIN
+════════════════════════════════════════════════════════ -->
+<main id="main">
+
+<!-- ════════════════ §0 背景 ════════════════ -->
+<section class="section" id="s0">
+  <div class="section-header">
+    <span class="section-num">§0</span>
+    <div>
+      <div class="section-title">TrpB 入门背景：从零开始理解</div>
+      <div class="section-subtitle">完全面向新手 | 假设你第一次听说 TrpB</div>
+    </div>
+  </div>
+
+  <h3 class="subhead" id="s0-what">0.1 酶是什么？为什么它重要？</h3>
+  <p class="body">酶（enzyme）是生物体内的蛋白质催化剂。它们通过降低化学反应的活化能来加速反应，而自身不被消耗。一个酶分子每秒可以催化数千次反应，效率远超任何人工化学催化剂。</p>
+  <p class="body">酶的催化效率和选择性（只作用于特定底物，只产生特定产物）使它们成为制药、化工、食品工业的核心工具。但自然界中并不存在能催化我们所有需要的反应的酶——这就是<strong>酶工程（enzyme engineering）</strong>和<strong>de novo 酶设计（从头设计）</strong>存在的原因。</p>
+
+  <h3 class="subhead" id="s0-trpb">0.2 TrpB：我们的研究对象</h3>
+  <div class="callout callout-blue">
+    <div class="callout-title">🧬 TrpB 一句话定义</div>
+    TrpB（色氨酸合酶 β 亚基）是一种依赖 PLP 辅因子的酶，催化：<br><br>
+    <strong>吲哚 + L-丝氨酸 + PLP → L-色氨酸</strong><br><br>
+    它来自细菌/古菌，天然状态是与 TrpA 配对的异四聚体（αβ）²，但 standalone 版本（单独 β 亚基）也具有活性。
+  </div>
+
+  <h4 class="subhead2">PLP 辅因子——为什么重要</h4>
+  <p class="body">PLP（磷酸吡哆醛，维生素 B6 活性形式）通过与活性位点赖氨酸（K82）形成 Schiff 碱（亚胺键）锚定在酶内。它是反应的"电子中继站"，稳定带负电中间体。<strong>没有 PLP，反应就无法发生。</strong></p>
+
+  <table class="styled-table">
+    <thead><tr><th>状态</th><th>化学物种</th><th>COMM 结构域</th><th>关键事件</th></tr></thead>
+    <tbody>
+      <tr><td><strong>E(Ain)</strong></td><td>内部醛亚胺：PLP-K82</td><td>开放（Open）</td><td>静息态，等待底物</td></tr>
+      <tr><td><strong>E(Aex1)</strong></td><td>外部醛亚胺：PLP-Ser</td><td>部分关闭</td><td>L-丝氨酸替换 K82</td></tr>
+      <tr><td><strong>E(Q1)</strong></td><td>醌式中间体 1</td><td>部分关闭</td><td>L-Ser 脱羧，共振稳定</td></tr>
+      <tr><td><strong>E(A-A) ⚠️</strong></td><td>氨基丙烯酸酯</td><td><strong>必须完全关闭！</strong></td><td>高活性中间体，等待吲哚亲核进攻</td></tr>
+      <tr><td><strong>E(Q2/Q3)</strong></td><td>醌式 → L-Trp</td><td>重新开放</td><td>C-C 键形成，产物释放</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-orange">
+    <div class="callout-title">⚠️ 为什么 COMM 结构域是关键</div>
+    COMM 结构域（约 40 个残基的可动环/螺旋，~残基 100-150）在催化过程中必须完全关闭，才能保护 E(A-A) 中间体不被水解。如果 COMM 没有关闭，反应就"失败"了。<strong>COMM 关闭是整个反应的速率决定步骤。</strong>
+    <br><br>R141-D305 盐桥（&lt;3.5 Å）= COMM 完全关闭的分子指标。
+  </div>
+
+  <h3 class="subhead" id="s0-dtrp">0.3 为什么要设计 D-色氨酸合成酶？</h3>
+
+  <div class="diagram">
+   L-色氨酸 (天然)        vs        D-色氨酸 (目标)
+   ─────────────────                ─────────────────
+        COOH                              COOH
+        |                                 |
+   H₂N-C-H    &lt;── 镜像 ──&gt;          H-C-NH₂
+        |                                 |
+       CH₂-吲哚                      吲哚-CH₂
+
+   构型: S (左手性)                  构型: R (右手性)
+   si面进攻吲哚 → L-Trp              re面进攻吲哚 → D-Trp
+   自然界普遍存在                    天然酶不能合成
+  </div>
+
+  <p class="body">D-氨基酸在自然界中极为罕见，但在制药领域非常有价值（D-型多肽抗降解能力强，用于抗癌药、血清素配体等）。无法简单突变天然 TrpB 来产生 D-Trp，因为整个活性位点几何结构都是错的——需要从头设计新蛋白。</p>
+
+  <h3 class="subhead" id="s0-timeline">0.4 领域发展时间线</h3>
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-year">1988–2003</div>
+      <div class="tl-title">TrpB 经典结构研究</div>
+      <div class="tl-desc">确定 X 射线晶体结构（PDB: 1K8Z），揭示 PLP 机制，发现 COMM 结构域存在</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2017–2019</div>
+      <div class="tl-title">Frances Arnold 组 — TrpB 工程化爆发</div>
+      <div class="tl-desc">定向进化出能合成多种非天然氨基酸的 TrpB 变体（PfTrpB, 5DW3）；JACS 等发表</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2019</div>
+      <div class="tl-title">Osuna JACS — MetaDynamics FEL 框架</div>
+      <div class="tl-desc">首次用 MetaDynamics 计算 TrpB 自由能景观，建立 FEL = 催化活性预测指标的范式</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2021</div>
+      <div class="tl-title">Osuna ACS Catal — SPM 方法 + 实验验证</div>
+      <div class="tl-desc">SPM 从 MD 识别远程突变热点；预测的突变经湿实验室验证有效</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2022</div>
+      <div class="tl-title">AlphaFold2 革命 + Osuna tAF2-MD</div>
+      <div class="tl-desc">tAF2-MD 将 MetaDynamics 加速 10-50x；大规模筛选候选变体成为可能</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2023</div>
+      <div class="tl-title">RFDiffusion1 — Baker Lab</div>
+      <div class="tl-desc">扩散模型用于 de novo 蛋白质设计，开辟 AI 生成蛋白质骨架的新时代</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2025</div>
+      <div class="tl-title">aNima GenSLM-TrpB + RFDiffusion2</div>
+      <div class="tl-desc">aNima 实验室用 AI 语言模型生成新型 TrpB；RFD2 在 41/41 基准测试全胜。<strong>你的项目在这里</strong></div>
+    </div>
+  </div>
+
+</section><!-- end §0 -->
+
+
+<!-- ════════════════ §1 JACS 2019 ════════════════ -->
+<section class="section" id="s1">
+  <div class="section-header">
+    <span class="section-num">§1</span>
+    <div>
+      <div class="section-title">Osuna JACS 2019 — MetaDynamics FEL 奠基论文</div>
+      <div class="section-subtitle">必读第一篇 | 建立整个框架的核心文献</div>
+    </div>
+  </div>
+
+  <div class="paper-meta">
+    <div class="meta-full">
+      <span class="meta-label">标题：</span>"Deciphering the Allosterically Driven Conformational Ensemble in Tryptophan Synthase Evolution"
+      <span class="badge badge-key">必读 #1</span>
+    </div>
+    <div><span class="meta-label">作者：</span>Maria-Solano, Iglesias-Fernández, Osuna</div>
+    <div><span class="meta-label">期刊：</span>J. Am. Chem. Soc. 2019, 141, 13049-13056</div>
+    <div><span class="meta-label">DOI：</span><span class="doi">10.1021/jacs.9b03646</span></div>
+    <div><span class="meta-label">开放获取：</span>否 <span class="badge badge-inst">机构访问</span></div>
+    <div><span class="meta-label">重要程度：</span>★★★★★ 奠基性论文，理解所有后续工作的前提</div>
+  </div>
+
+  <div class="key-box">
+    核心主张（一句话）：<strong>TrpB 的催化效率由其构象集合的自由能景观（FEL）决定，而非单一静态结构；MetaDynamics 可定量重建这个 FEL，从而预测并解释催化活性差异。</strong>
+  </div>
+
+  <div id="s1-annot">
+  <div class="two-col">
+    <div class="col-left">
+      <div class="col-header">📄 论文核心内容（英文 + 中译重构）</div>
+      <div class="p-text">
+        <strong>[Background]</strong> Tryptophan synthase (TrpS) consists of α (TrpA) and β (TrpB) subunits forming an (αβ)₂ heterotetramer.
+        <mark class="thesis">The β-subunit alone (standalone TrpB) shows only ~3% of the activity of the complexed form</mark>, suggesting that
+        <mark class="concept">allosteric communication from TrpA to TrpB is essential for full activity</mark>.
+        Laboratory evolution has produced standalone TrpB variants with restored activity, but
+        <mark class="counter">the molecular basis of this recovery has remained unclear</mark>.
+      </div>
+      <div class="p-text">
+        <strong>[Problem Statement]</strong>
+        <mark class="thesis">We propose that the key determinant is not a single active conformation, but rather the entire conformational ensemble</mark>
+        — specifically, the relative populations of open, partially-closed, and closed COMM domain states.
+        <mark class="concept">The COMM (communication) domain must fully close to protect the aminoacrylate intermediate E(A-A) from hydrolysis</mark>.
+        Activity correlates with the fraction of time the enzyme spends in the catalytically competent closed state.
+      </div>
+      <div class="p-text">
+        <strong>[Methods]</strong>
+        <mark class="method">We employed Well-Tempered MetaDynamics (WTMetaD) simulations using GROMACS + PLUMED</mark>.
+        <mark class="method">Collective variables: (1) a path CV describing the open-to-closed COMM domain transition; (2) path deviation (S and Z coordinates)</mark>.
+        Systems studied: TrpS complex, standalone pfTrpB (wild-type), LBCA-TrpB (ancestral reconstruction), and evolved variants 0B2-pfTrpB and 0B9-pfTrpB.
+        <mark class="method">Simulations ran for 200–500 ns with multiple walkers; FELs reconstructed via sum_hills</mark>.
+      </div>
+      <div class="p-text">
+        <strong>[Results — Key FEL Comparison]</strong>
+        <mark class="evidence">The FEL of the TrpS complex shows a deep, accessible minimum at the closed COMM state (ΔG ~ −3 to −5 kcal/mol)</mark>.
+        <mark class="evidence">Standalone pfTrpB (WT) has a shallow closed-state minimum, explaining its low standalone activity</mark>.
+        <mark class="evidence">Evolved variant 0B2-pfTrpB shows a restored deep minimum at the closed state — matching restored activity</mark>.
+        <mark class="evidence">LBCA-TrpB, an ancestrally reconstructed enzyme with low activity, shows almost no stable closed-state minimum</mark>.
+      </div>
+      <div class="p-text">
+        <strong>[Conclusion]</strong>
+        <mark class="thesis">Recovering the catalytically productive conformational ensemble — specifically stabilizing the COMM-closed state — is the prerequisite for restoring activity in standalone TrpB</mark>.
+        This is a "population shift" effect: mutations work not by changing the chemical mechanism, but by
+        <mark class="concept">shifting the equilibrium of the conformational ensemble toward the catalytically active state</mark>.
+        <mark class="counter">The finding challenges structure-centric views of enzyme engineering</mark>, arguing that dynamic ensemble properties, not individual residue contacts, are the primary determinant of activity.
+      </div>
+    </div>
+    <div class="col-right">
+      <div class="col-header">📝 中文批注</div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">引出问题</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>建立背景，指出 standalone TrpB 活性差这个核心谜题。<br>
+          <span class="ann-label">逻辑角色：</span>论证起点——"有个活性差的酶，为什么？"<br>
+          <span class="ann-label">值得注意：</span>3% 活性这个数字是关键——它说明 TrpA 对 TrpB 的活化极其重要，但作者要解释的是"定向进化能恢复这个活性，机制是什么"，而非解释 TrpA 本身的作用。论证方向聚焦在 <em>动态构象</em>，而非静态结合界面。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">提出核心假说</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>直接陈述本文的中心论点（thesis）。<br>
+          <span class="ann-label">逻辑角色：</span>整篇文章的逻辑枢纽——"构象集合 → FEL → 催化活性"这条因果链。<br>
+          <span class="ann-label">关键术语：</span><em>conformational ensemble</em>（构象集合）是指蛋白质在溶液中实际探索的所有构象的集合，而非单一晶体结构。<br>
+          <span class="ann-label">潜在漏洞：</span>作者假定 COMM 关闭就是活性的充分条件，但未完全排除其他速率决定步骤（如化学步骤本身）的贡献。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-method">方法论说明</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>建立方法可靠性，为后续数据提供依据。<br>
+          <span class="ann-label">逻辑角色：</span>"我们如何知道 FEL 的形状？"的回答。<br>
+          <span class="ann-label">关键点：</span>Path CV（路径集体变量）是本文最重要的技术选择——它把高维的 COMM 运动压缩成2D（S = 沿路径进度，Z = 偏离路径程度），使 FEL 可视化成为可能。<br>
+          <span class="ann-label">你要复现的：</span>这套 MetaDynamics + PLUMED 设置就是你需要学的核心内容。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">提供核心证据</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>FEL 数据直接支持核心假说。<br>
+          <span class="ann-label">逻辑角色：</span>论证最强处——四个系统的 FEL 对比形成"阶梯式"证据链。<br>
+          <span class="ann-label">重要程度：</span>★★★★★ 你在复现时，你的 FEL 图应该和这里的图 2 对比。<br>
+          <span class="ann-label">你需要的数字：</span>ΔG(closed) < −2 kcal/mol = 活性候选；ΔG(closed) > 0 = 非活性。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">总结 + 范式转移</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>将结果升华为一般原理，提出"population shift"框架。<br>
+          <span class="ann-label">逻辑角色：</span>论证终点——从具体 TrpB 系统升华到酶工程普遍原理。<br>
+          <span class="ann-label">范式意义：</span>传统酶工程关注"哪个残基接触底物"；Osuna 框架说"关注整个蛋白质怎么运动"。这是一个视角转变，影响了整个领域。<br>
+          <span class="ann-label">对你的意义：</span>你的工作是把这个框架应用到 <em>de novo 设计</em>的蛋白上——前所未有的应用场景。
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- end s1-annot -->
+
+  <div id="s1-skel" class="skeleton-box">
+    <h4>🦴 论证结构骨架 (JACS 2019)</h4>
+    <div class="diagram" style="font-size:11.5px;">
+问题：standalone TrpB 活性差，定向进化能恢复，但分子机制未知
+  │
+  ▼
+假说：活性由 COMM 结构域构象集合（FEL 形状）决定，而非静态结构
+  │
+  ▼
+证据：四系统 MetaDynamics FEL 对比
+  pfTrpB(WT)      → 浅关闭态最低点 → 低活性 ✓
+  0B2/0B9-pfTrpB  → 深关闭态最低点 → 高活性 ✓
+  LBCA-TrpB       → 几乎无关闭态   → 最低活性 ✓
+  TrpS complex    → 最深关闭态     → 最高活性 ✓
+  │
+  ▼
+结论：population shift（构象集合转变）是酶工程的真实机制
+  │
+  ▼
+影响：FEL 可作为筛选酶突变体的定量预测指标
+    </div>
+    <div class="strong-weak">
+      <div class="sw-box sw-strong">
+        <div class="sw-label">💪 论证最强处</div>
+        四个系统的 FEL 形状与活性数据高度一致，且覆盖了天然复合体、standalone、定向进化体和祖先重建体，跨越了3个数量级的活性范围。相关性极强，说服力高。
+      </div>
+      <div class="sw-box sw-weak">
+        <div class="sw-label">⚠️ 潜在弱点</div>
+        MetaDynamics FEL 的收敛性难以严格证明；path CV 的选择对 FEL 形状有显著影响。此外，本文未直接测量化学步骤速率常数，无法完全排除其为速率决定步骤的可能性。
+      </div>
+    </div>
+  </div>
+</section><!-- end §1 -->
+
+
+<!-- ════════════════ §2 ACS Catal 2021 ════════════════ -->
+<section class="section" id="s2">
+  <div class="section-header">
+    <span class="section-num">§2</span>
+    <div>
+      <div class="section-title">Osuna ACS Catalysis 2021 — SPM 方法 + 实验验证</div>
+      <div class="section-subtitle">必读第二篇 | 方法实用化 + 湿实验室验证</div>
+    </div>
+  </div>
+
+  <div class="paper-meta">
+    <div class="meta-full">
+      <span class="meta-label">标题：</span>"In Silico Identification and Experimental Validation of Distal Activity-Enhancing Mutations in Tryptophan Synthase"
+      <span class="badge badge-key">必读 #2</span>
+    </div>
+    <div><span class="meta-label">作者：</span>Maria-Solano, Kinateder, Iglesias-Fernández, Sterner, Osuna</div>
+    <div><span class="meta-label">期刊：</span>ACS Catalysis 2021, 11, 13733-13743</div>
+    <div><span class="meta-label">DOI：</span><span class="doi">10.1021/acscatal.1c03950</span></div>
+    <div><span class="meta-label">开放获取：</span>CC-BY Open Access <span class="badge badge-open">开放获取</span></div>
+    <div><span class="meta-label">重要程度：</span>★★★★★ 引入 SPM 方法；从计算预测到实验验证的完整闭环</div>
+  </div>
+
+  <div class="key-box">核心主张：<strong>SPM（Shortest Path Map）方法可以从普通 MD 轨迹中识别远离活性位点的"变构关键残基"，对这些残基的突变能有效改变 COMM 结构域的构象集合，且这一预测已经湿实验室验证。</strong></div>
+
+  <div id="s2-annot">
+  <div class="two-col">
+    <div class="col-left">
+      <div class="col-header">📄 论文核心内容</div>
+      <div class="p-text">
+        <strong>[Innovation]</strong>
+        <mark class="thesis">We introduce SPM (Shortest Path Map), a graph-theoretic method to identify distal mutation hotspots</mark>
+        that are allosterically connected to the active site.
+        <mark class="method">SPM constructs a weighted graph from MD trajectories using two matrices: (1) distance matrix (mean pairwise Cα distances) and (2) dynamic cross-correlation matrix (DCCM)</mark>.
+        <mark class="method">Dijkstra's shortest path algorithm finds the minimum-cost path from each residue to the COMM domain, weighted by 1−|correlation|</mark>.
+        Residues on many shortest paths = high SPM score = likely allosteric hotspot.
+      </div>
+      <div class="p-text">
+        <strong>[SPM Application to TrpB]</strong>
+        SPM analysis of LBCA-TrpB identified 6 key mutation candidates (SPM6 set) at positions distal from the PLP-binding site.
+        <mark class="evidence">These positions had SPM scores significantly above background noise</mark>, indicating they lie on the allosteric communication network between the surface and the COMM domain.
+        <mark class="evidence">Key predicted positions included T292, F306, and several COMM-proximal residues</mark>.
+      </div>
+      <div class="p-text">
+        <strong>[MetaDynamics Validation — Computational]</strong>
+        <mark class="method">Full Well-Tempered MetaDynamics was run on LBCA-TrpB + SPM6 mutations, using the same path CV protocol as JACS 2019</mark>.
+        <mark class="evidence">The FEL of SPM6-TrpB shows a significantly deeper closed-state minimum compared to LBCA-TrpB wild-type</mark>.
+        <mark class="evidence">The free energy barrier between open and closed states decreased from &gt;8 kcal/mol to ~4 kcal/mol</mark>.
+        This computationally predicts that SPM6 mutations should enhance catalytic activity.
+      </div>
+      <div class="p-text">
+        <strong>[Wet Lab Validation]</strong>
+        <mark class="evidence">SPM6-TrpB was expressed in E. coli, purified, and kinetically characterized</mark>.
+        <mark class="evidence">kcat increased 12-fold and kcat/KM (catalytic efficiency) increased 8-fold compared to LBCA-TrpB WT</mark>.
+        The experimental validation confirms the SPM+MetaDynamics prediction pipeline.
+        <mark class="counter">However, not all individual SPM positions contributed equally; combinatorial effects were important</mark>.
+      </div>
+      <div class="p-text">
+        <strong>[Conclusion + Significance]</strong>
+        <mark class="thesis">SPM provides a computationally efficient route to identifying distal mutations that reshape the FEL</mark>
+        without requiring exhaustive mutagenesis screening.
+        The SPM webserver (spmosuna.com) makes this method accessible to non-experts.
+        This pipeline —
+        <mark class="concept">MD → SPM → MetaDynamics → wet lab</mark>
+        — establishes a complete in silico guided enzyme engineering workflow.
+      </div>
+    </div>
+    <div class="col-right">
+      <div class="col-header">📝 中文批注</div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">提出新方法</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>引入 SPM 方法，这是本文的核心技术贡献。<br>
+          <span class="ann-label">方法核心逻辑：</span>把蛋白质看作"通讯网络"——如果从一个表面残基到 COMM 结构域有很多条"最短路径"经过某个残基，那个残基就是关键节点（allosteric hub）。<br>
+          <span class="ann-label">你需要会的：</span>从 MD 轨迹提取 DCCM 矩阵（MDAnalysis 可以做），然后用 spmosuna.com 网络服务器（输入 distance + DCCM 矩阵）。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">展示 SPM 预测</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>给出具体的突变位点预测结果。<br>
+          <span class="ann-label">逻辑角色：</span>连接"方法"和"验证"的桥梁段落。<br>
+          <span class="ann-label">值得注意：</span>这些突变位点都<em>远离</em>活性位点——这是 SPM 方法的独特之处。传统方法只看活性位点周围的残基，但变构效应可以通过远程传递来改变活性位点的构象。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-method">计算验证</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>用 MetaDynamics FEL 在计算层面验证 SPM 预测。<br>
+          <span class="ann-label">逻辑角色：</span>计算预测 → 实验验证之间的"桥梁"步骤，增加置信度。<br>
+          <span class="ann-label">关键数字记住：</span>壁垒从 >8 降到 ~4 kcal/mol。这就是你用 FEL 判断好坏候选的标准之一：barrier < 5 kcal/mol ≈ 好候选。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">提供实验证据</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>湿实验室数据——论证最强处。<br>
+          <span class="ann-label">逻辑角色：</span>整篇文章的结局——计算方法被现实世界验证。<br>
+          <span class="ann-label">12倍 kcat 提升的意义：</span>这不是微小的改进，是一个数量级的跃升。说明 SPM 找到的是真实的、功能性的变构关键残基。<br>
+          <span class="ann-label">让步处理：</span>作者诚实地指出并非所有 SPM 位点效果相同，需要组合优化——这增加了论文的可信度。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">总结 + 展望</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>提升到方法论层面，提出完整工作流。<br>
+          <span class="ann-label">逻辑角色：</span>论证终点——从单一案例到可复用的计算流水线。<br>
+          <span class="ann-label">对你的直接意义：</span>spmosuna.com 是你可以直接用的工具！在你运行完 MetaDynamics 得到 de novo 候选的 FEL 后，如果某个候选的 COMM 关闭不够好，可以用 SPM 从 MD 轨迹找出需要突变哪里来改进它——这就是迭代设计的一轮。
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- end s2-annot -->
+
+  <div id="s2-skel" class="skeleton-box">
+    <h4>🦴 论证结构骨架 (ACS Catal 2021)</h4>
+    <div class="diagram" style="font-size:11.5px;">
+问题：LBCA-TrpB 活性低；如何用计算方法找出能改善它的突变？（不依赖实验筛选）
+  │
+  ▼
+方法创新：SPM（Shortest Path Map）= MD轨迹 → DCCM矩阵 → 加权图 → Dijkstra → 变构热点
+  │
+  ▼
+预测：LBCA-TrpB 的 SPM6 突变集（6个远程位点）应当改善 COMM 关闭
+  │
+  ▼
+计算验证：MetaDynamics FEL 显示 SPM6-TrpB 关闭态稳定化，壁垒降低
+  │
+  ▼
+实验验证：湿实验室测定 kcat 提升12倍 ✓
+  │
+  ▼
+结论：MD → SPM → MetaDynamics → 实验 = 完整计算引导的酶工程闭环
+    </div>
+    <div class="strong-weak">
+      <div class="sw-box sw-strong">
+        <div class="sw-label">💪 论证最强处</div>
+        计算预测 → 实验验证的完整闭环，kcat 提升12倍是非常显著的效果。SPM 提供了一个可重用的方法论，不依赖对特定系统的先验知识。
+      </div>
+      <div class="sw-box sw-weak">
+        <div class="sw-label">⚠️ 潜在弱点</div>
+        SPM 输出的突变候选数量可能很多，如何从中优先排序仍需人工判断。组合效应使得预测复杂化——6个位点的组合空间非常大，作者只测试了少数组合。
+      </div>
+    </div>
+  </div>
+</section><!-- end §2 -->
+
+
+<!-- ════════════════ §3 Protein Science 2022 ════════════════ -->
+<section class="section" id="s3">
+  <div class="section-header">
+    <span class="section-num">§3</span>
+    <div>
+      <div class="section-title">Osuna Protein Science 2022 — tAF2-MD 快速筛选</div>
+      <div class="section-subtitle">必读第三篇 | 如何大规模筛选候选变体</div>
+    </div>
+  </div>
+
+  <div class="paper-meta">
+    <div class="meta-full">
+      <span class="meta-label">标题：</span>"Estimating conformational heterogeneity of tryptophan synthase with a template-based AlphaFold2 approach"
+      <span class="badge badge-open">PMC 开放获取</span>
+    </div>
+    <div><span class="meta-label">作者：</span>Casadevall, Duran, Estévez-Gay, Osuna</div>
+    <div><span class="meta-label">期刊：</span>Protein Science 2022, Special Issue (Prof. D. Tawfik memorial)</div>
+    <div><span class="meta-label">DOI：</span><span class="doi">10.1002/pro.4426</span> | PMC ID: PMC9601780</div>
+    <div><span class="meta-label">重要程度：</span>★★★★☆ 提供 10-50x 加速的预筛选方法</div>
+  </div>
+
+  <div class="key-box">核心主张：<strong>用低 MSA 深度（32-64 序列）的 AlphaFold2 + 结构模板，生成约 60 个构象多样的预测结构，再各跑 10 ns MD，就能近似重现 MetaDynamics 的 FEL 结果——速度提升 10-50 倍。</strong></div>
+
+  <div id="s3-annot">
+  <div class="two-col">
+    <div class="col-left">
+      <div class="col-header">📄 论文核心内容</div>
+      <div class="p-text">
+        <strong>[Motivation]</strong>
+        <mark class="thesis">Full MetaDynamics simulations are computationally expensive (~200 ns × 4–8 walkers per candidate)</mark>.
+        With hundreds of de novo designed or mutant candidates to screen, a faster pre-screening method is essential.
+        <mark class="concept">AlphaFold2 (AF2), when run with reduced MSA depth, generates conformationally diverse structures</mark>
+        because the reduced evolutionary information forces the model to explore a wider range of plausible folds.
+      </div>
+      <div class="p-text">
+        <strong>[tAF2-MD Protocol]</strong>
+        <mark class="method">Step 1: Generate ~60 AF2 predictions per candidate using MSA depth = 32 or 64 sequences</mark> (vs. normal >1000).
+        <mark class="method">Step 2: Add structural templates from existing MD snapshots to guide AF2 toward different regions of conformational space</mark>.
+        <mark class="method">Step 3: Run 10 ns standard MD on each AF2-predicted structure</mark>.
+        <mark class="method">Step 4: Extract the last snapshot from each MD run; plot COMM RMSD distribution</mark>.
+        The spread of these 60 RMSD values approximates the MetaDynamics FEL projection.
+      </div>
+      <div class="p-text">
+        <strong>[Validation]</strong>
+        <mark class="evidence">tAF2-MD conformational distributions overlay well with full MetaDynamics FELs for pfTrpB, LBCA-TrpB, and 0B2-pfTrpB</mark>.
+        The qualitative ranking of systems (most closed → least closed) is preserved.
+        <mark class="counter">Quantitative free energy values are less accurate than full MetaDynamics</mark>,
+        but the method correctly identifies whether a given variant has an accessible closed-state population.
+      </div>
+      <div class="p-text">
+        <strong>[Conclusion]</strong>
+        <mark class="thesis">tAF2-MD enables rapid, qualitative FEL estimation that is sufficient for pre-screening large candidate sets</mark>.
+        Candidates passing tAF2-MD screening (showing closed-state populations) can then be prioritized for full MetaDynamics.
+        This creates a two-stage screening funnel:
+        <mark class="concept">tAF2-MD (fast, ~1-2 days per candidate) → MetaDynamics (rigorous, ~1-4 days with GPU)</mark>.
+      </div>
+    </div>
+    <div class="col-right">
+      <div class="col-header">📝 中文批注</div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">引出实际问题</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>指出 MetaDynamics 太慢，引出需要快速替代方法的实际动机。<br>
+          <span class="ann-label">关键见解：</span>低 MSA 深度 AF2 会产生"不确定"的预测——但这种不确定性恰好反映了蛋白质的构象多样性！这是一个非常聪明的洞察：AF2 的"缺陷"（低质量预测时的结构多样性）被当成了"特性"来用。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-method">方法论说明</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>详述 tAF2-MD 四步协议。<br>
+          <span class="ann-label">你要做的：</span>如果你要做预筛选，就按这四步走。每个候选 ~60 × 10 ns = 600 ns 总计算，但因为这些 MD 是独立的短模拟（10 ns），并行效率极高。<br>
+          <span class="ann-label">关键参数：</span>MSA = 32 或 64 sequences（不要用默认的完整 MSA）；结构模板来自已有 MD 快照。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">提供验证数据</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>证明 tAF2-MD 与 MetaDynamics 结果相关。<br>
+          <span class="ann-label">诚实的让步：</span>作者承认定量精度不如 MetaDynamics，但质量排序正确。这是个诚实且重要的说明——tAF2-MD 是筛选工具，不是替代品。<br>
+          <span class="ann-label">对你的建议：</span>先跑 tAF2-MD 筛掉明显不行的候选，再对前 20% 跑正式 MetaDynamics。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">总结 + 推荐工作流</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>提出两阶段筛选漏斗策略。<br>
+          <span class="ann-label">实践价值：</span>这是你项目中最实用的策略建议。如果 JP 给你 100 个候选，先做 tAF2-MD（便宜，~2天），再对前 10-20 个做 MetaDynamics（贵，~2-5天/候选）。<br>
+          <span class="ann-label">关键参考：</span>图 S2（论文补充材料）中有 tAF2-MD 分布与 MetaDynamics FEL 的重叠对比图，这是你需要复现的验证图。
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- end s3-annot -->
+</section><!-- end §3 -->
+
+
+<!-- ════════════════ §4 RFDiffusion2 ════════════════ -->
+<section class="section" id="s4">
+  <div class="section-header">
+    <span class="section-num">§4</span>
+    <div>
+      <div class="section-title">RFDiffusion2 — Nature Methods 2025</div>
+      <div class="section-subtitle">了解上游方法 | 理解你的候选结构从哪里来</div>
+    </div>
+  </div>
+
+  <div class="paper-meta">
+    <div class="meta-full">
+      <span class="meta-label">标题：</span>"Atom-level enzyme active site scaffolding using RFdiffusion2"
+      <span class="badge badge-open">Open Access</span>
+    </div>
+    <div><span class="meta-label">作者：</span>Watson, Baker et al. (Institute for Protein Design, UW)</div>
+    <div><span class="meta-label">期刊：</span>Nature Methods 2025</div>
+    <div><span class="meta-label">DOI：</span><span class="doi">10.1038/s41592-025-02975-x</span></div>
+    <div><span class="meta-label">重要程度：</span>★★★★☆ 理解候选蛋白的来源和设计逻辑</div>
+  </div>
+
+  <div class="key-box">核心主张：<strong>RFDiffusion2 通过原子级输入（直接给定催化基团的3D坐标，无需指定序列索引）来生成能精确承载这些基团的全新蛋白质骨架，在 41/41 基准测试中全部成功，性能远超此前所有方法。</strong></div>
+
+  <div id="s4-annot">
+  <div class="two-col">
+    <div class="col-left">
+      <div class="col-header">📄 论文核心内容</div>
+      <div class="p-text">
+        <strong>[Innovation vs. RFDiffusion1]</strong>
+        <mark class="concept">RFDiffusion1 required specifying residue-level motifs with known sequence indices</mark>.
+        <mark class="thesis">RFDiffusion2 operates at the atom level: you provide the 3D coordinates of key functional group atoms, and the model generates a protein scaffold around them</mark>.
+        No need to pre-specify which residue type will carry each functional group.
+        <mark class="method">Technical change: trained from random initialization using flow-matching (not diffusion), which provides more stable training</mark>.
+      </div>
+      <div class="p-text">
+        <strong>[Benchmark Performance]</strong>
+        <mark class="evidence">The 41-active-site benchmark spans EC classes 1-5, cross-referenced with 958 curated catalytic sites from M-CSA</mark>.
+        <mark class="evidence">RFDiffusion2: 41/41 (100%) success rate</mark>.
+        <mark class="evidence">RFDiffusion1 and previous best methods: 16/41 (~39%)</mark>.
+        Success is defined as finding at least one sequence (from &lt;96 tested per case) that experimentally shows activity.
+      </div>
+      <div class="p-text">
+        <strong>[Experimental Validation — Three Enzyme Classes]</strong>
+        <mark class="evidence">Retroaldolase: designed enzymes show kinetics comparable to natural retroaldolases</mark>.
+        <mark class="evidence">Cysteine hydrolase: active candidates found in &lt;96 sequences per target</mark>.
+        <mark class="evidence">Zinc hydrolase: activity orders-of-magnitude higher than previously engineered metallohydrolases</mark>;
+        catalytic proficiencies comparable to natural cellular enzymes.
+        <mark class="counter">Detailed mechanistic characterization of designed enzymes is still ongoing</mark>.
+      </div>
+      <div class="p-text">
+        <strong>[How It Connects to Your Project]</strong>
+        <mark class="thesis">Your de novo D-Trp enzyme candidates were (or will be) generated by RFDiffusion2</mark>,
+        starting from the 3D coordinates of the D-Trp-specific theozyme (the catalytic atoms positioned for re-face indole attack).
+        RFD2 generates ~500-1000 backbone scaffolds; ProteinMPNN + AF2 filter to ~50-200 validated candidates;
+        <mark class="concept">MetaDynamics FEL analysis (your role) is the next screening layer</mark>.
+      </div>
+    </div>
+    <div class="col-right">
+      <div class="col-header">📝 中文批注</div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">技术创新说明</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>解释 RFD2 相比 RFD1 的核心改进。<br>
+          <span class="ann-label">关键区别：</span>RFD1 = 指定"第 X 号残基用什么氨基酸"；RFD2 = 只给原子坐标，让模型自己决定用什么残基。这对酶设计非常重要——你不需要提前知道哪个氨基酸类型来承载 PLP 或哪个来结合底物，模型会自己找。<br>
+          <span class="ann-label">flow-matching vs diffusion：</span>flow-matching 是一种更稳定的生成建模方式，训练更容易收敛，生成的结构质量更高。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">提供实验证据</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>用基准测试数字说明性能提升。<br>
+          <span class="ann-label">41/41 的意义：</span>在 de novo 酶设计领域，100% 基准成功率是前所未有的。之前最好的是 16/41，相当于失败率约 60%。<br>
+          <span class="ann-label">注意：</span>"成功"的定义是在 96 个实验测试序列中找到至少一个活性酶——并不是说所有设计都有活性，而是说一定能找到有活性的。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">提供实验证据</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>三类不同酶的实验验证，证明泛化性。<br>
+          <span class="ann-label">锌水解酶的意义：</span>"orders-of-magnitude higher activity than previously engineered metallohydrolases"——这句话很强，说明 RFD2 设计的酶不只是"勉强有活性"，而是接近天然酶的效率。<br>
+          <span class="ann-label">让步处理：</span>作者承认机制表征尚不完整，说明这是一个快速发展的领域，设计方法已经超过了表征能力。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">与你的项目连接</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>将 RFD2 的能力与你的具体工作对接。<br>
+          <span class="ann-label">你的角色定位：</span>你接到的是 RFD2 + ProteinMPNN + AF2 已经过滤后的 50-200 个候选。RFD2 那一步不是你的工作——但理解它能帮你理解候选蛋白的几何特性和局限性。<br>
+          <span class="ann-label">重要提醒：</span>RFD2 生成的骨架是新颖的，没有参考天然 TrpB——因此不能用 TrpB 的 COMM 残基编号系统！你需要先确认 JP 给你的候选中 COMM 等效结构域在哪里。
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- end s4-annot -->
+</section><!-- end §4 -->
+
+
+<!-- ════════════════ §5 aNima GenSLM ════════════════ -->
+<section class="section" id="s5">
+  <div class="section-header">
+    <span class="section-num">§5</span>
+    <div>
+      <div class="section-title">aNima GenSLM-TrpB — Nature Communications 2025</div>
+      <div class="section-subtitle">你所在实验室的工作 | 这正是为什么要做 MetaDynamics</div>
+    </div>
+  </div>
+
+  <div class="paper-meta">
+    <div class="meta-full">
+      <span class="meta-label">标题：</span>"Sequence-based generative AI design of versatile tryptophan synthases"
+    </div>
+    <div><span class="meta-label">实验室：</span>aNima AI + Science Lab, Caltech (Prof. Anima Anandkumar) + 合作者</div>
+    <div><span class="meta-label">期刊：</span>Nature Communications 2025</div>
+    <div><span class="meta-label">核心模型：</span>GenSLM（Genome-Scale Language Model，密码子级别 tokenization）</div>
+    <div><span class="meta-label">重要程度：</span>★★★★★ 这是你实验室的工作——直接理解 <em>为什么要做 MetaDynamics 评估</em></div>
+  </div>
+
+  <div class="key-box">核心主张：<strong>GenSLM（蛋白质语言模型）能够从零序列出发生成具有功能活性的 TrpB 变体，许多 AI 生成的 TrpB 展示出对非天然底物的扩展底物谱，甚至超过天然和实验室进化的变体。但 GenSLM 本身不理解蛋白质动力学，无法预测 COMM 结构域是否能正确关闭——这是 MetaDynamics 评估的意义所在。</strong></div>
+
+  <div id="s5-annot">
+  <div class="two-col">
+    <div class="col-left">
+      <div class="col-header">📄 论文核心内容</div>
+      <div class="p-text">
+        <strong>[GenSLM Overview]</strong>
+        <mark class="concept">GenSLM is a large language model trained on genomic sequences at codon level (not amino acid level)</mark>,
+        developed by aNima lab + Argonne National Laboratory.
+        <mark class="thesis">When fine-tuned on TrpB sequences, GenSLM generates novel TrpB variants with diverse sequence space exploration</mark>,
+        going far beyond what directed evolution or manual mutation would explore.
+      </div>
+      <div class="p-text">
+        <strong>[Results — Activity Screening]</strong>
+        <mark class="evidence">Many GenSLM-designed TrpBs displayed significant substrate promiscuity</mark>,
+        accepting non-native nucleophiles that natural TrpBs reject.
+        <mark class="evidence">Several GenSLM-TrpBs outperformed both natural and laboratory-evolved TrpBs on the native indole substrate</mark>.
+        <mark class="evidence">Average expression yield: 84 mg/L of E. coli culture; four enzymes exceeded 100 mg/L; two approached 200 mg/L</mark>
+        (excellent for practical applications).
+      </div>
+      <div class="p-text">
+        <strong>[Key Limitation — Why MetaDynamics is Needed]</strong>
+        <mark class="counter">GenSLM optimizes sequence-level properties (likelihood under the language model) but has no explicit knowledge of protein dynamics</mark>.
+        It cannot predict whether the COMM domain will close correctly, or whether the FEL has an accessible closed-state minimum.
+        <mark class="thesis">MetaDynamics-based FEL analysis is needed to evaluate the conformational dynamics of GenSLM-generated TrpBs</mark>
+        and to understand <em>why</em> some AI-generated variants work and others don't — and this understanding feeds back into better AI design.
+      </div>
+      <div class="p-text">
+        <strong>[Connection to Your Work]</strong>
+        <mark class="thesis">Your project bridges the aNima lab's generative AI capabilities with the Osuna lab's conformational dynamics expertise</mark>.
+        By running MetaDynamics on GenSLM-designed TrpBs and analyzing their FELs, you will:
+        (1) identify which AI-generated variants are most likely to be catalytically active,
+        (2) reveal the structural/dynamic reason for their activity,
+        (3) build a reward function that can guide future GenSLM generations toward variants with better FEL properties.
+      </div>
+    </div>
+    <div class="col-right">
+      <div class="col-header">📝 中文批注</div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">介绍 GenSLM</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>建立 GenSLM 的能力和工作原理。<br>
+          <span class="ann-label">关键区别：</span>GenSLM 是在密码子级别（codon level）训练的——这意味着它理解基因组层面的语言，而不仅仅是蛋白质序列。这使得它能够探索更大的蛋白质序列空间。<br>
+          <span class="ann-label">类比：</span>GenSLM 之于蛋白质，就像 GPT 之于文章——它学会了"蛋白质语言的语法"，能生成语法正确但从未出现过的"句子"（序列）。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">提供实验结果</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>展示 AI 生成蛋白的实际功能。<br>
+          <span class="ann-label">84 mg/L 的意义：</span>这是蛋白表达产量——说明这些 AI 生成的蛋白不只是在体外有活性，还能在大肠杆菌中高效表达，有实际应用价值。<br>
+          <span class="ann-label">底物扩展的意义：</span>天然 TrpB 只接受吲哚；GenSLM-TrpBs 接受更多底物——这对药物合成有重要价值。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">诚实面对局限</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>这是整篇学习指南中最重要的段落——直接说明了你的工作为什么必要。<br>
+          <span class="ann-label">核心矛盾：</span>AI 语言模型能生成"看起来合理"的蛋白质序列，但它不懂蛋白质动力学。一个序列能折叠（AF2 预测好看）≠ 它的 COMM 结构域会正确关闭。<br>
+          <span class="ann-label">你的独特价值：</span>你是连接"AI 生成"和"动力学理解"之间的桥梁。没有你的 MetaDynamics 分析，就无法知道哪些 AI 生成的候选是真正有活性的。
+        </div>
+      </div>
+      <div class="p-annot">
+        <span class="ann-tag ann-func">连接 aNima ↔ Osuna</span>
+        <div class="ann-body">
+          <span class="ann-label">段落功能：</span>明确你的项目定位和三重贡献。<br>
+          <span class="ann-label">三重贡献的重要性：</span><br>
+          (1) 筛选：短期可用于找好候选<br>
+          (2) 解释：中期理解 AI 设计的成功/失败机制<br>
+          (3) 反馈：长期改进 AI 模型本身<br>
+          <span class="ann-label">这是一个非常有价值的方向</span>，既有即时的实用价值（筛选候选），又有长期的方法论价值（AI+动力学的闭环反馈）。
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- end s5-annot -->
+</section><!-- end §5 -->
+
+
+<!-- ════════════════ §6 连接图 ════════════════ -->
+<section class="section" id="s6">
+  <div class="section-header">
+    <span class="section-num">§6</span>
+    <div>
+      <div class="section-title">aNima ↔ Osuna 关联图：两个实验室的互补性</div>
+      <div class="section-subtitle">理解你的工作在整个大图景中的位置</div>
+    </div>
+  </div>
+
+  <div class="diagram">
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │                    aNima Lab (Caltech)                               │
+  │                    Prof. Anima Anandkumar                           │
+  │                                                                     │
+  │  GenSLM ──→ 生成新型 TrpB 序列    NeuralMD ──→ ML 加速 MD 模拟     │
+  │  NeuralPlexer → 蛋白-配体结合     RFDiffusion2 → 骨架生成         │
+  │                                                                     │
+  │  ✅ 强项：AI 生成大量候选、序列空间探索、ML 替代模型               │
+  │  ❌ 缺口：无法评估 COMM 动力学、无法计算 FEL                       │
+  └────────────────────────┬────────────────────────────────────────────┘
+                           │
+                    ⬇️ 你的工作（Zhenpeng）
+                    MetaDynamics FEL 筛选
+                    COMM 结构域动力学分析
+                    Reward Function 构建
+                           │
+  ┌────────────────────────▼────────────────────────────────────────────┐
+  │                    Osuna Lab (University of Girona)                  │
+  │                    Prof. Sílvia Osuna                               │
+  │                                                                     │
+  │  MetaDynamics + FEL → 构象集合分析                                 │
+  │  SPM → 变构突变热点识别                                             │
+  │  tAF2-MD → 快速预筛选                                               │
+  │                                                                     │
+  │  ✅ 强项：构象动力学、自由能计算、酶工程机制解释                    │
+  │  ❌ 缺口：未将方法用于 de novo 设计蛋白（只用于天然/进化变体）     │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  你的项目 = aNima 的 AI 生成能力 × Osuna 的动力学分析方法
+           = 前所未有的组合 = 高价值研究方向
+  </div>
+
+  <div class="callout callout-green">
+    <div class="callout-title">💡 你的核心价值主张</div>
+    <strong>aNima 生成了数百个 AI 设计的 TrpB 候选，但不知道哪些有真实的催化动力学潜力。Osuna 有方法可以预测这个，但从未应用于完全 de novo 设计的蛋白（只用于天然变体和实验室进化变体）。你站在两者交叉点上，做的工作是第一次将 FEL 分析应用于 de novo AI 设计的酶——这是一个发表价值极高的位置。</strong>
+  </div>
+
+  <table class="styled-table">
+    <thead><tr><th>维度</th><th>aNima Lab</th><th>Osuna Lab</th><th>你的贡献</th></tr></thead>
+    <tbody>
+      <tr><td>蛋白质来源</td><td>AI 从头生成（GenSLM, RFD2）</td><td>天然/实验室进化 TrpB</td><td>把 aNima 的候选用 Osuna 的方法评估</td></tr>
+      <tr><td>评估方法</td><td>AF2 结构预测 + 表达筛选</td><td>MetaDynamics + FEL</td><td>对 AI 候选做完整 FEL 分析</td></tr>
+      <tr><td>时间尺度</td><td>静态/纳秒</td><td>百纳秒-微秒</td><td>与 Osuna 相同，但用于新型蛋白</td></tr>
+      <tr><td>目标</td><td>生成多样序列</td><td>理解催化机制</td><td>连接生成 + 机制理解</td></tr>
+      <tr><td>最终影响</td><td>AI 设计酶库</td><td>酶工程原理</td><td>AI 设计 × 物理驱动筛选 = 反馈回路</td></tr>
+    </tbody>
+  </table>
+</section><!-- end §6 -->
+
+
+<!-- ════════════════ §7 MetaDynamics 的角色 ════════════════ -->
+<section class="section" id="s7">
+  <div class="section-header">
+    <span class="section-num">§7</span>
+    <div>
+      <div class="section-title">MetaDynamics 在整个流水线中的角色</div>
+      <div class="section-subtitle">从技术原理到你的实际操作</div>
+    </div>
+  </div>
+
+  <h3 class="subhead">7.1 为什么需要 MetaDynamics？</h3>
+
+  <div class="diagram">
+  标准 MD 面临的根本问题：
+
+  能量
+   ▲
+   │      ╔══════╗
+   │      ║ 壁垒  ║  ←── 需要翻越这个才能从开放态到关闭态
+   │   ╔══╝      ╚══╗
+   │   ║             ║
+   │╔══╝  开放态深井  ╚══════════════╗  关闭态（浅）
+   │║                                ║
+   └┴────────────────────────────────┴──→ COMM RMSD
+    ^                               ^
+    COMM 开放                       COMM 关闭
+
+  问题：标准 MD（100-500 ns）常常卡在开放态深井里，
+        永远看不到关闭态——尽管关闭态存在。
+
+  MetaDynamics 解决方案：
+  每隔 500 步，在当前位置添加一个高斯"小山丘"
+  → 小山丘逐渐填满开放态深井
+  → 系统被迫探索新区域（关闭态）
+  → 积累的小山丘总量 = 自由能的量度
+  </div>
+
+  <h3 class="subhead">7.2 MetaDynamics 的三种变体</h3>
+  <table class="styled-table">
+    <thead><tr><th>变体</th><th>核心改进</th><th>何时使用</th><th>你用哪个</th></tr></thead>
+    <tbody>
+      <tr><td><strong>标准 MetaDynamics</strong></td><td>基础版；过度填充；不收敛</td><td>概念学习</td><td>不推荐</td></tr>
+      <tr><td><strong>Well-Tempered MetaDynamics</strong></td><td>随填充自动缩小小山高度；收敛</td><td>蛋白质折叠/构象</td><td>✅ 你用这个</td></tr>
+      <tr><td><strong>Multiple Walkers WTMetaD</strong></td><td>多个并行模拟共享偏置势；更快</td><td>需要快速收敛时</td><td>✅ 4-8 walkers</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="subhead">7.3 PLUMED 完整工作流</h3>
+  <div class="diagram">
+  # ═══════ 你的 PLUMED 输入文件模板 ═══════
+
+  # 1. 保证蛋白质分子完整（不被周期性边界条件切断）
+  WHOLEMOLECULES ENTITY0=1-[总原子数]
+
+  # 2. 定义 CV1：COMM 结构域相对开放态的 RMSD
+  cv1: RMSD REFERENCE=open_comm_state.pdb \
+             TYPE=OPTIMAL \
+             ATOMS=[COMM domain Cα atom indices]
+
+  # 3. Well-Tempered MetaDynamics（核心）
+  metad: METAD ARG=cv1         \
+               PACE=500         \  ← 每500步（1 ps）添加一个小山丘
+               HEIGHT=0.6       \  ← 每个小山丘 0.6 kJ/mol 高
+               SIGMA=0.05       \  ← 高斯宽度 0.05 nm（RMSD单位）
+               BIASFACTOR=15    \  ← Well-tempered γ 因子
+               TEMP=300         \  ← 温度 K
+               FILE=HILLS       \  ← 输出小山丘位置文件
+               WALKERS_N=4      \  ← 4个并行步行者
+               WALKERS_ID=0     \  ← 此步行者编号（0-3）
+               WALKERS_DIR=../ \   ← 共享HILLS文件目录
+               WALKERS_RSTRIDE=500
+
+  # 4. 监测 R141-D305 盐桥距离（判断 COMM 关闭）
+  d_sb: DISTANCE ATOMS=[R141_idx],[D305_idx]
+
+  # 5. 每100步写入输出
+  PRINT ARG=cv1,metad.bias,d_sb STRIDE=100 FILE=COLVAR
+
+  # ═══════ 模拟后重建 FEL ═══════
+  # plumed sum_hills --hills HILLS --outfile fes.dat --stride 1000
+  </div>
+
+  <h3 class="subhead">7.4 如何判断你的 FEL 结果</h3>
+  <table class="styled-table">
+    <thead><tr><th>指标</th><th>好候选</th><th>差候选</th><th>如何计算</th></tr></thead>
+    <tbody>
+      <tr><td>ΔG(关闭态)</td><td>&lt; −2 kcal/mol</td><td>&gt; 0</td><td>从 fes.dat 找关闭区域最低点</td></tr>
+      <tr><td>开闭壁垒高度</td><td>&lt; 5 kcal/mol</td><td>&gt; 10 kcal/mol</td><td>最低点之间的 FEL 脊线高度</td></tr>
+      <tr><td>R141-D305 盐桥</td><td>&gt; 30% 时间形成</td><td>&lt; 10%</td><td>COLVAR 文件 d_sb 列 &lt; 3.5 Å 的占比</td></tr>
+      <tr><td>CV 空间覆盖</td><td>同时覆盖开放和关闭区域</td><td>只卡在一个区域</td><td>COLVAR 文件中 cv1 的值域范围</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-purple">
+    <div class="callout-title">🔄 MetaDynamics 在整个项目中的双重角色</div>
+    <strong>角色1（筛选）：</strong>对每个候选计算 FEL，按 ΔG(关闭) 排名，推荐前5-10名给 White Lab 做湿实验。<br><br>
+    <strong>角色2（学习信号/Reward Function）：</strong>将 FEL 特征（ΔG、壁垒、盐桥%）提取为定量特征向量，反馈给 GenSLM 或 RFD2 的下一轮生成——让 AI 下一轮生成更多动力学良好的候选。这是真正的 AI ↔ 物理的闭环。
+  </div>
+
+</section><!-- end §7 -->
+
+
+<!-- ════════════════ §8 学习路径 ════════════════ -->
+<section class="section" id="s8">
+  <div class="section-header">
+    <span class="section-num">§8</span>
+    <div>
+      <div class="section-title">学习路径 + 8周复习计划</div>
+      <div class="section-subtitle">从零基础到能独立运行 MetaDynamics 的路线图</div>
+    </div>
+  </div>
+
+  <h3 class="subhead">8.1 论文阅读顺序</h3>
+  <ul class="checklist">
+    <li><strong>Week 1：</strong>[Osuna JACS 2019] 10.1021/jacs.9b03646 — 理解 FEL 框架和 MetaDynamics 原理</li>
+    <li><strong>Week 1：</strong>[TrpB Biocatalyst Review] 10.1002/cbic.202000379 — TrpB 生化背景扫盲</li>
+    <li><strong>Week 2：</strong>[Osuna ACS Catal 2021] 10.1021/acscatal.1c03950 — SPM 方法 + 实验验证</li>
+    <li><strong>Week 2：</strong>[MetaDynamics Review] 10.1038/s42254-020-0153-0 — MetaDynamics 技术综述</li>
+    <li><strong>Week 3：</strong>[Osuna Protein Science 2022] 10.1002/pro.4426 — tAF2-MD 预筛选</li>
+    <li><strong>Week 3：</strong>[ProteinMPNN] 10.1126/science.add2187 — 序列设计背景</li>
+    <li><strong>Week 4：</strong>[RFDiffusion2] 10.1038/s41592-025-02975-x — 骨架生成背景</li>
+    <li><strong>Week 4：</strong>[aNima GenSLM-TrpB] NatComm 2025 — 你实验室的工作</li>
+  </ul>
+
+  <h3 class="subhead">8.2 软件学习顺序</h3>
+  <ul class="checklist">
+    <li><strong>Day 1-3：</strong>PLUMED 文档 + 丙氨酸二肽 MetaDynamics 教程（官方网站）— 生成你的第一个 FEL</li>
+    <li><strong>Day 4-7：</strong>GROMACS 基础：能量最小化 → NVT平衡 → NPT平衡</li>
+    <li><strong>Week 2：</strong>准备 5DW3（PfTrpB）结构 + PLP 参数化 + 50 ns 测试 MetaDynamics</li>
+    <li><strong>Week 3：</strong>重现 Osuna JACS 2019 FEL（pfTrpB vs standalone）— 验证你的设置</li>
+    <li><strong>Week 4：</strong>MDAnalysis：从轨迹提取 DCCM 矩阵 → 提交 SPM 网络服务器</li>
+    <li><strong>Week 5：</strong>自动化脚本：批量准备多个候选 → 批量提交 SLURM 任务</li>
+    <li><strong>Week 6-7：</strong>对第一批 de novo 候选运行完整 MetaDynamics</li>
+    <li><strong>Week 8：</strong>Python FEL 分析 pipeline + 候选排名表 + 第一次实验室汇报</li>
+  </ul>
+
+  <h3 class="subhead">8.3 关键工具和资源</h3>
+  <div class="skill-grid">
+    <div class="skill-card">
+      <h4>GROMACS + PLUMED</h4>
+      <p>主要 MD 引擎 + MetaDynamics 插件。必须同时安装并编译到一起（PLUMED-patched GROMACS）。</p>
+      <span class="tag">gromacs.org</span>
+      <span class="tag">plumed.org</span>
+    </div>
+    <div class="skill-card">
+      <h4>MDAnalysis (Python)</h4>
+      <p>从 GROMACS 轨迹提取分析数据，计算 DCCM 矩阵（用于 SPM），提取 CV 时间序列。</p>
+      <span class="tag">pip install MDAnalysis</span>
+    </div>
+    <div class="skill-card">
+      <h4>SPM 网络服务器</h4>
+      <p>输入 distance + DCCM 矩阵 → 输出变构突变热点候选。完全免费，无需安装。</p>
+      <span class="tag">spmosuna.com</span>
+    </div>
+    <div class="skill-card">
+      <h4>Claude Scientific Skills</h4>
+      <p>K-Dense-AI/claude-scientific-skills (15.7k ⭐) 包含 OpenMM + MDAnalysis skill，可直接用 AI agent 运行 MD 分析。</p>
+      <span class="tag">github.com/K-Dense-AI</span>
+      <span class="tag">OpenMM skill</span>
+    </div>
+    <div class="skill-card">
+      <h4>PDB 5DW3</h4>
+      <p>PfTrpB（Pyrococcus furiosus）参考结构，热稳定性高，所有 Osuna 论文的基准系统。</p>
+      <span class="tag">rcsb.org</span>
+    </div>
+    <div class="skill-card">
+      <h4>AMBER ff14SB + Meagher PLP</h4>
+      <p>蛋白质力场 + PLP 辅因子参数。Meagher PLP 参数可从 AMBER 参数数据库获取。</p>
+      <span class="tag">ambermd.org/paramdb</span>
+    </div>
+  </div>
+
+</section><!-- end §8 -->
+
+
+<!-- ════════════════ §9 Analysis Skillset ════════════════ -->
+<section class="section" id="s9">
+  <div class="section-header">
+    <span class="section-num">§9</span>
+    <div>
+      <div class="section-title">Analysis Skillset：综合三种 Prompt 框架</div>
+      <div class="section-subtitle">结合论证分析 + 问题导向批注 + 综述论文研读 三种方法的最强工具</div>
+    </div>
+  </div>
+
+  <p class="body">以下是将三种 prompt 框架整合后的统一"科学论文深度分析 Skillset"，适用于任何你需要快速吃透一篇论文的场景。</p>
+
+  <h3 class="subhead">9.1 完整统一 Analysis Prompt（复制粘贴到任何 AI）</h3>
+
+  <div class="prompt-block"><span class="comment">╔══════════════════════════════════════════════════════════════════════╗
+║              科学论文深度分析 Skillset v2.0                         ║
+║         整合：论证结构 + 问题导向批注 + 综述研读框架               ║
+╚══════════════════════════════════════════════════════════════════════╝</span>
+
+<span class="keyword">【背景】</span>
+我是 Zhenpeng Liu，Caltech aNima 实验室本科生研究员，
+正在复现 Osuna 实验室的 MetaDynamics TrpB 计算流水线。
+我的技术背景：LiGaMD 经验，Python ML，HPC 脚本，GROMACS/AMBER 基础。
+
+<span class="keyword">【论文信息】</span>
+标题：[填写]
+作者：[填写]
+期刊/年份：[填写]
+DOI：[填写]
+我与这篇论文的关系：[填写，如"这是我要复现的核心方法论文"]
+
+<span class="keyword">【任务1：基本信息 + 研究动机】</span>
+1. 这篇论文解决了什么核心问题？（一句话）
+2. 为什么这个问题值得解决？（背景）
+3. 作者的核心假说/论点是什么？
+4. 这篇论文与 Osuna MetaDynamics TrpB 工作的关联是什么？
+
+<span class="keyword">【任务2：方法深度剖析】</span>
+5. 作者使用了哪些核心方法？（分点列出，每点包括：名称/原理/关键参数）
+6. 这些方法与 MetaDynamics 或分子动力学有何关联？
+7. 哪些方法是我可以直接用于复现的？（给出具体软件/代码）
+8. 方法的局限性是什么？（作者自己承认的 + 你分析出的）
+
+<span class="keyword">【任务3：证据链分析】</span>
+9. 作者提供的最关键证据是什么？（列出3条，每条说明：证据内容 / 支持哪个论点 / 强度评估）
+10. 证据中有哪些数字是我需要记住的？（如：ΔG 阈值、百分比、倍数）
+11. 是否有弱点：数据质疑？样本不足？替代解释未排除？
+
+<span class="keyword">【任务4：论证结构骨架】</span>
+12. 用以下格式画出论文的逻辑骨架：
+    问题 → 假说 → 方法 → 证据1 → 证据2 → 反驳处理 → 结论
+13. 论证最强处在哪里？（一条，说明原因）
+14. 论证最弱处在哪里？（一条，说明原因）
+
+<span class="keyword">【任务5：综述视角】</span>
+15. 这篇论文在整个领域发展脉络中处于哪个位置？（之前有什么/之后有什么）
+16. 作者暗示的未来研究方向是什么？
+17. 这篇论文对我的 de novo TrpB MetaDynamics 项目有什么启发？
+
+<span class="keyword">【任务6：生成学习材料】</span>
+18. 用一张表格总结本文的核心方法（包含：方法名/输入/输出/关键参数/软件）
+19. 生成3个思考题（用于检验我是否真正理解了这篇论文）
+20. 给出2个实践练习建议（帮助我把本文方法真正用于我的项目）
+
+<span class="keyword">【输出格式要求】</span>
+- 所有中文输出
+- 用表格/图示/代码块尽量使信息可视化
+- 对技术细节不要省略——我需要能据此复现实验
+- 如果我对某个方面需要更深入，请主动说明可以展开
+</div>
+
+  <h3 class="subhead" style="margin-top:28px;">9.2 专用子 Prompts</h3>
+  <div class="skill-grid">
+    <div class="skill-card" style="border-top-color:#2563eb;">
+      <h4>🔵 MetaDynamics 设置助手</h4>
+      <p>用于设置 GROMACS+PLUMED 模拟时使用。包含系统准备、PLUMED 输入、HPC SLURM 脚本生成。</p>
+      <span class="tag">复制自 Research_Context_Prompt.md → Sub-Prompt A</span>
+    </div>
+    <div class="skill-card" style="border-top-color:#d97706;">
+      <h4>🟠 FEL 分析助手</h4>
+      <p>用于分析 HILLS/COLVAR 文件，生成 Python FEL 热力图，提取 ΔG/barrier 特征。</p>
+      <span class="tag">复制自 Research_Context_Prompt.md → Sub-Prompt C</span>
+    </div>
+    <div class="skill-card" style="border-top-color:#7c3aed;">
+      <h4>🟣 SPM 分析助手</h4>
+      <p>从 MD 轨迹提取 DCCM 矩阵，提交 spmosuna.com，解读结果找突变热点。</p>
+      <span class="tag">复制自 Research_Context_Prompt.md → Sub-Prompt D</span>
+    </div>
+    <div class="skill-card" style="border-top-color:#16a34a;">
+      <h4>🟢 论文 HTML 批注生成器</h4>
+      <p>将任意论文全文粘贴后，生成带5色高亮 + 中文批注 + 论证骨架的双栏 HTML 文件（即本文的格式）。</p>
+      <span class="tag">将本文 HTML 模板 + 上方 Analysis Prompt 组合使用</span>
+    </div>
+  </div>
+
+  <h3 class="subhead" style="margin-top:28px;">9.3 GitHub claude-scientific-skills 中你最需要的技能</h3>
+  <p class="body">根据刚才 GitHub 搜索，K-Dense-AI/claude-scientific-skills（15.7k stars）包含以下直接相关技能：</p>
+  <table class="styled-table">
+    <thead><tr><th>Skill 名称</th><th>功能</th><th>与你项目的关联</th></tr></thead>
+    <tbody>
+      <tr><td><strong>OpenMM + MDAnalysis</strong></td><td>MD 模拟 + 轨迹分析</td><td>直接用于你的 MetaDynamics 分析工作流</td></tr>
+      <tr><td><strong>PubMed</strong></td><td>文献搜索</td><td>自动查找 Osuna 最新论文</td></tr>
+      <tr><td><strong>AlphaFold DB</strong></td><td>结构预测查询</td><td>tAF2-MD 预筛选时获取初始结构</td></tr>
+      <tr><td><strong>Scientific Visualization</strong></td><td>出版质量图表</td><td>生成 FEL 热力图和 COMM 轨迹图</td></tr>
+      <tr><td><strong>Scientific Writing</strong></td><td>论文写作辅助</td><td>写研究方法部分时使用</td></tr>
+      <tr><td><strong>Literature Review</strong></td><td>系统性综述</td><td>快速梳理 TrpB 设计领域所有相关工作</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-blue">
+    <div class="callout-title">📦 如何安装 claude-scientific-skills</div>
+    在终端运行：<br>
+    <code style="background:#1e3a5f;color:#c8e6ff;padding:8px 12px;display:inline-block;border-radius:4px;margin-top:8px;font-family:'IBM Plex Mono',monospace;">
+      git clone https://github.com/K-Dense-AI/claude-scientific-skills.git<br>
+      cp -r claude-scientific-skills/scientific-skills/* ~/.claude/skills/
+    </code><br><br>
+    之后在任何 Claude 对话中说 "use OpenMM + MDAnalysis skill to analyze my trajectory" 即可自动调用。
+  </div>
+
+</section><!-- end §9 -->
+
+</main>
+</div><!-- end layout -->
+
+<script>
+// Sticky sidebar active link tracking
+const sections = document.querySelectorAll('section.section');
+const navLinks = document.querySelectorAll('#sidebar .nav-link');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + id) {
+          link.classList.add('active');
+        }
+      });
+    }
+  });
+}, { rootMargin: '-60px 0px -70% 0px', threshold: 0 });
+
+sections.forEach(s => observer.observe(s));
+
+// Smooth scroll
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(anchor.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+</script>
+</body>
+</html>

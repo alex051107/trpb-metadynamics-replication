@@ -1,0 +1,130 @@
+{
+  "schema_version": 2,
+  "campaign_id": "osuna2019_benchmark",
+  "current_stage": 3,
+  "stage_name": "runner",
+  "stages": {
+    "0_profiler": {
+      "status": "complete",
+      "completed_at": "2026-03-28",
+      "artifact": "replication/manifests/osuna2019_benchmark_manifest.yaml",
+      "verified_by": "human",
+      "verification": {
+        "type": "file_exists",
+        "path": "replication/manifests/osuna2019_benchmark_manifest.yaml",
+        "nonempty": true
+      }
+    },
+    "1_librarian": {
+      "status": "complete",
+      "completed_at": "2026-03-30",
+      "artifact": "replication/inventories/resource_inventory.md",
+      "verified_by": "human",
+      "verification": {
+        "type": "file_exists",
+        "path": "replication/inventories/resource_inventory.md",
+        "nonempty": true
+      }
+    },
+    "2_janitor": {
+      "status": "complete",
+      "started_at": "2026-03-30",
+      "artifact": ".claude/settings.json",
+      "verified_by": "pipeline_guard",
+      "verification": {
+        "type": "janitor",
+        "required_dirs": [
+          "project-guide",
+          "papers",
+          "replication",
+          "replication/manifests",
+          "replication/inventories",
+          "replication/parameters",
+          "replication/scripts",
+          "replication/structures",
+          "replication/runs",
+          "replication/validations",
+          "replication/analysis",
+          "replication/campaign-reports",
+          "reports",
+          "archive",
+          "docs",
+          "docs/superpowers",
+          ".ccb",
+          ".claude",
+          ".claude/agents",
+          ".claude/skills",
+          "scripts"
+        ],
+        "path_conflicts": [
+          {
+            "label": "no_external_repo_refs",
+            "files": [
+              "CLAUDE.md",
+              ".claude/settings.json"
+            ],
+            "forbidden_substrings": [
+              "/Users/liuzhenpeng/trpb-project/",
+              ".claude/hooks/advance_stage.py",
+              ".claude/hooks/pipeline_gate.sh"
+            ]
+          }
+        ]
+      },
+      "completed_at": "2026-03-30"
+    },
+    "3_runner": {
+      "status": "in_progress",
+      "artifact": "replication/parameters/frcmod/Ain.frcmod",
+      "verification": {
+        "type": "files_nonempty",
+        "paths": [
+          "replication/parameters/mol2/Ain_gaff.mol2",
+          "replication/parameters/frcmod/Ain.frcmod",
+          "replication/structures/path_frames/path.pdb",
+          "replication/structures/path_frames/summary.txt"
+        ]
+      },
+      "started_at": "2026-03-31",
+      "verified_by": "pipeline_guard"
+    },
+    "4_skeptic": {
+      "status": "not_started",
+      "artifact": "replication/validations/2026-03-31_osuna2019_benchmark_stage4_validation.md",
+      "verification": {
+        "type": "file_exists",
+        "path": "replication/validations/2026-03-31_osuna2019_benchmark_stage4_validation.md",
+        "nonempty": true
+      },
+      "verified_by": null
+    },
+    "5_journalist": {
+      "status": "not_started",
+      "artifact": "replication/campaign-reports/osuna2019_benchmark_campaign_report.md",
+      "verification": {
+        "type": "file_exists",
+        "path": "replication/campaign-reports/osuna2019_benchmark_campaign_report.md",
+        "nonempty": true
+      }
+    }
+  },
+  "blocked_tools_until_stage": {
+    "3": [
+      "re:\\bantechamber\\b",
+      "re:\\bparmchk2\\b",
+      "re:\\btleap\\b",
+      "re:\\bpmemd(?:\\.cuda)?\\b",
+      "re:\\bgmx\\s+mdrun\\b",
+      "re:\\bsbatch\\b",
+      "re:\\bsrun\\b",
+      "re:\\bgaussian\\b",
+      "re:\\bg16\\b"
+    ],
+    "4": [
+      "re:\\bplumed\\s+sum_hills\\b",
+      "re:\\breweight\\b",
+      "re:\\bfes_analysis\\b"
+    ]
+  },
+  "last_updated": "2026-03-31T23:38:34.925155+00:00"
+}
