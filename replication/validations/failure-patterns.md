@@ -287,3 +287,4 @@
 11. **GROMACS 用 nm，AMBER 用 Å**：所有参数跨引擎迁移时必须检查单位。Checklist: Å→nm (÷10), Å²→nm² (÷100), Å⁻²→nm⁻² (×100), kcal→kJ (×4.184)
 12. **PLUMED .dat 文件不使用 `\` 续行**：GROMACS 2026 mdrun 接口不正确处理反斜杠，所有参数写在一行
 13. **不要信任 conda-forge 的 PLUMED .so 模块完整性**：生产环境必须从源码编译 PLUMED，验证 `plumed info --components` 输出包含所需模块
+14. **`plumed sum_hills --kt` 单位必须匹配模拟引擎**：GROMACS 用 kJ/mol → `--kt 2.908`；AMBER 用 kcal/mol → `--kt 0.695`。不加 `--kt` 输出的是 bias potential 不是 FES；用错单位 FES 能量缩放错 ×4.184。（FP-021, Codex review 2026-04-07 发现）

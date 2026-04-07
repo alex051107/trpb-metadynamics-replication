@@ -160,36 +160,49 @@ _目前无_
 
 ---
 
-## 🟡 本周待做（2026-04-05 起）
+## 🟡 本周待做（2026-04-07 起）
 
-- [ ] **等待 single-walker MetaD 完成**（Job 41514529, ADAPTIVE=GEOM, ~17 hrs）
-- [ ] **运行 plumed sum_hills 重构 FES**
-- [ ] **验证 O/PC/C basin 结构**（s=1-5 / 5-10 / 10-15）
-- [ ] **检查 ADAPTIVE=GEOM 的自适应 sigma 值是否合理**（从 HILLS 文件读取）
-- [ ] **调研 md_setup pipeline 的可复用部分**（评估报告已写）
-- [ ] **准备 10-walker 生产运行**（如果单 walker FES 合理）
+> **MetaD Job 41514529 预计 ~8h 后完成（84%, 42.1/50 ns）**
+> 完成后立即执行 FES 分析流程（见 plan: warm-cooking-unicorn.md）
+
+- [ ] **MetaD 完成后：COLVAR 时间序列分析**（检查 O/PC/C 三区域访问帧数）
+- [ ] **FES 重构**（`plumed sum_hills --kt 2.908 --mintozero`）⚠️ 必须加 --kt
+- [ ] **FES sanity check**（范围合理、不平坦）
+- [ ] **分段收敛检查**（截断 HILLS → 10/20/30/40/50 ns 分别重构）
+- [ ] **运行 analyze_fes.py + check_convergence.py**
+- [ ] **决策：上 10-walker 还是结果已够**（决策矩阵在 plan 里）
+- [ ] **记录 FP-021**（--kt 单位必须匹配模拟引擎，Codex review 发现）
 
 ---
 
-## ✅ 本周已完成（2026-04-04）
+## ✅ 本周已完成（2026-04-04 ~ 04-07）
 
 | 事项 | 日期 | 备注 |
 |------|------|------|
 | 500 ns production MD 完成 | 04-04 | Job 40806029, 71.55 hrs, 22 GB |
 | AMBER→GROMACS 转换 | 04-04 | ParmEd, 39268 atoms 验证 |
-| MetaD pipeline 调试 | 04-04 | FP-018 (LAMBDA 单位) + FP-019 (反斜杠) + FP-020 (conda PLUMED 残缺) |
-| PLUMED 源码编译 | 04-04 | 2.9.2 from source on Longleaf |
+| MetaD pipeline 调试 | 04-04 | FP-018/019/020 |
+| PLUMED 源码编译 | 04-04 | 2.9.2 from source |
 | Single-walker MetaD 提交 | 04-04 | Job 41514529, FUNCPATHMSD + ADAPTIVE=GEOM |
-| Tutorial 文档 (EN+CN) | 04-04 | ~2000 行/版, Phase 8 已验证 |
-| Weekly Report Week 4 | 04-04 | reports/WeeklyReport_Week4_2026-04-04.docx |
-| 目录重组（本地+Longleaf） | 04-04 | 对齐 structures/parameterization/classical_md/metadynamics/ |
-| 组会纪要 | 04-02 | reports/MeetingNotes_2026-04-02.md |
-| 参数文件注释 PDF | 04-04 | parameter_reference.pdf (6 页彩色) |
+| Tutorial 文档 (EN+CN) | 04-04 | ~2000 行/版 |
+| Weekly Report Week 4 | 04-04 | docx |
+| 目录重组 | 04-04 | 本地+Longleaf 对齐 |
+| 组会纪要 | 04-02 | MeetingNotes_2026-04-02 |
+| 参数文件注释 PDF | 04-04 | 6 页彩色 |
+| **9 篇论文 PDF 下载** | 04-05 | GenSLM/RFD/GRPO/MFBO/STAR-MD/DeepTDA/LigandMPNN |
+| **4 组 reading notes** | 04-05 | GenSLM/RFD+LMPNN/GRPO+MFBO/SE3+DeepTDA |
+| **5 个 annotation HTML** | 04-05 | dual-column 中文标注 |
+| **Logic Chain ch.19-23** | 04-05 | Pipeline 全景/RFD/GRPO+MFBO/SE3/角色重定位 |
+| **10-walker 脚本** | 04-06 | feature/10-walker-metad branch, 含 README |
+| **MetaD visualization HTML** | 04-07 | 6 面板交互动画（2 轮 review 修正） |
+| **Git commit + push** | 04-06 | master + feature branch |
+| **Codex plan review** | 04-07 | 3 CRITICAL 修正（--kt/--stride） |
 
 ---
 
 ## 📋 Backlog（以后做，现在不急）
 
+- [ ] Cross-verify reading notes（verifier agent）
 - [ ] SPM 分析 — 等 MetaD 轨迹
 - [ ] GenSLM-230 同源建模 + MetaD — Phase 2
 - [ ] Reward function Python 模块 — Phase 3

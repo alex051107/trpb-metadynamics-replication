@@ -14,7 +14,7 @@
 ## Me
 Zhenpeng Liu, undergraduate at UNC Chapel Hill (liualex@ad.unc.edu). Preparing for Caltech/Anima Lab summer research position. Building a TrpB MetaDynamics replication project to demonstrate computational biology skills.
 
-## Project Status (last updated: 2026-04-05)
+## Project Status (last updated: 2026-04-07)
 
 | Milestone | Status | Notes |
 |-----------|--------|-------|
@@ -30,9 +30,13 @@ Zhenpeng Liu, undergraduate at UNC Chapel Hill (liualex@ad.unc.edu). Preparing f
 | Conventional MD (500 ns) | **done** | Job 40806029, 71.55 hrs, 22 GB trajectory |
 | AMBER→GROMACS conversion | **done** | ParmEd, 39,268 atoms verified |
 | PLUMED source build | **done** | PLUMED 2.9.2 from source (conda 版 libplumedKernel.so 残缺) |
-| **Well-tempered MetaD** | **running** | Job 41514529, single-walker, FUNCPATHMSD, ADAPTIVE=GEOM |
+| **Well-tempered MetaD** | **running (84%)** | Job 41514529, 42.1/50 ns, ETA ~8h (2026-04-07) |
 | Tutorial (EN+CN) | **done** | project-guide/TrpB_Replication_Tutorial_EN/CN.md (~2000 lines each) |
 | Weekly report (Week 4) | **done** | reports/WeeklyReport_Week4_2026-04-04.docx |
+| Pipeline research (9 papers) | **done** | PDFs + reading notes + annotation HTMLs |
+| Logic Chain expansion (ch.19-23) | **done** | Pipeline 全景/RFD/GRPO+MFBO/SE3/角色重定位 |
+| 10-walker MetaD scripts | **ready** | feature/10-walker-metad branch, WALKERS_DIR 方案 |
+| MetaD visualization | **done** | 6-panel interactive HTML, 2 rounds review |
 
 ## Key Decisions
 
