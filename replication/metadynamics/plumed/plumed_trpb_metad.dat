@@ -1,0 +1,41 @@
+# PLUMED 2.9 multi-walker WT-MetaD template for PfTrpS(Ain) TrpB benchmark
+#
+# Reference protocol: JACS 2019 SI
+#   - CVs: path collective variables s(R), z(R)
+#   - WT-MetaD: HEIGHT = 0.15 kcal/mol = 0.628 kJ/mol
+#   - PACE = 1000 steps (2 ps at dt = 0.002 ps)
+#   - BIASFACTOR = 10
+#   - TEMP = 350 K
+#   - Adaptive Gaussian widths
+#
+# FP-004 guard:
+#   The PATHMSD reference PDB and all monitored atom indices must come from the
+#   converted GROMACS topology/coordinate set, not from the input AMBER/PDB order.
+#
+# LAMBDA source:
+#   replication/structures/path_frames/summary.txt
+#   Mean total SD   = 67.826 A^2
+#   lambda(total)   = 0.033910 A^-2
+#   GROMACS uses nm: lambda_nm2 = 0.033910 * 100 = 3.3910 nm^-2  (FP-018)
+#
+# SIGMA=0.05 is the initial seed for ADAPTIVE=GEOM.
+# PLUMED automatically adjusts Gaussian widths based on local CV fluctuations.
+# This matches the SI protocol (adaptive Gaussian widths).
+
+# PATHMSD outputs two components:
+#   path.sss -> progress along the O->C path
+#   path.zzz -> distance from the reference path
+#
+# PLACEHOLDER_PENDING_CONVERSION_PATH_REFERENCE_PDB must point to a path PDB
+# whose ATOM serials have been remapped to the converted GROMACS indices.
+path: PATHMSD REFERENCE=PLACEHOLDER_PENDING_CONVERSION_PATH_REFERENCE_PDB LAMBDA=3.3910  # Å⁻² × 100 = nm⁻² (FP-018)
+
+# Monitoring-only distances; not biased.
+k82_q2: DISTANCE ATOMS=PLACEHOLDER_PENDING_CONVERSION_K82_NZ_Q2_C
+e104_q2: DISTANCE ATOMS=PLACEHOLDER_PENDING_CONVERSION_E104_OE_Q2_C
+
+# Multi-walker WT-MetaD. submit_metad_walkers.sh substitutes __WALKER_ID__.
+# FP-019: all METAD parameters on one line (no backslash continuation for GROMACS 2026 compatibility)
+metad: METAD ARG=path.sss,path.zzz SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=../shared_bias/HILLS WALKERS_N=10 WALKERS_ID=__WALKER_ID__ WALKERS_DIR=../shared_bias WALKERS_RSTRIDE=1000
+
+PRINT ARG=path.sss,path.zzz,k82_q2,e104_q2,metad.bias FILE=COLVAR STRIDE=500

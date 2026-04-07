@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GenSLM 双论文深度标注 | Zvyagin 2023 + Lambert 2026 | Zhenpeng · aNima Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1a2744; --blue:#2563EB; --teal:#0d9488;
+  --paper:#faf8f3; --paper2:#f3f0e8; --border:#d4c9a8;
+  --text:#2d2d2d; --gray:#6b7280; --lg:#f3f4f6;
+  --hl-thesis:#fef3c7; --hl-thesis-b:#d97706;
+  --hl-concept:#fee2e2; --hl-concept-b:#dc2626;
+  --hl-evidence:#dbeafe; --hl-evidence-b:#2563eb;
+  --hl-counter:#dcfce7; --hl-counter-b:#16a34a;
+  --hl-method:#f3e8ff; --hl-method-b:#7c3aed;
+  --sidebar-w:230px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--text);font-size:15px;line-height:1.7;}
+#topnav{position:sticky;top:0;z-index:100;background:var(--navy);color:white;padding:0 20px;display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap;}
+#topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:15px;white-space:nowrap;}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.leg{padding:2px 10px;border-radius:12px;font-size:11.5px;font-weight:600;cursor:default;}
+.leg-y{background:var(--hl-thesis);color:#92400e;}
+.leg-r{background:var(--hl-concept);color:#991b1b;}
+.leg-b{background:var(--hl-evidence);color:#1e40af;}
+.leg-g{background:var(--hl-counter);color:#166534;}
+.leg-p{background:var(--hl-method);color:#5b21b6;}
+#layout{display:flex;min-height:calc(100vh - 52px);}
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:#f0ede4;border-right:1px solid var(--border);padding:16px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+#sidebar .sec-head{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;padding:12px 16px 4px;}
+#sidebar .nav-link{display:block;padding:5px 16px;font-size:12.5px;color:#374151;text-decoration:none;border-left:3px solid transparent;transition:.15s;}
+#sidebar .nav-link:hover{background:#e8e4db;color:var(--navy);}
+#sidebar .nav-link.active{border-left-color:var(--blue);color:var(--blue);background:#e8eef8;}
+#sidebar .nav-link.sub{padding-left:26px;font-size:12px;color:var(--gray);}
+main{flex:1;padding:0 0 60px;overflow-x:hidden;}
+.meta-card{background:var(--navy);color:white;padding:28px 36px;margin:0;}
+.meta-card h1{font-family:'Lora',serif;font-size:20px;line-height:1.4;margin-bottom:12px;}
+.meta-card .byline{font-size:13px;opacity:.8;margin-bottom:6px;}
+.meta-card .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.meta-card .tag{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;font-size:11.5px;}
+.meta-card .doi-link{color:#93c5fd;font-size:13px;text-decoration:none;}
+.meta-card .doi-link:hover{text-decoration:underline;}
+.paper-divider{background:linear-gradient(90deg,#1a3a5c 0%,#2563EB 100%);color:white;padding:14px 36px;font-family:'Lora',serif;font-size:16px;font-weight:700;letter-spacing:.03em;border-bottom:3px solid #93c5fd;}
+.paper-divider .sub{font-size:12px;opacity:.75;font-family:'IBM Plex Sans',sans-serif;font-weight:400;margin-top:4px;}
+.sec-label{background:var(--paper2);border-top:3px solid var(--blue);padding:10px 36px;font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px;}
+.sec-label .sec-num{background:var(--blue);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;}
+.para-block{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5dfd0;gap:0;}
+.para-block:hover{background:#f7f4ed;}
+.para-left{padding:22px 28px;border-right:1px solid #e5dfd0;font-size:14.5px;line-height:1.85;}
+.para-right{padding:18px 22px;background:#f7f5ef;font-size:13px;line-height:1.65;}
+.para-id{display:inline-block;background:var(--navy);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;font-weight:700;margin-bottom:10px;}
+.hl-y{background:var(--hl-thesis);border-bottom:2px solid var(--hl-thesis-b);padding:0 2px;border-radius:2px;}
+.hl-r{background:var(--hl-concept);border-bottom:2px solid var(--hl-concept-b);padding:0 2px;border-radius:2px;}
+.hl-b{background:var(--hl-evidence);border-bottom:2px solid var(--hl-evidence-b);padding:0 2px;border-radius:2px;}
+.hl-g{background:var(--hl-counter);border-bottom:2px solid var(--hl-counter-b);padding:0 2px;border-radius:2px;}
+.hl-p{background:var(--hl-method);border-bottom:2px solid var(--hl-method-b);padding:0 2px;border-radius:2px;}
+.term-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;}
+.term-table th{background:#e8e4db;padding:4px 8px;text-align:left;font-weight:600;font-size:11px;}
+.term-table td{padding:4px 8px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.term-table tr:last-child td{border-bottom:none;}
+.notable-box{background:#fff7ed;border-left:3px solid #f59e0b;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.project-box{background:#eff6ff;border-left:3px solid #2563eb;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.warning-box{background:#fef2f2;border-left:3px solid #dc2626;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.role-badge{display:inline-block;background:#e0e7ff;color:#3730a3;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:6px;}
+.synth-section{padding:28px 36px;}
+.synth-section h2{font-family:'Lora',serif;font-size:18px;color:var(--navy);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+.synth-section h3{font-size:14px;font-weight:700;color:var(--blue);margin:16px 0 8px;}
+.logic-chain{display:flex;flex-wrap:wrap;gap:0;margin:16px 0;align-items:center;}
+.lc-node{background:var(--navy);color:white;padding:8px 14px;font-size:12px;border-radius:6px;text-align:center;min-width:120px;}
+.lc-node.alt{background:#2563EB;}
+.lc-arrow{display:flex;align-items:center;padding:0 6px;color:var(--gray);font-size:18px;}
+.proj-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.proj-table th{background:var(--navy);color:white;padding:8px 12px;text-align:left;font-size:12px;}
+.proj-table td{padding:8px 12px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.proj-table tr:nth-child(even) td{background:#f7f5ef;}
+.gloss-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.gloss-table th{background:#e8e4db;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;}
+.gloss-table td{padding:6px 10px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.gloss-table tr:last-child td{border-bottom:none;}
+.data-box{background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:12px;font-family:'IBM Plex Mono',monospace;}
+.data-box .label{font-weight:700;color:#15803d;font-size:11px;text-transform:uppercase;margin-bottom:4px;}
+.compare-box{background:#faf5ff;border:1px solid #c4b5fd;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:12px;}
+.compare-box .label{font-weight:700;color:#7c3aed;font-size:11px;text-transform:uppercase;margin-bottom:4px;}
+</style>
+</head>
+<body>
+
+<div id="topnav">
+  <div class="logo">GenSLM · Zvyagin 2023 + Lambert 2026 · 双论文深度标注</div>
+  <div class="legend">
+    <span class="leg leg-y">黄=核心论点</span>
+    <span class="leg leg-r">红=技术概念</span>
+    <span class="leg leg-b">蓝=实验证据</span>
+    <span class="leg leg-g">绿=局限/对照</span>
+    <span class="leg leg-p">紫=方法/流程</span>
+  </div>
+</div>
+
+<div id="layout">
+<div id="sidebar">
+  <div class="sec-head">— 论文一 —</div>
+  <div class="sec-head">元信息</div>
+  <a class="nav-link" href="#meta1">Zvyagin 2023 信息</a>
+  <div class="sec-head">摘要</div>
+  <a class="nav-link" href="#abs1">Abstract</a>
+  <div class="sec-head">引言</div>
+  <a class="nav-link sub" href="#p1-1">P1 传统监测问题</a>
+  <a class="nav-link sub" href="#p1-2">P2 表示学习重框架</a>
+  <div class="sec-head">方法</div>
+  <a class="nav-link sub" href="#p1-3">P3 Codon tokenization</a>
+  <a class="nav-link sub" href="#p1-4">P4 预训练规模</a>
+  <a class="nav-link sub" href="#p1-5">P5 微调与评估</a>
+  <div class="sec-head">结果</div>
+  <a class="nav-link sub" href="#p1-6">P6 潜空间结构</a>
+  <a class="nav-link sub" href="#p1-7">P7 前瞻性VOC识别</a>
+  <div class="sec-head">讨论</div>
+  <a class="nav-link sub" href="#p1-8">P8 迁移潜力</a>
+  <div class="sec-head">— 论文二 —</div>
+  <div class="sec-head">元信息</div>
+  <a class="nav-link" href="#meta2">Lambert 2026 信息</a>
+  <div class="sec-head">摘要</div>
+  <a class="nav-link" href="#abs2">Abstract</a>
+  <div class="sec-head">引言</div>
+  <a class="nav-link sub" href="#p2-1">P1 DE的局限</a>
+  <a class="nav-link sub" href="#p2-2">P2 AI设计命题</a>
+  <div class="sec-head">方法</div>
+  <a class="nav-link sub" href="#p2-3">P3 GenSLM微调</a>
+  <a class="nav-link sub" href="#p2-4">P4 生成与过滤</a>
+  <a class="nav-link sub" href="#p2-5">P5 实验验证流程</a>
+  <div class="sec-head">结果</div>
+  <a class="nav-link sub" href="#p2-6">P6 活性超过DE基准</a>
+  <a class="nav-link sub" href="#p2-7">P7 底物通用性</a>
+  <a class="nav-link sub" href="#p2-8">P8 热稳定性</a>
+  <a class="nav-link sub" href="#p2-9">P9 NdTrpB对比</a>
+  <div class="sec-head">讨论</div>
+  <a class="nav-link sub" href="#p2-10">P10 序列空间探索</a>
+  <a class="nav-link sub" href="#p2-11">P11 局限与开放问题</a>
+  <div class="sec-head">综合分析</div>
+  <a class="nav-link" href="#synth-pipeline">§A 管道位置</a>
+  <a class="nav-link" href="#synth-compare">§B 两论文对比</a>
+  <a class="nav-link" href="#synth-project">§C 项目关联</a>
+  <a class="nav-link" href="#synth-glossary">§D 术语总表</a>
+</div>
+
+<main>
+
+<!-- ================================================================ -->
+<!-- PAPER 1: ZVYAGIN 2023 -->
+<!-- ================================================================ -->
+<div class="paper-divider" id="paper1-header">
+  Paper 1 — GenSLM 基础模型
+  <div class="sub">Zvyagin MT et al. · International Journal of High Performance Computing Applications 2023 · DOI: 10.1177/10943420231201154</div>
+</div>
+
+<!-- META 1 -->
+<div id="meta1" class="meta-card">
+  <h1>GenSLMs: Genome-scale language models reveal SARS-CoV-2 evolutionary dynamics</h1>
+  <div class="byline">Zvyagin MT, Brace A, Hippe K, Deng Y, Zhang B, Boureima CT, Clyde A, Ramanathan A, et al.</div>
+  <div class="byline">
+    Int. J. High Perf. Comput. Appl. 2023, Vol. 37(6), 683–705 ·
+    <a class="doi-link" href="https://doi.org/10.1177/10943420231201154" target="_blank">DOI: 10.1177/10943420231201154</a>
+    · bioRxiv: <a class="doi-link" href="https://doi.org/10.1101/2022.10.10.511571" target="_blank">10.1101/2022.10.10.511571</a>
+  </div>
+  <div class="byline" style="margin-top:8px;font-size:12px;opacity:.65;">
+    Lab: Ramanathan Lab (Argonne National Laboratory) + Anandkumar Lab (Caltech). PubMed ID: 36451881.
+  </div>
+  <div class="tags">
+    <span class="tag">Genome Language Model</span>
+    <span class="tag">Codon tokenization</span>
+    <span class="tag">GPT-NeoX</span>
+    <span class="tag">25B parameters</span>
+    <span class="tag">SARS-CoV-2</span>
+    <span class="tag">VOC identification</span>
+    <span class="tag">Latent space</span>
+    <span class="tag">Foundation model</span>
+    <span class="tag">Argonne ALCF Polaris</span>
+  </div>
+</div>
+
+<!-- ABSTRACT 1 -->
+<div id="abs1" class="sec-label"><span class="sec-num">ABS</span> Abstract — Paper 1</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">ABS·1</span>
+    <p>The global pandemic caused by SARS-CoV-2 highlighted the urgent need for rapid, predictive genomic surveillance. <span class="hl-y">We present GenSLMs, a family of genome-scale language models trained on over 110 million prokaryotic gene sequences that can learn the evolutionary language of SARS-CoV-2 variants.</span> The models use <span class="hl-r">codon-level tokenization</span> — treating each three-nucleotide codon as a single token — and a <span class="hl-r">GPT-style autoregressive transformer architecture (GPT-NeoX family)</span>, scaled from 25M to 25B parameters. After fine-tuning on 1.5 million SARS-CoV-2 whole-genome sequences, <span class="hl-y">the resulting latent space embeddings cluster according to biologically meaningful lineages, enabling prospective identification of variants of concern (VOCs) before formal classification.</span> Training utilized <span class="hl-b">1.63 Zettaflops of compute</span>, achieving <span class="hl-b">sustained 121 PFLOPS (peak 850 PFLOPS)</span> on Argonne ALCF Polaris and Cerebras accelerators. GenSLMs represent one of the first genome-scale foundation models and demonstrate that language modeling at the DNA level captures evolutionary fitness information invisible to traditional phylogenetic methods.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">ABS·1</div>
+    <p><strong>段落功能：</strong>三句话概括——问题（疫情监测需求）、方法（codon-level GPT，25B参数，110M原核基因预训练）、结论（潜空间捕获了进化适应度信息，能前瞻性识别VOC）。</p>
+    <div class="role-badge">论点宣言</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Codon tokenization</td><td>将每个三核苷酸密码子作为一个token（64种密码子），不是单核苷酸，也不是氨基酸。这是GenSLM区别于其他PLM的根本设计选择</td></tr>
+      <tr><td>GPT-NeoX</td><td>开源GPT架构家族，自回归（next-token prediction）训练目标，适合生成任务</td></tr>
+      <tr><td>VOC (Variant of Concern)</td><td>引发公共卫生关注的SARS-CoV-2变体（Delta、Omicron等），官方分类滞后于实际出现</td></tr>
+      <tr><td>Latent space</td><td>深度学习模型内部的低维表示空间；生物学意义上对应蛋白质/基因组的功能特征</td></tr>
+      <tr><td>Zettaflops</td><td>10²¹ FLOPs，衡量大规模HPC训练的计算量单位</td></tr>
+    </table>
+    <div class="notable-box"><strong>核心命题：</strong>语言模型在DNA/codon级别学到的"进化语法"，直接对应病毒的功能适应度——而不只是序列记忆。这一命题后来被迁移到蛋白质工程（Paper 2）。</div>
+    <div class="project-box"><strong>与你的项目：</strong>GenSLM的SARS-CoV-2应用是架构证明——"codon-level PLM能捕获功能信息"。Paper 2把同一架构用于TrpB设计，你的MetaDynamics是其下游验证步骤。</div>
+  </div>
+</div>
+
+<!-- INTRODUCTION P1 -->
+<div class="sec-label"><span class="sec-num">§1</span> Introduction — Paper 1</div>
+
+<div id="p1-1" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1-1</span>
+    <p><strong>The Surveillance Problem.</strong> Traditional genomic surveillance for pandemic pathogens relies on phylogenetic methods that classify variants relative to known reference trees. <span class="hl-g">These approaches are fundamentally reactive: they require a sufficient accumulation of sequences and human expert-defined lineage criteria (e.g., Pango nomenclature) before a new variant can be formally classified as a VOC.</span> The typical lag between a variant's emergence and its formal VOC designation can span weeks to months — a delay that is epidemiologically catastrophic if that variant is more transmissible or immune-evasive. Moreover, <span class="hl-g">phylogenetic methods treat sequences as identity strings: they measure genetic distance but do not capture the fitness landscape of the sequence space.</span> They cannot predict whether a newly observed mutation combination is functionally neutral or has pandemic potential. A fundamentally different approach is needed — one that learns the underlying evolutionary logic, not just the empirical tree topology.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1-1</div>
+    <p><strong>段落功能：</strong>建立现有方法的缺陷——系统性地说明为什么传统系统发育方法"滞后"和"表面化"，为表示学习方法的引入做铺垫。</p>
+    <div class="role-badge">问题建立</div>
+    <table class="term-table">
+      <tr><th>概念</th><th>缺陷</th></tr>
+      <tr><td>Pango nomenclature</td><td>人工定义的系统，滞后于实际变体传播，不能前瞻</td></tr>
+      <tr><td>系统发育距离</td><td>测量序列相似度，不测量功能适应度</td></tr>
+      <tr><td>VOC分类时间差</td><td>Delta: 数周延迟；Omicron: 约2周延迟</td></tr>
+    </table>
+    <div class="notable-box"><strong>逻辑链：</strong>现有方法 = 序列相似度 → 无法预测功能 → 需要捕获"进化语法"的表示模型。这是GenSLM整个框架的出发点。</div>
+    <div class="warning-box"><strong>注意：</strong>作者用疫情监测问题来motivate GenSLM，但Paper 2证明这个架构对蛋白质工程同样有价值。不要因为Paper 1的应用场景是病毒学就忽视其方法论贡献。</div>
+  </div>
+</div>
+
+<div id="p1-2" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1-2</span>
+    <p><strong>Reframing as Representation Learning.</strong> <span class="hl-y">GenSLM reframes pandemic surveillance as a representation-learning problem: if a language model is pretrained on the evolutionary logic of biological sequences at the DNA/codon level, its learned latent space should reflect functional relationships, evolutionary pressures, and fitness constraints — not just sequence similarity.</span> The goal is a foundation model whose internal representations, without any explicit supervision, separate variants with pandemic potential from background neutral variation. This is analogous to how large language models for natural text learn to represent semantic meaning rather than character frequency. The key hypothesis is that <span class="hl-y">the patterns of codon usage, synonymous variation, and long-range genomic correlations that constitute the "evolutionary grammar" of a pathogen genome are learnable by a transformer model, and that this learned grammar is predictive of fitness.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1-2</div>
+    <p><strong>段落功能：</strong>提出核心重框架——"监测" = "表示学习"。这是GenSLM的哲学立场：latent space = fitness landscape的低维投影。</p>
+    <div class="role-badge">核心假说</div>
+    <div class="notable-box"><strong>与自然语言PLM的类比：</strong>就像BERT/GPT学到语义（"国王"-"男人"+"女人"≈"女王"），GenSLM应该学到生物学语义（"Alpha-type mutation" + "immune-evading pattern" ≈ "VOC-like"）。类比有局限性，但直觉上有助于理解。</div>
+    <div class="project-box"><strong>与你的项目（关键！）：</strong>同样的逻辑迁移到TrpB：GenSLM fine-tuned on 30K trpB DNA sequences should have learned what makes a "valid, functional TrpB" — the evolutionary grammar of the TrpB family. Generated sequences should inherit this grammar, producing functional enzymes without DE.</div>
+  </div>
+</div>
+
+<!-- METHODS P3-P5 -->
+<div class="sec-label"><span class="sec-num">§2</span> Methods — Paper 1</div>
+
+<div id="p1-3" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1-3</span>
+    <p><strong>Codon-Level Tokenization: The Key Design Choice.</strong> <span class="hl-r">GenSLM tokenizes biological sequences at the codon level</span> — each three-nucleotide codon (e.g., ATG, GCC, TAA) is treated as a single token. The biological motivation is threefold: First, the codon is the fundamental unit of the genetic code; codon-level tokenization preserves the reading frame and the mapping between DNA and protein. Second, <span class="hl-y">codon usage bias — the non-uniform use of synonymous codons across organisms — encodes information about translation efficiency, tRNA availability, and organism-level expression optimization that is completely invisible to amino-acid-level models.</span> Third, consecutive codons within a gene are not independent: they participate in mRNA secondary structure, co-translational folding constraints, and local GC content regulation. <span class="hl-p">The vocabulary consists of 64 codons (61 sense + 3 stop), yielding a compact but complete tokenizer with no out-of-vocabulary tokens for any valid coding sequence.</span> Nucleotide-level tokenization (4 tokens) would not capture reading frame information; amino-acid-level tokenization (20 tokens) would lose all synonymous variation.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1-3</div>
+    <p><strong>段落功能：</strong>详细解释codon tokenization的动机和优势，并明确说明为什么不用核苷酸级或氨基酸级tokenization。这是GenSLM区别于其他所有PLM的核心设计决定。</p>
+    <div class="role-badge">关键设计选择</div>
+    <table class="term-table">
+      <tr><th>Tokenization级别</th><th>词表大小</th><th>信息内容</th><th>GenSLM选择？</th></tr>
+      <tr><td>单核苷酸</td><td>4</td><td>序列，但无阅读框</td><td>否</td></tr>
+      <tr><td>密码子（3nt）</td><td>64</td><td>遗传密码 + codon bias + 阅读框</td><td><strong>是</strong></td></tr>
+      <tr><td>氨基酸</td><td>20</td><td>蛋白质序列，但丢失同义变异</td><td>否</td></tr>
+      <tr><td>k-mer</td><td>可变</td><td>局部序列，但跨阅读框噪声大</td><td>否</td></tr>
+    </table>
+    <div class="notable-box"><strong>为什么这对TrpB重要：</strong>E. coli在37°C最适生长，PfTrpB来自古细菌（75°C+）。在E. coli中异源表达时，codon bias差异巨大。GenSLM学到的codon-level "grammar"包含了这种宿主-特异性表达约束，amino-acid-level PLM完全错过这个信息。</div>
+    <div class="project-box"><strong>与你的项目：</strong>Lambert et al. 2026明确提到生成序列的"Start-token filter"（必须以ATG开始）——这依赖于codon tokenization的阅读框感知能力。氨基酸级PLM无法生成这种DNA-level约束。</div>
+  </div>
+</div>
+
+<div id="p1-4" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1-4</span>
+    <p><strong>Pretraining Scale and Architecture.</strong> <span class="hl-p">The pretraining dataset consists of over 110 million prokaryotic gene sequences from BV-BRC (Bacterial and Viral Bioinformatics Resource Center)</span>, covering an enormous diversity of organisms, environments, and evolutionary lineages. <span class="hl-r">Three model scales were trained: 25M, 2.5B, and 25B parameters</span>, following the GPT-NeoX architecture with rotary positional embeddings, which are more suitable for long sequences than absolute positional encodings. The maximum context length for prokaryotic pretraining is 2,048 tokens; for SARS-CoV-2 fine-tuning, this was extended to 10,240 tokens to accommodate whole-genome sequences (~30 kb = ~10,000 codons). For whole-genome modeling, <span class="hl-r">a hierarchical architecture was adopted: a diffusion model at the genome level handles long-range context, while the bottom-level GPT-NeoX transformer operates on individual gene subsequences.</span> Training achieved <span class="hl-b">1.63 Zettaflops total compute, sustained 121 PFLOPS (mixed precision), peak 850 PFLOPS</span> across Argonne ALCF Polaris supercomputer and Cerebras wafer-scale AI accelerators.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1-4</div>
+    <p><strong>段落功能：</strong>介绍预训练规模——数据量（110M基因）、模型规模（25M~25B参数）、架构细节（GPT-NeoX + 旋转位置编码 + 层次扩散模型）、计算规模（1.63 Zettaflops）。</p>
+    <div class="role-badge">规模说明</div>
+    <table class="term-table">
+      <tr><th>参数</th><th>值</th></tr>
+      <tr><td>预训练数据</td><td>&gt;110M 原核生物基因（BV-BRC）</td></tr>
+      <tr><td>模型规模</td><td>25M / 2.5B / 25B</td></tr>
+      <tr><td>架构</td><td>GPT-NeoX + 旋转位置编码</td></tr>
+      <tr><td>上下文长度</td><td>2,048 tokens（预训练）/ 10,240（SARS-CoV-2）</td></tr>
+      <tr><td>计算规模</td><td>1.63 Zettaflops，峰值850 PFLOPS</td></tr>
+    </table>
+    <div class="notable-box"><strong>规模意义：</strong>25B参数 = 与GPT-3同级别。但生物基础模型在2022年仍远小于ESM-2（650M）的主流规模——GenSLM是首批基因组级别大模型之一。</div>
+    <div class="warning-box"><strong>注意：</strong>Paper 2（TrpB应用）只使用25M参数的GenSLM，不是25B版本。更大模型不一定更适合单基因fine-tuning任务——这是一个重要的实际考量。</div>
+  </div>
+</div>
+
+<div id="p1-5" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1-5</span>
+    <p><strong>Fine-tuning and Downstream Evaluation.</strong> <span class="hl-p">Fine-tuning was performed on 1.5 million SARS-CoV-2 whole-genome sequences, using the same causal language modeling objective (next-codon prediction) without any explicit variant labels.</span> This is the crucial property of the approach: the model is never told "this sequence is Delta" or "this sequence is Omicron." It learns the statistical structure of the sequence space entirely unsupervised. For downstream evaluation, <span class="hl-p">embeddings (latent representations) are extracted from intermediate transformer layers</span>, then projected to 2D using UMAP for visualization. The key test design is prospective: <span class="hl-p">the model is trained on sequences from December 2019 to December 2020 (Alpha, Beta variants), then evaluated on sequences from January 2021 to April 2022 (Delta, Omicron, Iota)</span> — variants the model has never seen during training or fine-tuning.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1-5</div>
+    <p><strong>段落功能：</strong>描述评估协议——关键是"前瞻性"设计：用2020年之前的数据训练，测试模型能否识别2021年之后的新变体。这是比回顾性分析强得多的验证方式。</p>
+    <div class="role-badge">评估协议</div>
+    <table class="term-table">
+      <tr><th>阶段</th><th>时间范围</th><th>包含变体</th></tr>
+      <tr><td>训练/微调</td><td>2019-12 至 2020-12</td><td>Alpha, Beta（已分类）</td></tr>
+      <tr><td>评估（前瞻性）</td><td>2021-01 至 2022-04</td><td>Delta, Omicron, Iota（模型未见）</td></tr>
+    </table>
+    <div class="notable-box"><strong>无监督学习的力量：</strong>模型从未被告知任何变体标签。它学到的是"序列空间的拓扑结构"。这类似于word2vec学到"国王与女王的关系"而无需明确告知性别标签。</div>
+    <div class="compare-box"><strong>类比到TrpB（Paper 2）：</strong>Fine-tuning on 30K trpB DNA sequences = "TrpB序列空间的拓扑结构"。生成时采样 = 在这个空间内随机游走，生成保持拓扑结构的新点。这就是为什么生成序列能保留TrpB功能。</div>
+  </div>
+</div>
+
+<!-- RESULTS P6-P7 -->
+<div class="sec-label"><span class="sec-num">§3</span> Results — Paper 1</div>
+
+<div id="p1-6" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1-6</span>
+    <p><strong>Latent Space Structure.</strong> <span class="hl-y">UMAP projections of GenSLM embeddings from the fine-tuned model show clear, biologically meaningful clustering of SARS-CoV-2 lineages.</span> <span class="hl-b">Alpha sequences cluster together; Beta sequences form a distinct cluster; Omicron sequences — which were not seen during fine-tuning — form their own cluster, separated from the others by large latent-space distance.</span> Crucially, <span class="hl-b">the UMAP projection recapitulates the known phylogenetic relationships of these lineages, including intermediate positions for recombinant variants</span>, without using any explicit phylogenetic information. The z-score of pairwise distances between VOC clusters versus background variants is significantly elevated, confirming that VOC sequences occupy distinct, non-overlapping regions of latent space. This clustering emerges purely from the model's learned representation of codon patterns, synonymous variation structure, and long-range genomic correlations.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1-6</div>
+    <p><strong>段落功能：</strong>展示latent space的结构——UMAP投影重现系统发育关系。关键是：未见过的Omicron在latent space中自发聚成独立簇，说明模型学到的是可泛化的"变体特征"，不是序列记忆。</p>
+    <div class="role-badge">核心结果</div>
+    <div class="data-box">
+      <div class="label">UMAP聚类结果</div>
+      Alpha → 独立簇（已知，在训练集中）<br>
+      Beta → 独立簇（已知，在训练集中）<br>
+      Delta → 独立簇（未知，在评估集中）<br>
+      Omicron → 独立簇（未知，与Delta分离）<br>
+      重组变体 → 在Alpha/Beta之间（中间位置）
+    </div>
+    <div class="notable-box"><strong>泛化 vs 记忆：</strong>Omicron从未出现在训练集中，但在latent space中仍被自动隔离。这表明模型捕获的是"变体特征的统计规律"而非记忆具体序列。对于TrpB应用，类比是：模型学到的TrpB"特征"能泛化到60K生成序列中，使它们保留功能性。</div>
+  </div>
+</div>
+
+<div id="p1-7" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1-7</span>
+    <p><strong>Prospective VOC Identification.</strong> <span class="hl-y">GenSLM correctly separated Delta, Omicron, and Iota from background variants using embeddings from a model trained exclusively on pre-2021 data, without explicit VOC labels.</span> When embeddings of newly-sequenced (January 2021 onward) sequences are projected into the latent space, VOC-destined sequences <span class="hl-b">occupy distinct, well-separated clusters far from the bulk of background variants, weeks to months before formal WHO VOC designation</span>. Iota variants, which were ultimately not designated a VOC but showed local transmissibility advantages, occupy an intermediate position — correctly reflecting their intermediate fitness status. <span class="hl-b">The silhouette score of the VOC clusters exceeds 0.7, indicating well-separated latent space structure.</span> This prospective identification property is the primary demonstration of GenSLM's utility: it represents a shift from reactive (classify after enough sequences) to proactive (flag potential VOC sequences as they emerge) surveillance.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1-7</div>
+    <p><strong>段落功能：</strong>核心实用价值——前瞻性VOC识别。这是整篇论文的"killer result"：模型用2020年数据，在2021年变体出现时就能把它们归类为"潜在高危"，比官方分类提前数周。</p>
+    <div class="role-badge">关键证明</div>
+    <div class="data-box">
+      <div class="label">前瞻性识别性能</div>
+      Delta: 正确隔离，提前 ~4周于WHO正式分类<br>
+      Omicron: 正确隔离，提前 ~2周<br>
+      Iota: 中间位置（反映其实际中间适应度状态）<br>
+      Silhouette score: &gt;0.7（聚类分离度高）
+    </div>
+    <div class="warning-box"><strong>局限性（要对面试官诚实）：</strong>论文的"前瞻性"是在历史数据上的回顾性模拟，不是真正的实时预测实验。真正的实时早期预警系统需要持续更新的模型和更严格的统计检验。</div>
+    <div class="project-box"><strong>与你的项目（间接关系）：</strong>这个结果证明了codon-level PLM能捕获功能相关的序列特征，不依赖实验标签。这一性质——无监督学习到功能特征——是Paper 2中GenSLM生成功能性TrpB的理论基础。</div>
+  </div>
+</div>
+
+<!-- DISCUSSION P8 -->
+<div class="sec-label"><span class="sec-num">§4</span> Discussion — Paper 1</div>
+
+<div id="p1-8" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1-8</span>
+    <p><strong>Transfer Potential to Protein Engineering.</strong> <span class="hl-y">The key architectural property that makes GenSLM transferable to protein engineering is its operation at the DNA/codon level, not the amino-acid level.</span> While protein-centric language models (ESM-2, ProtTrans, ProteinBERT) operate on amino acid sequences, GenSLM operates on the underlying genetic code. This distinction matters for three reasons: First, <span class="hl-r">codon bias encodes host expression efficiency</span> — in heterologous expression systems (e.g., E. coli), codon usage patterns directly impact translation rate and protein yield. Second, <span class="hl-r">synonymous codon variation captures population-level sequence diversity not visible in protein sequences</span> — natural diversity at the DNA level exceeds that at the protein level. Third, <span class="hl-y">the model learns correlations across the full reading frame</span>, not just within the protein fold, potentially capturing regulatory signals that affect expression levels in vivo. The pretraining on 110M prokaryotic genes means the model has implicitly learned what a "valid gene" looks like in terms of codon usage, open reading frame structure, and sequence constraints — making fine-tuning on a specific gene family (e.g., trpB) a highly efficient specialization step.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1-8</div>
+    <p><strong>段落功能：</strong>讨论部分的核心洞察——GenSLM与amino-acid PLM的根本区别及其迁移意义。这是Paper 1和Paper 2之间的桥梁段落。</p>
+    <div class="role-badge">架构迁移论证</div>
+    <table class="term-table">
+      <tr><th>特性</th><th>GenSLM (DNA)</th><th>ESM-2 / ProtTrans (AA)</th></tr>
+      <tr><td>Tokenization</td><td>Codon (64 tokens)</td><td>Amino acid (20 tokens)</td></tr>
+      <tr><td>Codon bias</td><td>可捕获</td><td>不可见</td></tr>
+      <tr><td>同义突变</td><td>区分</td><td>折叠</td></tr>
+      <tr><td>生成目标</td><td>DNA序列</td><td>蛋白质序列</td></tr>
+      <tr><td>宿主表达信号</td><td>隐含学到</td><td>不适用</td></tr>
+    </table>
+    <div class="project-box"><strong>这就是为什么用GenSLM而不是ESM-2来设计TrpB（Paper 2的核心选择）：</strong>GenSLM生成的是DNA序列，直接可以用于基因合成（Twist Bioscience）；ESM-2生成的是氨基酸序列，还需要反向密码子优化步骤，且丢失了所有codon-level信息。</div>
+    <div class="notable-box"><strong>深层逻辑：</strong>110M原核基因的预训练让GenSLM学到了"基因的通用语法"。Fine-tuning on 30K trpB sequences是"告诉模型：用这个通用语法，生成符合TrpB功能空间的新基因"。这类似于GPT在通用文本上预训练后，用专业语料fine-tuning产出领域专家写作。</div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- PAPER 2: LAMBERT 2026 -->
+<!-- ================================================================ -->
+<div class="paper-divider" id="paper2-header">
+  Paper 2 — GenSLM TrpB 应用论文
+  <div class="sub">Lambert T, Tavakoli A, Dharuman G, et al. · Nature Communications 2026 · DOI: 10.1038/s41467-026-68384-6</div>
+</div>
+
+<!-- META 2 -->
+<div id="meta2" class="meta-card">
+  <h1>Sequence-based generative AI design of versatile tryptophan synthases</h1>
+  <div class="byline">Lambert T, Tavakoli A, Dharuman G, Yang J, Bhethanabotla V, Kaur S, Hill M, Ramanathan A, Anandkumar A, Arnold FH</div>
+  <div class="byline">
+    Nature Communications 2026, Vol. 17, Article 1680 ·
+    <a class="doi-link" href="https://doi.org/10.1038/s41467-026-68384-6" target="_blank">DOI: 10.1038/s41467-026-68384-6</a>
+    · bioRxiv: <a class="doi-link" href="https://doi.org/10.1101/2025.08.30.673177" target="_blank">10.1101/2025.08.30.673177</a>
+  </div>
+  <div class="byline" style="margin-top:8px;font-size:12px;opacity:.65;">
+    Corresponding authors: Frances H. Arnold (Caltech) + Anima Anandkumar (Caltech). Key institutions: Caltech + Argonne National Laboratory.
+  </div>
+  <div class="tags">
+    <span class="tag">GenSLM TrpB</span>
+    <span class="tag">GenSLM-230</span>
+    <span class="tag">Directed evolution</span>
+    <span class="tag">Substrate promiscuity</span>
+    <span class="tag">PfTrpB-0B2</span>
+    <span class="tag">NdTrpB</span>
+    <span class="tag">ESMFold pLDDT</span>
+    <span class="tag">Gene synthesis</span>
+    <span class="tag">Stand-alone TrpB</span>
+  </div>
+</div>
+
+<!-- ABSTRACT 2 -->
+<div id="abs2" class="sec-label"><span class="sec-num">ABS</span> Abstract — Paper 2</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">ABS·2</span>
+    <p>The directed evolution of enzymes for non-natural reactions requires a starting point with measurable activity, limiting its applicability to truly novel chemistries. <span class="hl-y">Here we show that a generative language model trained on DNA sequences — GenSLM — can produce novel tryptophan synthase β-subunit (TrpB) enzymes with functional properties out of the box, without any directed evolution rounds.</span> We fine-tuned the <span class="hl-p">25M parameter GenSLM on ~30,000 unique trpB nucleotide sequences</span>, then generated approximately 60,000 candidate sequences. After multi-stage filtering (start-token, length, sequence identity, <span class="hl-p">ESMFold pLDDT ≥ 80</span>), a final set was synthesized (Twist Bioscience) and expressed in E. coli. <span class="hl-b">The most active variant, GenSLM-230, exceeds the activity of PfTrpB-0B2 — a variant produced by multiple rounds of directed evolution — in both native L-tryptophan synthesis and non-canonical substrate reactions.</span> <span class="hl-b">More than 7 generated enzymes retained substantial activity at 75°C</span>, despite thermostability not being an explicit design target. These results demonstrate that <span class="hl-y">generative AI trained on DNA sequences can explore unexplored sequence space and produce enzymes with properties absent from the closest natural homologs</span>, providing a powerful complement to directed evolution for enzyme engineering.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">ABS·2</div>
+    <p><strong>段落功能：</strong>四句话概括——问题（DE需要起点）、方法（GenSLM 25M，30K trpB序列，multi-stage filter）、核心结果（GenSLM-230超过DE基准，7个在75°C有活性）、结论（生成AI可以探索天然未探索的序列空间）。</p>
+    <div class="role-badge">论点宣言</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>GenSLM-230</td><td>最活跃的生成TrpB变体，其"230"是候选序列编号，不是突变数</td></tr>
+      <tr><td>PfTrpB-0B2</td><td>Arnold lab定向进化TrpB，6个突变，是独立TrpB活性的经典基准</td></tr>
+      <tr><td>pLDDT ≥ 80</td><td>ESMFold结构预测置信度≥80分 = 序列预期能折叠成稳定结构</td></tr>
+      <tr><td>Twist Bioscience</td><td>基因合成公司，提供DNA oligo合成服务</td></tr>
+    </table>
+    <div class="notable-box"><strong>论文的核心主张（要能独立复述）：</strong>GenSLM能生成TrpB，其最佳变体（GenSLM-230）不需要任何DE就超过了Arnold实验室经过多轮进化获得的PfTrpB-0B2。AI设计直接赢过实验室进化。</div>
+    <div class="project-box"><strong>与你的项目：</strong>GenSLM-230就是你的MD模拟目标。你的MetaDynamics要回答：GenSLM-230的COMM domain构象动力学是否类似PfTrpB-0B2（Osuna 2019证明：恢复allosteric ensemble = stand-alone活性的分子基础）？</div>
+  </div>
+</div>
+
+<!-- INTRODUCTION P2-1, P2-2 -->
+<div class="sec-label"><span class="sec-num">§5</span> Introduction — Paper 2</div>
+
+<div id="p2-1" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2-1</span>
+    <p><strong>The Directed Evolution Bottleneck.</strong> <span class="hl-g">Directed evolution (DE) is the gold standard for enzyme engineering, having produced catalysts for pharmaceuticals, specialty chemicals, and materials with remarkable efficiency. However, DE requires a starting enzyme with measurable activity on the desired substrate or reaction type.</span> For entirely novel chemistries — reactions with no known natural enzyme — this starting point does not exist by definition, creating a fundamental barrier. Furthermore, even when a starting point exists, DE proceeds through incremental mutations in a greedy hill-climbing fashion: <span class="hl-g">it explores only the local sequence neighborhood of the starting enzyme, and each round requires expensive library construction, transformation, expression, and high-throughput screening.</span> The process is inherently reactive and labor-intensive. An alternative that can generate diverse functional starting points from scratch — bypassing the need for an initial hit — would fundamentally transform the enzyme engineering paradigm.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2-1</div>
+    <p><strong>段落功能：</strong>建立DE的两个根本局限：①需要有活性起点（无法从零开始）；②局部探索（每轮只走一小步，错过序列空间的全局最优）。这是GenSLM方法的motivation。</p>
+    <div class="role-badge">问题建立</div>
+    <table class="term-table">
+      <tr><th>DE局限</th><th>具体问题</th></tr>
+      <tr><td>需要起点</td><td>全新化学反应无可用起点 → 无法启动DE流程</td></tr>
+      <tr><td>局部探索</td><td>每轮只在附近序列空间探索，错过远端全局最优</td></tr>
+      <tr><td>迭代代价</td><td>每轮需要文库构建+表达+筛选，数周到数月</td></tr>
+    </table>
+    <div class="notable-box"><strong>GenSLM的解法：</strong>用语言模型对整个序列空间建模，一次采样60,000个候选，覆盖DE根本无法触及的序列空间区域。然后用计算过滤替代实验筛选（pLDDT filter = 虚拟高通量筛选）。</div>
+  </div>
+</div>
+
+<div id="p2-2" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2-2</span>
+    <p><strong>The AI Design Proposition.</strong> <span class="hl-y">We propose that a generative language model trained on a large corpus of natural DNA sequences from a target enzyme family has implicitly learned the evolutionary constraints that make sequences in that family functional: the conserved residues, the tolerated variation patterns, the codon usage biases, and the long-range sequence correlations that constitute a "valid enzyme."</span> Sampling from this model's learned distribution therefore produces new sequences that satisfy these implicit constraints — sequences that should be functional without requiring any experimental starting point or optimization. This proposition makes a testable prediction: generated sequences should (1) express in a heterologous host, (2) fold into the target enzyme architecture, and (3) display catalytic activity on the native substrate. The degree to which generated sequences exceed the natural distribution defines the extent of "creative exploration" beyond what evolution has already sampled.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2-2</div>
+    <p><strong>段落功能：</strong>提出AI设计的核心命题——"模型学到了功能约束的统计规律，采样等于在满足约束的区域内探索"。这个命题是可以被实验证伪的，论文接下来的实验就是在做验证。</p>
+    <div class="role-badge">可证伪假说</div>
+    <div class="notable-box"><strong>三个测试性预测：</strong>1.可在E.coli表达；2.ESMFold能预测稳定折叠；3.对天然底物有活性。这三条构成了论文实验设计的框架。GenSLM-230三条都满足，且活性超过DE基准。</div>
+    <div class="project-box"><strong>与你的项目：</strong>论文列出三条测试性预测，但没有第四条："4. 构象动力学类似PfTrpB-0B2（allosteric ensemble recovered）"。你的MetaDynamics项目就是在验证这第四条，填补论文的空白。</div>
+  </div>
+</div>
+
+<!-- METHODS P2-3 to P2-5 -->
+<div class="sec-label"><span class="sec-num">§6</span> Methods — Paper 2</div>
+
+<div id="p2-3" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2-3</span>
+    <p><strong>GenSLM Fine-tuning on TrpB.</strong> <span class="hl-p">The base model is the 25M parameter GenSLM checkpoint pretrained on 110M prokaryotic genes.</span> The choice of the 25M variant (rather than 2.5B or 25B) was deliberate: for a task involving a single enzyme family (~30K sequences, ~1,100 bp each), the smaller model offers faster iteration cycles, lower risk of overfitting to the limited fine-tuning data, and more tractable compute requirements. <span class="hl-p">The fine-tuning dataset consists of ~30,000 unique trpB nucleotide sequences (corresponding to ~22,800 unique amino acid sequences)</span>, sourced from natural sequence databases. The nucleotide/amino acid discrepancy reflects the information available exclusively at the DNA level — synonymous codons that appear different at the DNA level but map to the same protein sequence. <span class="hl-p">Fine-tuning used the same causal language modeling objective: given codons 1...n, predict codon n+1.</span> No catalytic activity data, no structural data, and no experimental labels were used — the entire fine-tuning is sequence-only.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2-3</div>
+    <p><strong>段落功能：</strong>描述微调设置——模型规模选择（25M vs 25B）、微调数据（30K trpB DNA序列）、训练目标（causal LM，纯序列监督）。</p>
+    <div class="role-badge">微调设置</div>
+    <table class="term-table">
+      <tr><th>参数</th><th>值</th></tr>
+      <tr><td>Base model</td><td>GenSLM 25M（原核基因预训练）</td></tr>
+      <tr><td>Fine-tuning数据</td><td>~30,000 trpB DNA序列 (~22,800 unique AA)</td></tr>
+      <tr><td>DNA vs AA条数差异</td><td>~7,200条 = 仅在DNA级别可区分的同义变体</td></tr>
+      <tr><td>训练目标</td><td>Next-codon prediction（无实验标签）</td></tr>
+    </table>
+    <div class="notable-box"><strong>为什么选25M不选25B？</strong>Fine-tuning数据只有30K序列。25B参数模型对30K数据来说是严重过参数化，可能memorize而不是generalize。25M参数更接近"合理"的数据-参数比（30K序列 × 1,100 codons ÷ 25M ≈ 1.3 tokens/param），避免过拟合。</div>
+    <div class="warning-box"><strong>需要澄清的细节：</strong>论文描述的是"~30,000 trpB DNA sequences"，但具体来源数据库、过滤标准、序列多样性分布等在公开摘要中描述较简略。如果你要在MetaDynamics研究中引用这些数字，需要查阅论文SI获取确切数据。</div>
+  </div>
+</div>
+
+<div id="p2-4" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2-4</span>
+    <p><strong>Generation and Multi-stage Filtering Pipeline.</strong> <span class="hl-p">Approximately 60,000 TrpB candidate sequences were generated by autoregressive sampling from the fine-tuned model, starting from an ATG codon (start codon prompt).</span> These candidates were then subjected to a hierarchical filtering pipeline, applying cheap computational filters first:</p>
+    <ol style="margin:10px 0 10px 20px;font-size:14px;line-height:1.9;">
+      <li><span class="hl-p"><strong>Start-token filter:</strong></span> Retain only sequences beginning with ATG (Met). Autoregressive models are sensitive to the first token; non-ATG starts indicate generation failure modes.</li>
+      <li><span class="hl-p"><strong>Length filter:</strong></span> Retain sequences within 2 standard deviations of the natural TrpB mean length (363.6 ± 57.9 amino acids). Excludes truncated or extended sequences.</li>
+      <li><span class="hl-p"><strong>Sequence identity filter:</strong></span> Balance novelty and functionality by excluding trivial copies of training data; retain sequences that explore genuine sequence space novelty.</li>
+      <li><span class="hl-p"><strong>ESMFold pLDDT filter:</strong></span> Run ESMFold structure prediction; retain only sequences with mean pLDDT ≥ 80, indicating confident structural prediction and expected foldability.</li>
+    </ol>
+    <p>After all filters, a small final candidate set was selected for gene synthesis and experimental validation.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2-4</div>
+    <p><strong>段落功能：</strong>描述四阶段过滤流程——从60K候选缩减到最终实验集。每一步都有明确的生物学理由，顺序从计算代价最低到最高（cheap-first策略）。</p>
+    <div class="role-badge">过滤管道</div>
+    <table class="term-table">
+      <tr><th>过滤步骤</th><th>标准</th><th>排除的问题</th></tr>
+      <tr><td>Start-token</td><td>以ATG开始</td><td>生成失效模式（非正常起始）</td></tr>
+      <tr><td>Length</td><td>363.6 ± 2×57.9 AA</td><td>截断/延长（折叠失败）</td></tr>
+      <tr><td>Sequence identity</td><td>平衡新颖性</td><td>训练数据的简单复制</td></tr>
+      <tr><td>ESMFold pLDDT</td><td>≥ 80</td><td>预期无法折叠的序列</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">TrpB自然序列参数</div>
+      平均长度: 363.6 氨基酸<br>
+      标准差: 57.9 氨基酸<br>
+      过滤范围: [248, 479] 氨基酸 (±2σ)
+    </div>
+    <div class="notable-box"><strong>pLDDT过滤的重要性：</strong>ESMFold的pLDDT≥80过滤实际上是一个"虚拟溶解性/折叠性"预筛。这把实验中"可溶表达但不活跃"的概率降低，让后续湿实验命中率更高。这是计算成本替代实验成本的关键环节。</div>
+    <div class="warning-box"><strong>论文未报告的细节：</strong>每个过滤步骤后剩余候选数量不在公开摘要中详细报告。"从60,000到最终~105个测试候选"是什么比例在每个步骤被过滤掉？这是值得追问的数据。</div>
+  </div>
+</div>
+
+<div id="p2-5" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2-5</span>
+    <p><strong>Experimental Validation Protocol.</strong> <span class="hl-p">Candidate sequences passing all computational filters were synthesized by Twist Bioscience (gene synthesis service) and cloned for expression in E. coli.</span> Experimental assays included:
+    <ul style="margin:10px 0 10px 20px;font-size:14px;line-height:1.9;">
+      <li><span class="hl-p">Native activity assay:</span> L-serine + indole → L-tryptophan (stand-alone TrpB, no TrpA), measured by HPLC</li>
+      <li><span class="hl-p">Substrate promiscuity panel:</span> Non-canonical nucleophiles (e.g., D-serine) and non-canonical electrophiles (e.g., fluorinated indoles), measuring relative product yield</li>
+      <li><span class="hl-p">Temperature range:</span> Assays at room temperature AND 75°C to assess thermostability of activity</li>
+      <li><span class="hl-p">Comparison benchmarks:</span> Wild-type PfTrpB, PfTrpB-0B2 (Arnold lab's 6-mutation DE variant), NdTrpB (closest natural homolog to best generated enzyme)</li>
+    </ul></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2-5</div>
+    <p><strong>段落功能：</strong>描述实验验证协议——合成、表达、多种活性测定，以及三个对照基准（WT PfTrpB、PfTrpB-0B2、NdTrpB）。</p>
+    <div class="role-badge">实验方案</div>
+    <table class="term-table">
+      <tr><th>测试</th><th>目的</th></tr>
+      <tr><td>Native activity (L-Ser + indole)</td><td>验证基本TrpB功能，与PfTrpB-0B2对比</td></tr>
+      <tr><td>D-serine等非天然底物</td><td>检测底物通用性（substrate promiscuity）</td></tr>
+      <tr><td>75°C活性</td><td>热稳定性（非设计目标，但嗜热菌来源序列可能意外保留）</td></tr>
+      <tr><td>NdTrpB对比</td><td>证明GenSLM-230的活性超过了最近的天然同源蛋白</td></tr>
+    </table>
+    <div class="project-box"><strong>与你的项目：</strong>Stand-alone TrpB activity = 无TrpA激活情况下高活性 = Osuna 2019的核心研究对象。你的MetaDynamics将在分子动力学层面解释：为什么GenSLM-230在这个assay中超过PfTrpB-0B2？</div>
+  </div>
+</div>
+
+<!-- RESULTS P2-6 to P2-9 -->
+<div class="sec-label"><span class="sec-num">§7</span> Results — Paper 2</div>
+
+<div id="p2-6" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2-6</span>
+    <p><strong>GenSLM-230 Exceeds the Directed Evolution Benchmark.</strong> <span class="hl-y">GenSLM-230, the most active of the generated TrpB variants, displays catalytic activity exceeding that of PfTrpB-0B2 in the native L-serine + indole → L-tryptophan reaction, without any directed evolution rounds.</span> This is a remarkable result: <span class="hl-b">PfTrpB-0B2 required multiple rounds of directed evolution and high-throughput screening by the Arnold group to achieve its stand-alone activity; GenSLM-230 was generated from scratch by a language model and expressed in E. coli.</span> <span class="hl-b">GenSLM-230 displays stand-alone TrpB function — high activity in the absence of TrpA</span> — recapitulating the property that required DE to achieve in natural TrpBs. Sequence analysis reveals that <span class="hl-b">GenSLM-230 shares approximately 80.5% amino acid sequence identity with NdTrpB (Neobacillus drentensis TrpB)</span>, its closest natural homolog — yet it clearly surpasses NdTrpB in activity, confirming that the performance improvement is not simply inherited from the closest natural sequence.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2-6</div>
+    <p><strong>段落功能：</strong>本论文最重要的结果——GenSLM-230活性超过DE基准PfTrpB-0B2，且与最近天然同源体NdTrpB相比也有显著优势。这证明模型不是在记忆已知序列。</p>
+    <div class="role-badge">核心发现</div>
+    <div class="data-box">
+      <div class="label">GenSLM-230 性能数据</div>
+      与最近天然同源体NdTrpB序列同一性: ~80.5%<br>
+      活性对比PfTrpB-0B2: 超过（具体倍数见论文Fig.）<br>
+      Stand-alone活性: 有（无需TrpA激活）<br>
+      获得方式: 零DE轮次，纯AI生成
+    </div>
+    <div class="notable-box"><strong>这个结果的重要性：</strong>PfTrpB-0B2是Arnold lab定向进化的精心结晶，是领域公认基准。GenSLM-230不经过任何DE就能超越它，说明语言模型生成的序列多样性探索能够到达DE无法轻易触及的序列空间区域。</div>
+    <div class="project-box"><strong>核心MetaDynamics问题（你的整个项目）：</strong>PfTrpB-0B2的高活性被Osuna 2019解释为"recovered allosteric ensemble"（COMM domain O/PC/C态全部可及，PC→C壁垒降低）。GenSLM-230更好的活性——是否对应更好的allosteric ensemble？这是你MetaDynamics要回答的。</div>
+  </div>
+</div>
+
+<div id="p2-7" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2-7</span>
+    <p><strong>Substrate Promiscuity Panel.</strong> <span class="hl-y">Multiple GenSLM-generated TrpBs displayed enhanced substrate promiscuity compared to wild-type TrpBs, accepting non-canonical nucleophiles and electrophiles that natural TrpBs reject or react with poorly.</span> The promiscuity panel included: non-canonical nucleophiles (D-serine and other amino acid analogs replacing L-serine); non-canonical electrophiles (halogenated indoles, methyl-substituted indoles). <span class="hl-b">Several generated variants showed substantially higher relative yields with non-canonical substrates compared to PfTrpB WT and even PfTrpB-0B2.</span> Critically, <span class="hl-y">this enhanced promiscuity was not an explicit design target</span> — it emerged spontaneously from the generation process. This suggests that the generated sequences have not merely optimized for the native reaction but have genuinely explored new functional territory in enzyme-substrate space. The structural basis for this promiscuity is not explained in the paper — <span class="hl-g">no crystal structures or detailed active-site analysis of the generated variants were provided</span> — leaving the molecular mechanism entirely open.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2-7</div>
+    <p><strong>段落功能：</strong>底物通用性结果——生成序列对非天然底物的接受度超过WT，且通用性是无意涌现的（未被设计），说明模型在探索功能新颖性而非优化单一目标。</p>
+    <div class="role-badge">底物通用性</div>
+    <table class="term-table">
+      <tr><th>测试底物</th><th>类型</th><th>结果</th></tr>
+      <tr><td>D-serine</td><td>非天然亲核体</td><td>多个生成变体优于WT</td></tr>
+      <tr><td>卤代吲哚</td><td>非天然亲电体</td><td>多个生成变体优于WT</td></tr>
+      <tr><td>甲基化吲哚</td><td>非天然亲电体</td><td>多个生成变体优于WT</td></tr>
+    </table>
+    <div class="warning-box"><strong>论文的关键空白（你的项目机会）：</strong>底物通用性的分子机制完全未解释——论文既没有提供晶体结构，也没有活性位点分析。MetaDynamics可以填补这个空白：通过比较不同底物的FEL，解释为什么生成变体对非天然底物更宽容（例如：活性位点在Q2阶段的构象更灵活？COMM domain的开放-关闭动力学不同？）</div>
+    <div class="project-box"><strong>直接项目相关性：</strong>D-serine通用性与D-Trp设计直接相关。你的MetaDynamics中间体选择应该包括D-serine底物结合的E(A-A)阶段——看GenSLM-230的COMM domain在这种非天然底物下的构象动力学是否也有利。</div>
+  </div>
+</div>
+
+<div id="p2-8" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2-8</span>
+    <p><strong>Thermostability: An Emergent Property.</strong> <span class="hl-b">At least 7 generated TrpB variants retained substantial catalytic activity at 75°C</span>, a temperature relevant to the natural hyperthermophile PfTrpB (from <em>Pyrococcus furiosus</em>, optimal growth 100°C). This is striking because <span class="hl-y">thermostability was never specified as a design objective during GenSLM fine-tuning.</span> The fine-tuning dataset (~30,000 trpB sequences) likely spans organisms across a wide temperature range — mesophiles, thermophiles, and hyperthermophiles. The model appears to have learned the sequence correlates of thermostability as part of the general TrpB sequence grammar, and some generated sequences spontaneously inherit thermostable-associated codon and amino acid patterns. This emergent thermostability is an important property for industrial applications: <span class="hl-b">high-temperature reactions accelerate reaction rates, reduce contamination risk, and enable coupling with thermophilic cofactor regeneration systems.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2-8</div>
+    <p><strong>段落功能：</strong>热稳定性是"惊喜涌现特性"——未被设计，却在7+个变体中出现。这证明模型不只是复现训练集分布，而是学到了更深层的序列-功能关联。</p>
+    <div class="role-badge">涌现性质</div>
+    <div class="data-box">
+      <div class="label">热稳定性数据</div>
+      75°C有活性的生成变体数量: ≥7<br>
+      测试温度: 室温 AND 75°C<br>
+      设计目标: 无（完全自发涌现）<br>
+      生物学意义: 工业酶催化、嗜热体系应用
+    </div>
+    <div class="notable-box"><strong>涌现性质的意义：</strong>如果模型只是在"拷贝"训练数据，就不应该看到额外涌现的热稳定性。热稳定性的出现说明模型学到了"热稳定性序列特征"的统计规律，并在生成时随机保留了这些特征——即使没有被明确要求。</div>
+    <div class="compare-box"><strong>对比：</strong>这类似于用大量英文文章微调GPT后，模型不仅能写英文，还能偶尔用拉丁文法结构——因为模型在训练中见到了古典引用，学会了更广泛的"写作语法"。</div>
+  </div>
+</div>
+
+<div id="p2-9" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2-9</span>
+    <p><strong>NdTrpB: The Closest Natural Homolog Comparison.</strong> <span class="hl-b">GenSLM-230 shares approximately 80.5% amino acid sequence identity with NdTrpB (TrpB from Neobacillus drentensis)</span>, making NdTrpB the closest known natural homolog to the most active generated variant. <span class="hl-y">This comparison is designed to control for the possibility that GenSLM-230's activity simply inherits from its natural neighbor rather than representing genuine AI-driven novelty.</span> The result is clear: <span class="hl-b">NdTrpB, despite sharing 80.5% identity with GenSLM-230, displays substantially lower activity in the promiscuity panel and on native substrates.</span> The ~19.5% sequence difference between GenSLM-230 and NdTrpB corresponds to roughly 70 amino acid substitutions across the ~360 residue protein. The locations and functional consequences of these substitutions are not mapped in the paper, <span class="hl-g">leaving open the question of which specific sequence differences drive the enhanced activity.</span> Identifying these functionally critical differences between GenSLM-230 and NdTrpB — through structural analysis and/or MetaDynamics — is a direct future research question.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2-9</div>
+    <p><strong>段落功能：</strong>关键对照实验——用NdTrpB（80.5%同一性的最近天然同源体）证明GenSLM-230的活性不是从天然序列"继承"的。论文说明了结果（GenSLM-230 > NdTrpB），但没有解释原因。</p>
+    <div class="role-badge">关键对照</div>
+    <div class="data-box">
+      <div class="label">GenSLM-230 vs NdTrpB</div>
+      氨基酸序列同一性: ~80.5%<br>
+      差异残基估算: ~70 氨基酸（总长~360）<br>
+      活性对比: GenSLM-230 明显优于 NdTrpB<br>
+      分子机制: 未在本文中解释
+    </div>
+    <div class="project-box"><strong>这是你的MetaDynamics项目的核心科学问题：</strong>GenSLM-230和NdTrpB序列同一性80.5%，但活性差异显著。Osuna 2019框架预测：活性差异应对应COMM domain FEL差异（PC→C壁垒、C态稳定性、K82-Q2距离）。你的计划：对GenSLM-230 AND NdTrpB各跑MetaDynamics，比较FEL，找到~70个氨基酸差异中哪些影响了COMM domain构象动力学。</div>
+    <div class="warning-box"><strong>方法论注意：</strong>~70个氨基酸差异中，哪些是"驱动功能差异"的，哪些是中性的？没有系统性突变扫描或结构数据，无法从序列对比直接得到答案。MetaDynamics能提供的是总体构象动力学差异，不能直接定位到单个残基（需要额外SPM分析）。</div>
+  </div>
+</div>
+
+<!-- DISCUSSION P2-10, P2-11 -->
+<div class="sec-label"><span class="sec-num">§8</span> Discussion — Paper 2</div>
+
+<div id="p2-10" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2-10</span>
+    <p><strong>Exploring Uncharted Sequence Space.</strong> <span class="hl-y">The most significant conceptual contribution of this work is demonstrating that a generative language model trained on natural sequences can produce enzymes with properties not present in the closest natural homologs — the model is genuinely creative, not merely interpolating.</span> The sequence identity range of active generated variants (most at 80–90% identity to closest natural TrpB, some at 70–80%) places them in a regime that is accessible to DE only after many rounds of optimization. <span class="hl-b">Generating functional enzymes at 70–80% identity to the nearest natural sequence in a single pass is qualitatively different from DE, which typically accumulates 5–20 mutations per round.</span> The model has effectively compressed what would require dozens of DE rounds into a single sampling operation. The DNA-level training is proposed as the key enabler: by operating at the codon level, GenSLM can simultaneously optimize amino acid identity, codon usage for E. coli expression, and long-range sequence correlations — constraints that cannot all be simultaneously optimized by amino-acid-level PLMs.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2-10</div>
+    <p><strong>段落功能：</strong>论文的主要讨论论点——生成AI不是插值（不只是在已知序列之间填空），而是真正创造性的探索（到达天然序列集合之外的功能区域）。</p>
+    <div class="role-badge">主要论点</div>
+    <table class="term-table">
+      <tr><th>比较维度</th><th>DE</th><th>GenSLM</th></tr>
+      <tr><td>探索范围</td><td>局部（每轮~5-20突变）</td><td>全局（一次到达70-80%同一性区域）</td></tr>
+      <tr><td>起点需求</td><td>需要有活性起点</td><td>不需要</td></tr>
+      <tr><td>每次筛选代价</td><td>高（湿实验为主）</td><td>低（计算过滤为主）</td></tr>
+      <tr><td>可并行规模</td><td>1-10K/轮</td><td>60K/次</td></tr>
+    </table>
+    <div class="notable-box"><strong>重要框架：</strong>DE是在序列空间中的"局部爬山"；GenSLM是在整个序列空间中"随机采样符合功能约束的点"。两者不是竞争关系，而是互补——GenSLM生成多样起点，DE从好的起点进一步优化。这就是Anima Lab "GenSLM → FEL筛选 → RLHF" 管道的逻辑。</div>
+  </div>
+</div>
+
+<div id="p2-11" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2-11</span>
+    <p><strong>Limitations and Open Questions.</strong> The paper acknowledges several important limitations and leaves key questions open. <span class="hl-g">The multi-stage filtering pipeline is described qualitatively — no breakdown is provided of how many sequences survive each filter stage or the overall hit rate per filter level.</span> <span class="hl-g">No comparison is made between GenSLM and amino-acid-level PLMs (such as ESM-2) generating protein sequences at the same scale</span>, leaving it unclear whether the codon-level approach specifically outperforms amino-acid-level generation, or whether any large-scale generation would achieve similar results. <span class="hl-g">No structural data (crystal structures or cryo-EM) for GenSLM-230 or other active generated variants are provided</span>, leaving the molecular basis for enhanced activity uncharacterized. <span class="hl-g">No conformational dynamics analysis</span> is presented — the connection between GenSLM-230's sequence and its functional superiority is entirely a "black box" at the molecular level. Finally, <span class="hl-g">the reward signal for future iterative improvement of GenSLM is not defined</span>: what quantitative metrics should GenSLM optimize in subsequent rounds?</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2-11</div>
+    <p><strong>段落功能：</strong>诚实列出论文的5个主要局限/未解决问题。这些空白是后续研究（包括你的项目）的机会。</p>
+    <div class="role-badge">局限与开放问题</div>
+    <table class="term-table">
+      <tr><th>局限</th><th>影响</th><th>你的项目如何填补</th></tr>
+      <tr><td>无过滤步骤breakdown</td><td>hit rate不清晰</td><td>不直接填补，但了解context</td></tr>
+      <tr><td>无DNA vs AA PLM对比</td><td>codon优势未被验证</td><td>不直接填补</td></tr>
+      <tr><td>无晶体结构</td><td>活性位点几何未知</td><td>MetaDynamics提供动力学信息（非结构静态数据）</td></tr>
+      <tr><td>无构象动力学分析</td><td>活性机制未知</td><td><strong>这正是你MetaDynamics项目要解决的</strong></td></tr>
+      <tr><td>未定义reward signal</td><td>迭代改进路径未知</td><td>MetaDynamics FEL输出（ΔG，壁垒）可作为reward</td></tr>
+    </table>
+    <div class="project-box"><strong>你的项目填补的关键空白：</strong>"无构象动力学分析"是Paper 2最重要的未解决空白。你的MetaDynamics工作将是第一个从COMM domain构象动力学角度解释GenSLM-230活性优越性的研究——这是高度可发表的原创科学贡献。</div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- SYNTHESIS SECTIONS -->
+<!-- ================================================================ -->
+<div class="sec-label"><span class="sec-num">§A</span> 综合分析 — GenSLM在Ramanathan/Anima Lab管道中的位置</div>
+<div id="synth-pipeline" class="synth-section">
+  <h2>§A · GenSLM在完整AI驱动酶设计管道中的位置</h2>
+  <p style="font-size:13px;color:var(--gray);margin-bottom:16px;">
+    基于两篇论文和相关工作，Ramanathan/Anima Lab（Argonne + Caltech）正在构建完整的AI驱动酶设计管道。GenSLM是其中的序列生成层。
+  </p>
+
+  <div class="logic-chain">
+    <div class="lc-node">Stage 1<br><strong>GenSLM</strong><br><small>DNA-level PLM</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node alt">Stage 2<br><strong>过滤</strong><br><small>ESMFold pLDDT</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">Stage 3<br><strong>湿实验</strong><br><small>E.coli表达+活性</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node alt">Stage 4<br><strong>MetaDynamics</strong><br><small>FEL分析 [你的项目]</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">Stage 5<br><strong>Reward反馈</strong><br><small>RL/MFBO [未来]</small></div>
+  </div>
+
+  <h3>五个阶段详解</h3>
+  <table class="proj-table">
+    <tr><th>阶段</th><th>工具/方法</th><th>输入</th><th>输出</th><th>关键论文</th></tr>
+    <tr>
+      <td><strong>1. 生成</strong></td>
+      <td>GenSLM 25M（DNA-level GPT）</td>
+      <td>30K trpB DNA序列（fine-tuning）</td>
+      <td>60K候选DNA序列</td>
+      <td>Zvyagin 2023 + Lambert 2026</td>
+    </tr>
+    <tr>
+      <td><strong>2. 计算过滤</strong></td>
+      <td>Start-token filter, length filter, sequence identity filter, ESMFold pLDDT≥80</td>
+      <td>60K候选</td>
+      <td>~100-200候选（估计）</td>
+      <td>Lambert 2026</td>
+    </tr>
+    <tr>
+      <td><strong>3. 实验验证</strong></td>
+      <td>基因合成（Twist）+ E.coli表达 + 活性/热稳定性测定</td>
+      <td>~100-200候选</td>
+      <td>活性排序（GenSLM-230为最佳）</td>
+      <td>Lambert 2026</td>
+    </tr>
+    <tr>
+      <td><strong>4. 动力学分析</strong></td>
+      <td>MetaDynamics（GROMACS+PLUMED）+ Path CV（COMM domain O→C）</td>
+      <td>活性变体的氨基酸序列</td>
+      <td>FEL: ΔG(C), 壁垒高度, K82-Q2分布</td>
+      <td><strong>你的项目（填补空白）</strong></td>
+    </tr>
+    <tr>
+      <td><strong>5. 反馈迭代</strong></td>
+      <td>RL (GRPO/PPO) 或 MFBO</td>
+      <td>FEL reward signal（ΔG，壁垒，几何指标）</td>
+      <td>改进的GenSLM → 新一代候选</td>
+      <td>未来方向（GRPO 2025论文）</td>
+    </tr>
+  </table>
+
+  <h3>为什么选GenSLM而非ESM-2 / ProtTrans作为生成器？</h3>
+  <table class="proj-table">
+    <tr><th>特性</th><th>GenSLM</th><th>ESM-2 / ProtTrans</th></tr>
+    <tr><td>Tokenization级别</td><td>DNA / codon（64种token）</td><td>氨基酸（20种token）</td></tr>
+    <tr><td>Codon bias（宿主表达）</td><td>隐含学到</td><td>不可见</td></tr>
+    <tr><td>同义变异</td><td>区分</td><td>折叠到同一氨基酸</td></tr>
+    <tr><td>生成目标</td><td>直接输出DNA（可送基因合成）</td><td>蛋白质序列（需额外密码子优化）</td></tr>
+    <tr><td>基因组背景</td><td>学过110M原核基因的上下文</td><td>不适用</td></tr>
+    <tr><td>自回归生成</td><td>是（GPT风格）</td><td>ESM-2是masked LM，不直接适合生成</td></tr>
+  </table>
+</div>
+
+<!-- SECTION B: CROSS-PAPER COMPARISON -->
+<div id="synth-compare" class="sec-label"><span class="sec-num">§B</span> 两论文对比表</div>
+<div class="synth-section">
+  <h2>§B · Zvyagin 2023 与 Lambert 2026 的系统对比</h2>
+  <table class="proj-table">
+    <tr><th>维度</th><th>Zvyagin et al. 2023 (GenSLM基础模型)</th><th>Lambert et al. 2026 (GenSLM TrpB应用)</th></tr>
+    <tr><td><strong>主要目标</strong></td><td>大流行病变体监测</td><td>新型TrpB酶设计</td></tr>
+    <tr><td><strong>使用模型规模</strong></td><td>2.5B / 25B（全基因组任务）</td><td>25M（TrpB fine-tuning）</td></tr>
+    <tr><td><strong>预训练数据</strong></td><td>110M原核基因（BV-BRC）</td><td>同一110M基因预训练checkpoint</td></tr>
+    <tr><td><strong>微调数据</strong></td><td>1.5M SARS-CoV-2全基因组</td><td>~30,000 trpB DNA序列</td></tr>
+    <tr><td><strong>关键技术创新</strong></td><td>Codon tokenization + 层次扩散模型（全基因组）</td><td>Fine-tuning GPT on DNA for protein engineering + multi-stage filter</td></tr>
+    <tr><td><strong>主要结果</strong></td><td>前瞻性VOC识别（Delta/Omicron/Iota），早于官方分类</td><td>生成TrpB超过DE基准（PfTrpB-0B2），零DE轮次</td></tr>
+    <tr><td><strong>验证方式</strong></td><td>计算（UMAP聚类，silhouette score）</td><td>实验（E.coli表达，活性测定）</td></tr>
+    <tr><td><strong>与本项目关联</strong></td><td>间接（架构和预训练使Paper 2成为可能）</td><td>直接（GenSLM-230是你MD模拟的目标分子）</td></tr>
+    <tr><td><strong>未解决的关键问题</strong></td><td>架构迁移到蛋白质工程的边界在哪里？</td><td>GenSLM-230的分子活性机制是什么？</td></tr>
+  </table>
+
+  <h3>两论文的逻辑关系</h3>
+  <div class="logic-chain">
+    <div class="lc-node">Zvyagin 2023<br><small>证明：codon PLM<br>可捕获功能信息</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node alt">架构迁移<br><small>从病毒监测<br>到蛋白质设计</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">Lambert 2026<br><small>应用：生成TrpB<br>超过DE基准</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node alt">空白待填<br><small>分子机制未解</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">你的项目<br><small>MetaDynamics<br>FEL分析</small></div>
+  </div>
+</div>
+
+<!-- SECTION C: PROJECT CONNECTION -->
+<div id="synth-project" class="sec-label"><span class="sec-num">§C</span> 项目关联表 — 你的MetaDynamics工作如何对接</div>
+<div class="synth-section">
+  <h2>§C · 你的MetaDynamics项目与GenSLM两篇论文的关联</h2>
+  <p style="font-size:13px;color:var(--gray);margin-bottom:16px;">
+    你的项目角色：用MetaDynamics填补Lambert et al. 2026留下的核心科学空白——解释GenSLM-230的分子活性机制。
+  </p>
+
+  <table class="proj-table">
+    <tr><th>Lambert 2026 的空白</th><th>你的MetaDynamics能做什么</th><th>预期输出指标</th></tr>
+    <tr>
+      <td>无构象动力学分析（GenSLM-230活性机制未知）</td>
+      <td>对GenSLM-230做Well-tempered MetaD + Path CV，重建COMM domain FEL</td>
+      <td>PC→C壁垒高度，ΔG(C), K82-Q2距离分布</td>
+    </tr>
+    <tr>
+      <td>NdTrpB vs GenSLM-230活性差异机制未知</td>
+      <td>对NdTrpB做平行MetaDynamics，比较两者FEL</td>
+      <td>ΔΔG(C) = GenSLM-230 - NdTrpB：量化构象动力学差异</td>
+    </tr>
+    <tr>
+      <td>底物通用性的结构/动力学来源未知</td>
+      <td>在E(A-A)阶段（D-serine结合）分析COMM domain构象</td>
+      <td>非天然底物下COMM domain的构象异质性是否更高</td>
+    </tr>
+    <tr>
+      <td>未定义AI迭代改进的reward signal</td>
+      <td>FEL输出（ΔG, 壁垒, K82-Q2, COMM RMSD）= 量化功能目标</td>
+      <td>可用作GRPO/MFBO的reward function</td>
+    </tr>
+  </table>
+
+  <h3>连接Osuna 2019 + Lambert 2026 + 你的项目的核心逻辑链</h3>
+  <table class="proj-table">
+    <tr><th>来源</th><th>核心命题</th><th>你的项目如何使用</th></tr>
+    <tr>
+      <td>Osuna 2019 (JACS)</td>
+      <td>Recovering allosteric ensemble (PC→C壁垒降低) = stand-alone TrpB活性的分子基础</td>
+      <td>方法论蓝图：MetaDynamics + Path CV + FEL分析框架</td>
+    </tr>
+    <tr>
+      <td>Lambert 2026 (Nat Commun)</td>
+      <td>GenSLM-230超过PfTrpB-0B2，但分子机制未解</td>
+      <td>你的研究对象：GenSLM-230序列 + NdTrpB比较对照</td>
+    </tr>
+    <tr>
+      <td>你的项目（连接两者）</td>
+      <td>GenSLM-230的活性优越性 = COMM domain构象动力学的进一步优化？</td>
+      <td>测试命题：GenSLM-230的PC→C壁垒是否比PfTrpB-0B2更低？C态稳定性是否更高？</td>
+    </tr>
+  </table>
+
+  <h3>关键未知问题（面试时要能回答）</h3>
+  <table class="proj-table">
+    <tr><th>#</th><th>问题</th><th>当前状态</th><th>你的项目如何贡献答案</th></tr>
+    <tr>
+      <td>1</td>
+      <td>GenSLM-230的COMM domain构象动力学是否类似PfTrpB-0B2？</td>
+      <td>完全未知（论文未做任何MD）</td>
+      <td>MetaDynamics FEL直接回答</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>GenSLM-230 vs NdTrpB的FEL差异在哪？</td>
+      <td>完全未知</td>
+      <td>平行MetaDynamics + FEL对比</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Codon-level训练是否真正优于AA-level PLM？</td>
+      <td>论文无消融实验</td>
+      <td>你的项目不直接回答，但FEL结果可间接支持</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>哪些序列差异（GenSLM-230 vs NdTrpB）是功能关键的？</td>
+      <td>论文无系统分析</td>
+      <td>MetaDynamics SPM分析可识别关键通信残基（高级分析）</td>
+    </tr>
+  </table>
+</div>
+
+<!-- SECTION D: GLOSSARY -->
+<div id="synth-glossary" class="sec-label"><span class="sec-num">§D</span> 术语总表 — 双论文关键术语</div>
+<div class="synth-section">
+  <h2>§D · 双论文关键术语速查表</h2>
+  <table class="gloss-table">
+    <tr><th style="width:28%">术语 (英文)</th><th style="width:14%">中文</th><th>一句话定义</th><th style="width:18%">出现论文</th></tr>
+    <tr><td>GenSLM</td><td>基因序列语言模型</td><td>Ramanathan Lab开发的codon级别GPT，预训练于110M原核基因</td><td>两篇论文</td></tr>
+    <tr><td>Codon tokenization</td><td>密码子分词</td><td>将每3nt密码子作为一个token，保留阅读框和遗传密码信息</td><td>Zvyagin 2023</td></tr>
+    <tr><td>GPT-NeoX</td><td>GPT-NeoX架构</td><td>开源自回归transformer，与GPT-3架构相近，用旋转位置编码</td><td>Zvyagin 2023</td></tr>
+    <tr><td>VOC (Variant of Concern)</td><td>关切变体</td><td>WHO正式分类的高风险SARS-CoV-2变体（Delta/Omicron等）</td><td>Zvyagin 2023</td></tr>
+    <tr><td>Latent space</td><td>潜空间</td><td>深度学习模型内部的表示空间，捕获输入数据的高层语义特征</td><td>Zvyagin 2023</td></tr>
+    <tr><td>UMAP</td><td>均匀流形近似</td><td>高维latent space的2D/3D可视化方法，保留拓扑结构</td><td>Zvyagin 2023</td></tr>
+    <tr><td>Prospective VOC identification</td><td>前瞻性VOC识别</td><td>在官方分类之前，通过latent space聚类早期发现高风险变体</td><td>Zvyagin 2023</td></tr>
+    <tr><td>Hierarchical diffusion model</td><td>层次扩散模型</td><td>GenSLM的全基因组级别组件，处理10K+ codon的长程依赖</td><td>Zvyagin 2023</td></tr>
+    <tr><td>BV-BRC</td><td>细菌和病毒生信资源中心</td><td>NIAID资助的数据库，提供GenSLM预训练的110M原核基因序列</td><td>Zvyagin 2023</td></tr>
+    <tr><td>Fine-tuning (微调)</td><td>微调</td><td>在预训练模型基础上，用任务特异性数据进一步训练，专化模型</td><td>两篇论文</td></tr>
+    <tr><td>GenSLM-230</td><td>GenSLM-230变体</td><td>Lambert 2026中活性最高的生成TrpB，超过PfTrpB-0B2，与NdTrpB 80.5%同一性</td><td>Lambert 2026</td></tr>
+    <tr><td>PfTrpB-0B2</td><td>0B2变体</td><td>Arnold lab定向进化TrpB，含6个远端突变，stand-alone活性高，是Lambert 2026的比较基准</td><td>Lambert 2026</td></tr>
+    <tr><td>NdTrpB</td><td>Nd TrpB</td><td>Neobacillus drentensis TrpB，GenSLM-230的最近天然同源体（80.5% AA同一性）</td><td>Lambert 2026</td></tr>
+    <tr><td>Directed Evolution (DE)</td><td>定向进化</td><td>随机突变+高通量筛选的迭代实验方法；Arnold lab的标志性技术</td><td>两篇论文</td></tr>
+    <tr><td>Substrate promiscuity</td><td>底物通用性</td><td>酶接受和催化多种非天然底物的能力；GenSLM-TrpBs意外涌现这一特性</td><td>Lambert 2026</td></tr>
+    <tr><td>Stand-alone TrpB function</td><td>独立TrpB功能</td><td>TrpB在无TrpA激活的情况下高效催化的能力；与allosteric ensemble recovery相关</td><td>Lambert 2026</td></tr>
+    <tr><td>ESMFold</td><td>ESMFold</td><td>Meta AI的单序列蛋白质结构预测模型，pLDDT值用于评估折叠置信度</td><td>Lambert 2026</td></tr>
+    <tr><td>pLDDT</td><td>预测局部差异测试</td><td>AlphaFold/ESMFold的每残基置信度指标，&gt;80为高置信度</td><td>Lambert 2026</td></tr>
+    <tr><td>Multi-stage filtering</td><td>多阶段过滤</td><td>Lambert 2026中从60K候选缩减到实验集的四步过滤流程</td><td>Lambert 2026</td></tr>
+    <tr><td>Codon bias</td><td>密码子偏好</td><td>不同物种对同义密码子的非均匀使用，影响翻译效率和蛋白质表达量</td><td>Zvyagin 2023 + Lambert 2026</td></tr>
+    <tr><td>COMM domain</td><td>通信结构域</td><td>TrpB残基97-184，进行O↔PC↔C构象转换，控制活性位点开闭</td><td>间接相关（Osuna 2019直接讨论）</td></tr>
+    <tr><td>GRPO</td><td>群体相对策略优化</td><td>Anima Lab的RL方法（DeepSeek-R1同源），可用于从FEL reward fine-tune GenSLM</td><td>未来方向（GRPO 2025论文）</td></tr>
+    <tr><td>MFBO</td><td>多保真贝叶斯优化</td><td>用代理模型（MD FEL等不同保真度）引导序列优化的迭代框架</td><td>未来方向</td></tr>
+    <tr><td>Twist Bioscience</td><td>基因合成服务商</td><td>为Lambert 2026提供候选序列的DNA合成；合成成本是计算设计管道规模化的关键约束</td><td>Lambert 2026</td></tr>
+    <tr><td>Autoregressive sampling</td><td>自回归采样</td><td>逐个codon生成，每次基于前序codon的条件概率；GenSLM生成序列的方式</td><td>两篇论文</td></tr>
+  </table>
+
+  <h3 style="margin-top:20px;">你现在的行动优先级（基于两篇论文）</h3>
+  <table class="proj-table">
+    <tr><th>#</th><th>任务</th><th>论文依据</th><th>优先级</th></tr>
+    <tr><td>1</td><td>获取GenSLM-230氨基酸序列（论文SI或Zenodo）</td><td>Lambert 2026（GenSLM-230是最重要目标）</td><td>最高</td></tr>
+    <tr><td>2</td><td>对GenSLM-230做同源建模（参考模板：5DVZ/5DW0/5DW3）</td><td>Lambert 2026（无晶体结构）</td><td>最高</td></tr>
+    <tr><td>3</td><td>对NdTrpB也做同源建模（平行比较对照）</td><td>Lambert 2026 P2-9（NdTrpB = 关键对照）</td><td>高</td></tr>
+    <tr><td>4</td><td>对GenSLM-230跑MetaDynamics，重建COMM domain FEL</td><td>Lambert 2026空白 + Osuna 2019方法论</td><td>高</td></tr>
+    <tr><td>5</td><td>对NdTrpB跑平行MetaDynamics，与GenSLM-230 FEL对比</td><td>Lambert 2026 P2-9空白</td><td>中高</td></tr>
+    <tr><td>6</td><td>分析K82-Q2距离分布 + COMM RMSD，判断C态质量</td><td>Osuna 2019定量指标</td><td>中高</td></tr>
+    <tr><td>7</td><td>将FEL reward指标定义为未来GRPO/MFBO的优化目标</td><td>Lambert 2026 P2-11局限 + GRPO论文</td><td>中</td></tr>
+  </table>
+</div>
+
+</main>
+</div>
+
+<script>
+// Intersection observer for active nav links
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, {rootMargin: '-10% 0px -80% 0px'});
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

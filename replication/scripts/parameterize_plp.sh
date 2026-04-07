@@ -472,8 +472,8 @@ echo ""
 echo "Step 4: Running antechamber to assign GAFF atom types and RESP charges..."
 echo ""
 echo "  NOTE: This step requires completed Gaussian .log files from Step 3."
-echo "        If Gaussian has not been run yet, this step will use BCC charges"
-echo "        as a placeholder (less accurate than RESP but sufficient for testing)."
+echo "        If Gaussian has not been run yet, production mode hard-fails instead"
+echo "        of falling back to BCC charges (FP-009: RESP only for PLP)."
 echo ""
 
 run_antechamber() {
@@ -503,31 +503,9 @@ run_antechamber() {
             2>&1 | tee "${LOG_DIR}/antechamber_resp_${intermediate}.log"
 
     else
-        # --- BCC fallback: use AM1-BCC charges (no QM required) ---
-        echo "  Processing ${intermediate} with BCC charges (Gaussian not yet run)..."
-        echo "  [WARNING] BCC charges are less accurate than RESP for production MD."
-
-        local input_pdb="${PARAM_DIR}/plp_structures/${intermediate}_capped.pdb"
-        if [ ! -f "${input_pdb}" ]; then
-            input_pdb="${PARAM_DIR}/plp_structures/${intermediate}_raw.pdb"
-        fi
-
-        if [ ! -f "${input_pdb}" ]; then
-            echo "  SKIP: No input PDB for ${intermediate}."
-            return 1
-        fi
-
-        "${AMBER_BIN}/antechamber" \
-            -i "${input_pdb}" \
-            -fi pdb \
-            -o "${output_mol2}" \
-            -fo mol2 \
-            -at gaff \
-            -c bcc \
-            -nc "${charge}" \
-            -m "${mult}" \
-            -rn "${resname}" \
-            2>&1 | tee "${LOG_DIR}/antechamber_bcc_${intermediate}.log"
+        # --- BCC fallback path is prohibited in production mode (FP-009) ---
+        echo "FATAL: BCC fallback triggered in production mode. FP-009 prohibits BCC for PLP. Use RESP only."
+        exit 1
     fi
 
     if [ -f "${output_mol2}" ]; then

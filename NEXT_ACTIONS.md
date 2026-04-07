@@ -64,6 +64,19 @@ _目前无_
 > ✅ Gaussian Job 40533504 已完成（Normal termination，88 步优化，2026-03-31）。
 > ✅ Codex review 完成：修复了 6 个文件中的 iop(6/50=1) 残留 + Slurm OMP 问题（2026-03-31）。
 
+- [x] **Production MD submitted** ✅ (2026-04-01)
+  - Job `40806029` RUNNING
+  - Production script: `replication/scripts/amber_md/submit_production.sh`
+
+- [x] **Codex 脚本交付** ✅ (2026-04-01)
+  - `convert_amber_to_gromacs.py`
+  - `plumed_trpb_metad.dat` / `plumed_trpb_metad_single.dat` 更新
+  - `replication/scripts/gromacs_metad/`
+  - `replication/scripts/analysis/`
+
+- [x] **独立参数验证** ✅ (2026-04-01)
+  - `31/41 PASS`
+
 - [x] **PLP 参数化 Ain — RESP 电荷提取** ✅ (2026-03-31)
   - Ain_gaff.mol2（42 atoms, charge=-2, backbone retyped to ff14SB）
   - Ain.frcmod（无 ATTN warnings）
@@ -81,10 +94,10 @@ _目前无_
 - [x] **Pipeline Cycle 1 完成** ✅ (2026-03-31)
   - 全 6 stages PASS，campaign report 已写
 
-- [ ] **常规 MD 500 ns — Longleaf Job 40709153 RUNNING**
-  - Prep pipeline: min1 → min2 → heat1-7 → equil (24h walltime)
-  - 脚本：`replication/scripts/amber_md/run_md_pipeline.sh`
-  - 等 prep 完成后提交 production: `submit_production.sh`
+- [x] **常规 MD 500 ns — production 已提交** ✅ (2026-04-01)
+  - Prep pipeline job `40709153` submitted on 2026-03-31
+  - Production job `40806029` RUNNING
+  - 脚本：`replication/scripts/amber_md/run_md_pipeline.sh` → `submit_production.sh`
   - 输出目录：`/work/.../AnimaLab/replication/runs/pftrps_ain_md/`
   - UNVERIFIED: heating ref coords (用 min2.rst7), 72h walltime chunking
 
@@ -147,11 +160,36 @@ _目前无_
 
 ---
 
+## 🟡 本周待做（2026-04-05 起）
+
+- [ ] **等待 single-walker MetaD 完成**（Job 41514529, ADAPTIVE=GEOM, ~17 hrs）
+- [ ] **运行 plumed sum_hills 重构 FES**
+- [ ] **验证 O/PC/C basin 结构**（s=1-5 / 5-10 / 10-15）
+- [ ] **检查 ADAPTIVE=GEOM 的自适应 sigma 值是否合理**（从 HILLS 文件读取）
+- [ ] **调研 md_setup pipeline 的可复用部分**（评估报告已写）
+- [ ] **准备 10-walker 生产运行**（如果单 walker FES 合理）
+
+---
+
+## ✅ 本周已完成（2026-04-04）
+
+| 事项 | 日期 | 备注 |
+|------|------|------|
+| 500 ns production MD 完成 | 04-04 | Job 40806029, 71.55 hrs, 22 GB |
+| AMBER→GROMACS 转换 | 04-04 | ParmEd, 39268 atoms 验证 |
+| MetaD pipeline 调试 | 04-04 | FP-018 (LAMBDA 单位) + FP-019 (反斜杠) + FP-020 (conda PLUMED 残缺) |
+| PLUMED 源码编译 | 04-04 | 2.9.2 from source on Longleaf |
+| Single-walker MetaD 提交 | 04-04 | Job 41514529, FUNCPATHMSD + ADAPTIVE=GEOM |
+| Tutorial 文档 (EN+CN) | 04-04 | ~2000 行/版, Phase 8 已验证 |
+| Weekly Report Week 4 | 04-04 | reports/WeeklyReport_Week4_2026-04-04.docx |
+| 目录重组（本地+Longleaf） | 04-04 | 对齐 structures/parameterization/classical_md/metadynamics/ |
+| 组会纪要 | 04-02 | reports/MeetingNotes_2026-04-02.md |
+| 参数文件注释 PDF | 04-04 | parameter_reference.pdf (6 页彩色) |
+
+---
+
 ## 📋 Backlog（以后做，现在不急）
 
-- [ ] 500 ns conventional MD (PfTrpS Ain) — 等 PLP 参数化 + 体系准备完成
-- [ ] Well-tempered MetaD (10 walkers) — 等 conventional MD + 参考路径
 - [ ] SPM 分析 — 等 MetaD 轨迹
 - [ ] GenSLM-230 同源建模 + MetaD — Phase 2
 - [ ] Reward function Python 模块 — Phase 3
-- [ ] Weekly report (Week 1 正式版)

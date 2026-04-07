@@ -203,6 +203,73 @@
 | 防范措施 | **数值函数的返回值必须与函数名语义一致**。如果函数名叫 `calculate_msd`，返回值必须是 MSD（平方量，单位 A^2），不能悄悄加 sqrt 变成 RMSD（线性量，单位 A）。**生成 PLUMED lambda 参数前，必须查 PLUMED 官方文档确认 MSD 的定义（per-atom mean vs total sum）** |
 | 已修复 | 未修复 — 需要在 Runner stage 回退修正脚本并重新生成 summary.txt |
 
+## FP-016: Lambert 2026 候选序列数写成 100,000，而不是 60,000
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-01, Independent Skeptic Agent + cross-review synthesis |
+| 受影响文件 | `project-guide/FULL_LOGIC_CHAIN.md` |
+| 错误描述 | 文档把 Lambert et al. 2026 生成的 TrpB 候选数写成 `100,000`（至少 5 处），而论文实际数字是 **`60,000` generated sequences**，其中 `105` 条进入实验验证。这个错误把 dataset scale 高估了约 67%。 |
+| 根因 | 复述上游论文时复用了未经核对的 shorthand，没有把 headline 数字与 primary source 和仓库其他文档（如 `MASTER_TECHNICAL_GUIDE.md`）做一致性检查。 |
+| 防范措施 | **所有来自主论文的 headline 数字（样本数、筛选数、命中数、参数规模）都必须逐项对 primary source 核对，并在跨文档复用前做一致性检查。** 如果仓库不同文件出现冲突数字，必须先 resolve，再继续写新文档。 |
+| 已修复 | ✅ `FULL_LOGIC_CHAIN.md` 已于 2026-04-01 全文改为 `60,000`，并同步软化由该数字支撑的 screening-scale 叙事 |
+
+---
+
+## FP-017: antechamber `-rn` 参数被文件名覆盖，LLP→AIN 静默改名
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-02, Claude Code (组会 fact-check 时发现) |
+| 受影响文件 | `replication/parameters/mol2/Ain_gaff.mol2`, `replication/scripts/parameterize_plp.sh` |
+| 错误描述 | `parameterize_plp.sh` 调用 antechamber 时指定 `-rn "LLP"`（PDB 官方残基名），但输出 mol2 里的残基名是 **AIN**（从输出文件名 `Ain_gaff.mol2` 自动提取并大写化）。antechamber 静默忽略了 `-rn` 参数。 |
+| 后果 | `prepare_5dvz.py` 用 LLP→AIN 重命名做了补偿（line 286-290），tleap 建系统时两边一致（都是 AIN），所以 **不影响计算结果**。但命名链断裂：PDB(LLP) → script intent(LLP) → actual mol2(AIN) → prepared PDB(AIN) → tleap(AIN)。 |
+| 根因 | antechamber 某些版本/调用方式下，`-rn` 不生效，改从输出文件名推断残基名。这是 antechamber 的已知行为，非脚本 bug。 |
+| 防范措施 | antechamber 输出后，**必须验证 mol2 内部残基名**（`grep SUBSTRUCTURE -A1 *.mol2`）与预期一致。如不一致，用 `sed` 或在 mol2 中手动修正。不要假设 `-rn` 一定生效。 |
+| 已修复 | ⚠️ 不影响结果，暂不修改。记录备查。 |
+
+---
+
+## FP-018: LAMBDA 单位未从 Å⁻² 转换为 nm⁻²
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-04 |
+| 发现者 | 3 个并行 subagent（rmsd-checker + units-checker + fes-figure-reader） |
+| 受影响文件 | `replication/scripts/plumed_trpb_metad.dat`, `replication/scripts/plumed_trpb_metad_single.dat` |
+| 错误描述 | SI 报告 λ=0.029 Å⁻²，直接写进 PLUMED 文件。但 GROMACS+PLUMED 用 nm，LAMBDA 应为 ×100。导致 z(R) 爆炸到 -78（应为 ~0.5） |
+| 根因 | 没做 Å→nm 单位转换 |
+| 防范措施 | 所有 GROMACS 参数必须检查单位。Checklist: Å→nm (÷10), Å²→nm² (÷100), Å⁻²→nm⁻² (×100), kcal→kJ (×4.184) |
+| 已修复 | ✅ LAMBDA=3.3910 nm⁻² |
+
+---
+
+## FP-019: GROMACS 2026 mdrun 接口不支持 PLUMED 反斜杠续行
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-04 |
+| 发现者 | Claude Code Terminal |
+| 受影响文件 | 所有 plumed.dat 模板 |
+| 错误描述 | PLUMED 标准语法允许 `\` 续行，plumed driver 能解析，但 GROMACS 2026 mdrun -plumed 接口截断 `\` 后的行，导致 METAD 报 "SIGMA is compulsory"。这导致之前误以为 ADAPTIVE=GEOM 不可用，使用了固定 SIGMA=0.2,0.1 作为替代。实际上单行格式下 ADAPTIVE=GEOM 可以正常工作。 |
+| 根因 | GROMACS 2026 的 PLUMED 接口重新解析输入文件时不处理反斜杠 |
+| 防范措施 | 所有 PLUMED 参数写在一行，不使用 `\` 续行 |
+| 已修复 | ✅ 所有参数写在一行。ADAPTIVE=GEOM 在单行格式下可正常使用（之前误以为不可用）。 |
+
+---
+
+## FP-020: conda-forge PLUMED 2.9.2 的 libplumedKernel.so 模块残缺
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-04 |
+| 发现者 | Claude Code Terminal |
+| 受影响文件 | conda-forge plumed 2.9.2 包 |
+| 错误描述 | plumed driver（独立二进制）能用 PATHMSD/METAD，但 libplumedKernel.so 缺少 colvar/mapping/function 模块。PATHMSD 在 mdrun 中报 "number of atoms in a frame should be more than zero" |
+| 根因 | conda-forge 编译只把完整功能编进 plumed 二进制，没编进 .so |
+| 防范措施 | 从源码编译 PLUMED（--enable-rpath），用自编译的 libplumedKernel.so。同时发现 PATHMSD 在 mdrun 中只认连续编号 PDB，改用 FUNCPATHMSD 绕过 |
+| 已修复 | ✅ 源码编译 PLUMED 2.9.2 + FUNCPATHMSD |
+
 ---
 
 ## 通用规则（从以上模式提炼）
@@ -217,3 +284,6 @@
 8. **不要假设 Gaussian 09 和 16 的输入格式完全兼容**：iop 选项、GESP 文件名 section 等可能有格式差异
 9. **修复 live file 后，grep 全仓库检查同样错误是否残留在生成脚本或其他文件中**。生成脚本和 live file 必须保持一致
 10. **数值函数的返回值必须与函数名语义一致**：`calculate_msd` 必须返回 MSD (A^2)，不能偷偷返回 RMSD (A)。生成 PLUMED 参数时，必须查官方文档确认量的定义
+11. **GROMACS 用 nm，AMBER 用 Å**：所有参数跨引擎迁移时必须检查单位。Checklist: Å→nm (÷10), Å²→nm² (÷100), Å⁻²→nm⁻² (×100), kcal→kJ (×4.184)
+12. **PLUMED .dat 文件不使用 `\` 续行**：GROMACS 2026 mdrun 接口不正确处理反斜杠，所有参数写在一行
+13. **不要信任 conda-forge 的 PLUMED .so 模块完整性**：生产环境必须从源码编译 PLUMED，验证 `plumed info --components` 输出包含所需模块

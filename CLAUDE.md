@@ -14,29 +14,25 @@
 ## Me
 Zhenpeng Liu, undergraduate at UNC Chapel Hill (liualex@ad.unc.edu). Preparing for Caltech/Anima Lab summer research position. Building a TrpB MetaDynamics replication project to demonstrate computational biology skills.
 
-## Project Status (last updated: 2026-03-30)
+## Project Status (last updated: 2026-04-05)
 
 | Milestone | Status | Notes |
 |-----------|--------|-------|
-| Paper reading (5 papers: JACS2019 + ACSCatal2021 + NatComm2026 + ProtSci2025 + arXiv2602) | **speed-brief-ready** | All 5 papers have reading notes + HTML; JACS2019 speed brief generated (`papers/reading-notes/JACS2019_SpeedBrief.md`); need to actually read |
-| Resource inventory (PDBs, PDFs, SI) | done | All downloaded; see replication/inventories/resource_inventory.md |
-| MetaDynamics parameters extraction | done | From ja9b03646_si_001.pdf → replication/parameters/ (fact-checked 2026-03-28) |
-| **SI protocol extraction (system setup)** | **done** | Full 5-phase protocol extracted from SI; 10 gaps identified with severity ratings |
-| Full Logic Chain document | done | project-guide/FULL_LOGIC_CHAIN.md |
-| **PLP + System Setup Logic Chain** | **done** | project-guide/PLP_SYSTEM_SETUP_LOGIC_CHAIN.md (12 chapters, 1248 lines) |
-| Peer review (JACS 2019) | done | papers/reviews/JACS2019_PeerReview.md |
-| AnimaLab directory on Longleaf | done | /work/users/l/i/liualex/AnimaLab/ |
-| Longleaf HPC setup (AMBER) | done | AMBER 24p3 (GPU), module load amber/24p3 |
-| Longleaf PLUMED install | done | PLUMED 2.9 via conda on /work; conda activate trpb-md |
-| GROMACS install on Longleaf | **done** | conda-forge gmx 2026.0 in trpb-md env, `-plumed` flag ✓ |
-| **PDB residue name verification** | **done** | 5DVZ=LLP (24 atoms), 5DW0=PLS (22 atoms), 4HPX=0JO; script updated |
-| PLP parameterization (GAFF+RESP) | **script-ready** | `parameterize_plp.sh` rewritten (754 lines) with correct residue names, capping, Gaussian 16; needs execution on Longleaf |
-| O→C reference path (15 frames) | NOT STARTED | 1WDW→3CEP Cα interpolation; script exists |
-| Toy MetaD test (alanine dipeptide) | **done** | GROMACS+PLUMED2 validated; FES shows expected basins; see validations/2026-03-28_toytst_alanine_final.md |
-| Conventional MD (500 ns) | NOT STARTED | PfTrpS(Ain) system |
-| Well-tempered MetaD | NOT STARTED | After conventional MD converges |
-| **Coordinator agent** | **done** | `.claude/agents/trpb-coordinator.md` with review protocol |
-| Weekly report (Week 1) | draft-exists | reports/ folder |
+| Paper reading (5 papers) | **speed-brief-ready** | JACS2019 speed brief generated; need to actually read |
+| Resource inventory | done | All downloaded |
+| MetaDynamics parameters extraction | done | From SI, fact-checked 2026-03-28 |
+| SI protocol extraction | **done** | Full 5-phase protocol; 10 gaps identified |
+| PLP parameterization (GAFF+RESP) | **done** | Ain_gaff.mol2 + Ain.frcmod generated; charge=-2 confirmed |
+| PDB residue name verification | **done** | 5DVZ=LLP, 5DW0=PLS, 4HPX=0JO |
+| O→C reference path (15 frames) | **done** | path.pdb, 112 Cα, λ=3.39 nm⁻² (=0.034 Å⁻²) |
+| System build (tleap) | **done** | 39,268 atoms, charge neutral, 4 Na⁺ |
+| Toy MetaD test (alanine dipeptide) | **done** | GROMACS+PLUMED2 validated |
+| Conventional MD (500 ns) | **done** | Job 40806029, 71.55 hrs, 22 GB trajectory |
+| AMBER→GROMACS conversion | **done** | ParmEd, 39,268 atoms verified |
+| PLUMED source build | **done** | PLUMED 2.9.2 from source (conda 版 libplumedKernel.so 残缺) |
+| **Well-tempered MetaD** | **running** | Job 41514529, single-walker, FUNCPATHMSD, ADAPTIVE=GEOM |
+| Tutorial (EN+CN) | **done** | project-guide/TrpB_Replication_Tutorial_EN/CN.md (~2000 lines each) |
+| Weekly report (Week 4) | **done** | reports/WeeklyReport_Week4_2026-04-04.docx |
 
 ## Key Decisions
 
@@ -201,12 +197,18 @@ python3 scripts/pipeline_guard.py --force 3
 
 ```
 /work/users/l/i/liualex/AnimaLab/
-├── structures/    ← PDB files, topology
-├── parameters/    ← Force field params (PLP mol2/frcmod)
-├── scripts/       ← Slurm scripts, PLUMED input
-├── runs/          ← Production run directories
-├── logs/          ← Slurm output logs
-└── analysis/      ← FES, trajectory analysis
+├── structures/              ← PDB 原始文件
+├── parameterization/ain/    ← PLP RESP 参数化
+├── system_build/            ← tleap 产出 (parm7, inpcrd)
+├── classical_md/            ← AMBER 经典 MD (inputs/ slurm/ output/)
+├── metadynamics/            ← GROMACS+PLUMED MetaD
+│   ├── conversion/          (AMBER→GROMACS)
+│   ├── path_cv/             (15-frame path.pdb)
+│   ├── plumed/              (plumed.dat, metad.mdp)
+│   └── single_walker/       (当前运行)
+├── analysis/                ← FES 分析
+├── archive/                 ← 旧文件
+└── logs/                    ← Slurm 日志
 ```
 
 ## Key Files

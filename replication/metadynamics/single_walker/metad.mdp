@@ -1,0 +1,56 @@
+; GROMACS/PLUMED MetaD production template for PfTrpS(Ain)
+; Runner-stage artifact for the JACS 2019 benchmark reproduction
+;
+; Paper-aligned explicit settings:
+;   - Ensemble: NVT
+;   - Temperature: 350 K
+;   - Time step: 2 fs
+;   - Electrostatics: PME
+;   - Real-space cutoffs: 8 A = 0.8 nm
+;   - Constraints: LINCS
+;
+; UNVERIFIED:
+;   The SI does not report the exact GROMACS thermostat keyword choices or
+;   trajectory/energy write frequencies. v-rescale + conservative output
+;   intervals are operational defaults, not literature-confirmed numbers.
+
+integrator              = md
+dt                      = 0.002
+nsteps                  = 25000000          ; 50 ns per walker
+
+nstlog                  = 1000
+nstcalcenergy           = 1000
+nstenergy               = 1000
+nstxout                 = 0
+nstvout                 = 0
+nstfout                 = 0
+nstxout-compressed      = 5000
+compressed-x-grps       = System
+
+cutoff-scheme           = Verlet
+nstlist                 = 20
+rlist                   = 0.8
+
+coulombtype             = PME
+rcoulomb                = 0.8
+vdwtype                 = Cut-off
+rvdw                    = 0.8
+pme-order               = 4
+fourier-spacing         = 0.12
+
+tcoupl                  = v-rescale
+tc-grps                 = System
+tau_t                   = 0.1
+ref_t                   = 350
+
+pcoupl                  = no
+pbc                     = xyz
+DispCorr                = no
+
+constraints             = h-bonds
+constraint-algorithm    = lincs
+lincs_iter              = 1
+lincs_order             = 4
+continuation            = yes
+
+gen_vel                 = no

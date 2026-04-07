@@ -1,0 +1,286 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setCJKmainfont{PingFang SC}
+\setmainfont{Helvetica}
+\setmonofont{Menlo}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+% 颜色定义
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{paramcolor}{RGB}{0,0,0}        % 黑色：原始代码
+\definecolor{notecolor}{RGB}{0,90,180}       % 蓝色：中文注释
+\definecolor{sourcecolor}{RGB}{0,130,60}     % 绿色：SI 来源标注
+\definecolor{warncolor}{RGB}{200,0,0}        % 红色：警告/未验证
+\definecolor{iocolor}{RGB}{140,80,0}         % 棕色：输入/输出说明
+
+% 注释框样式
+\newtcolorbox{notebox}[1][]{colback=blue!5,colframe=notecolor,fonttitle=\bfseries,title=#1}
+\newtcolorbox{warnbox}[1][]{colback=red!5,colframe=warncolor,fonttitle=\bfseries,title=#1}
+\newtcolorbox{iobox}[1][]{colback=yellow!5,colframe=iocolor,fonttitle=\bfseries,title=#1}
+\newtcolorbox{srcbox}[1][]{colback=green!5,colframe=sourcecolor,fonttitle=\bfseries,title=#1}
+
+\title{\textbf{MetaDynamics 参数文件完整解析}\\[5pt]
+\large TrpB COMM Domain 构象采样 — JACS 2019 复刻}
+\author{Zhenpeng Liu}
+\date{2026-04-04}
+
+\begin{document}
+\maketitle
+
+\begin{notebox}[颜色说明]
+\begin{itemize}[nosep]
+\item \textcolor{paramcolor}{\textbf{黑色}} = 原始代码（和 Longleaf 上跑的文件完全一样）
+\item \textcolor{notecolor}{\textbf{蓝色}} = 中文参数解释
+\item \textcolor{sourcecolor}{\textbf{绿色}} = 来源标注（SI 页码 / 论文引用）
+\item \textcolor{warncolor}{\textbf{红色}} = 警告 / 未验证参数
+\item \textcolor{iocolor}{\textbf{棕色}} = 输入/输出文件说明
+\end{itemize}
+\end{notebox}
+
+% ===================================================================
+\section{文件 1: plumed.dat — PLUMED MetaDynamics 输入}
+% ===================================================================
+
+\begin{iobox}[输入文件]
+\begin{itemize}[nosep]
+\item \texttt{frames/frame\_01.pdb} $\sim$ \texttt{frame\_15.pdb}：15 个参考结构（PDB 格式，坐标单位 nm）
+\item 每个 PDB 包含 112 个 C$\alpha$ 原子（COMM domain 97--184 + base 282--305）
+\item frame\_01 = Open 端点（来自 1WDW），frame\_15 = Closed 端点（来自 3CEP）
+\item 中间 13 帧由 C$\alpha$ 坐标线性插值生成
+\end{itemize}
+\end{iobox}
+
+\begin{iobox}[输出文件]
+\begin{itemize}[nosep]
+\item \texttt{COLVAR}：每 500 步（= 1 ps）输出一行，列包含 path.s（路径进度）、path.z（偏离距离）、metad.bias（当前偏置势）
+\item \texttt{HILLS}：每 1000 步（= 2 ps）记录一个高斯山丘的位置、宽度、高度
+\end{itemize}
+\end{iobox}
+
+\begin{iobox}[怎么确认文件是对的]
+\begin{itemize}[nosep]
+\item 检查 COLVAR 前几行：\texttt{head -5 COLVAR}
+\item path.s 应在 1--15 范围（1=Open，15=Closed）
+\item path.z 应为正值且较小（$<$ 1 nm = 离路径近）
+\item 如果 path.z 是负数或很大（$>$10），说明 LAMBDA 单位错了
+\item 检查 HILLS 行数：\texttt{wc -l HILLS}，应随时间增长
+\end{itemize}
+\end{iobox}
+
+\vspace{10pt}
+\noindent 以下是原始文件，每行后面附带注释：
+
+\vspace{5pt}
+
+% --- RMSD lines ---
+\noindent\texttt{\textcolor{paramcolor}{r1: RMSD REFERENCE=frames/frame\_01.pdb TYPE=OPTIMAL}}\\
+\textcolor{notecolor}{↳ 计算当前构象与第 1 帧（Open 端点，来自 1WDW）的 RMSD。TYPE=OPTIMAL 使用 Kearsley 四元数算法做最优旋转对齐，只比较 112 个 C$\alpha$ 原子的坐标差异。输出单位：nm。}
+
+\vspace{3pt}
+\noindent\texttt{\textcolor{paramcolor}{r2: RMSD REFERENCE=frames/frame\_02.pdb TYPE=OPTIMAL}}\\
+\textcolor{notecolor}{↳ 第 2 帧（插值生成）。r3--r14 同理，都是 Open→Closed 路径上的中间帧。}
+
+\vspace{3pt}
+\noindent\texttt{\textcolor{paramcolor}{...（r3 到 r14 格式完全相同，省略）...}}
+
+\vspace{3pt}
+\noindent\texttt{\textcolor{paramcolor}{r15: RMSD REFERENCE=frames/frame\_15.pdb TYPE=OPTIMAL}}\\
+\textcolor{notecolor}{↳ 第 15 帧（Closed 端点，来自 3CEP）。}
+
+\vspace{8pt}
+
+% --- FUNCPATHMSD ---
+\noindent\texttt{\textcolor{paramcolor}{path: FUNCPATHMSD ARG=r1,...,r15 LAMBDA=3.3910}}
+
+\begin{notebox}[FUNCPATHMSD 是什么]
+FUNCPATHMSD 把 15 个 RMSD 值组合成两个集合变量（CV）：
+\begin{itemize}[nosep]
+\item \textbf{path.s}（路径进度）= $\frac{\sum_i i \cdot e^{-\lambda \cdot r_i^2}}{\sum_i e^{-\lambda \cdot r_i^2}}$，范围 1（Open）到 15（Closed）
+\item \textbf{path.z}（偏离距离）= $-\frac{1}{\lambda} \ln\left(\sum_i e^{-\lambda \cdot r_i^2}\right)$，越小 = 越靠近参考路径
+\end{itemize}
+和 SI 原文的 PATHMSD 数学公式完全一样，只是实现方式不同（分开算 RMSD 再组合 vs 一个 action 里全算）。
+\end{notebox}
+
+\begin{srcbox}[LAMBDA=3.3910 的来源]
+SI p.S3：$\lambda = 2.3 / \langle d^2 \rangle$\\
+我们的 MSD = 67.8 \AA$^2$ → $\lambda$ = 2.3 / 67.8 = 0.033910 \AA$^{-2}$\\
+GROMACS 用 nm → \textbf{0.033910 $\times$ 100 = 3.3910 nm$^{-2}$}\\
+\textcolor{sourcecolor}{SI 报告 MSD=80，$\lambda$=0.029 \AA$^{-2}$ = 2.9 nm$^{-2}$。差异 17\%，来自结构对齐方式不同。}
+\end{srcbox}
+
+\vspace{8pt}
+
+% --- METAD ---
+\noindent\texttt{\textcolor{paramcolor}{metad: METAD ARG=path.s,path.z SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628}}\\
+\texttt{\textcolor{paramcolor}{PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS}}
+
+\vspace{3pt}
+
+\begin{tabular}{@{}p{2.8cm}p{1.5cm}p{8cm}@{}}
+\toprule
+\textbf{参数} & \textbf{值} & \textbf{解释} \\
+\midrule
+\texttt{ARG} & path.s,path.z & \textcolor{notecolor}{对这两个 CV 施加偏置势（bias）。s = 沿路径前进，z = 离开路径。} \\[3pt]
+\texttt{SIGMA} & 0.05 & \textcolor{notecolor}{初始种子值（nm）。ADAPTIVE=GEOM 模式下此值仅在最初几步使用，之后由自适应算法根据局部 CV 波动自动调整。} \\[3pt]
+\texttt{ADAPTIVE} & GEOM & \textcolor{notecolor}{几何自适应高斯宽度。山丘宽度根据当前位置的 CV 局部波动自动调整：采样密集处用窄山丘（精细），稀疏处用宽山丘（快速覆盖）。} \textcolor{sourcecolor}{SI p.S3: "adaptive Gaussian width scheme"} \\[3pt]
+\texttt{HEIGHT} & 0.628 & \textcolor{notecolor}{初始山丘高度（kJ/mol）。} \textcolor{sourcecolor}{SI p.S3: 0.15 kcal/mol $\times$ 4.184 = 0.628 kJ/mol。调大→填充更快但可能过冲；调小→更精细但收敛慢。} \\[3pt]
+\texttt{PACE} & 1000 & \textcolor{notecolor}{每 1000 步沉积一个山丘。} \textcolor{sourcecolor}{SI p.S3: "every 2 ps"。1000 $\times$ 0.002 ps = 2 ps。} \\[3pt]
+\texttt{BIASFACTOR} & 10 & \textcolor{notecolor}{Well-tempered 衰减因子。山丘高度随已累积的 bias 指数衰减。有效温度 = 350 $\times$ 10 = 3500 K。} \textcolor{sourcecolor}{SI p.S3。} \\[3pt]
+\texttt{TEMP} & 350 & \textcolor{notecolor}{系统温度（K）。必须和 MDP 中的 ref\_t 一致。} \textcolor{sourcecolor}{SI p.S3。} \\[3pt]
+\texttt{FILE} & HILLS & \textcolor{notecolor}{山丘记录输出到 HILLS 文件。FES 重构时读这个文件。} \\
+\bottomrule
+\end{tabular}
+
+\vspace{8pt}
+
+% --- PRINT ---
+\noindent\texttt{\textcolor{paramcolor}{PRINT ARG=path.s,path.z,metad.bias FILE=COLVAR STRIDE=500}}\\
+\textcolor{notecolor}{↳ 每 500 步（= 1 ps）输出一行到 COLVAR。STRIDE 只影响输出频率，不影响模拟本身。}
+
+% ===================================================================
+\newpage
+\section{文件 2: metad.mdp — GROMACS MD 参数}
+% ===================================================================
+
+\begin{iobox}[输入文件]
+\begin{itemize}[nosep]
+\item \texttt{start.gro}：起始构象（从 AMBER equil.rst7 用 ParmEd 转换来的，坐标单位 nm）
+\item \texttt{topol.top}：GROMACS 拓扑文件（力场参数，从 AMBER parm7 转换）
+\end{itemize}
+\end{iobox}
+
+\begin{iobox}[输出文件]
+\begin{itemize}[nosep]
+\item \texttt{metad.tpr}：grompp 编译后的运行文件（包含拓扑+坐标+参数，给 mdrun 读的）
+\item \texttt{metad.xtc}：压缩轨迹（每 10 ps 一帧）
+\item \texttt{metad.log}：运行日志（温度、压力、性能统计）
+\item \texttt{metad.edr}：能量文件（可用 \texttt{gmx energy} 分析）
+\item \texttt{metad.cpt}：检查点文件（断点续跑用）
+\end{itemize}
+\end{iobox}
+
+\begin{iobox}[怎么确认文件是对的]
+\begin{itemize}[nosep]
+\item 看 metad.log 末尾的温度：应稳定在 350 K 附近
+\item 看能量：\texttt{grep "Total Energy" metad.log | tail -5}，不应有异常跳变
+\item 看性能：\texttt{grep "ns/day" metad.log}，CPU 8 核约 15--25 ns/day
+\end{itemize}
+\end{iobox}
+
+\vspace{5pt}
+
+\begin{tabular}{@{}p{3.5cm}p{2cm}p{7.5cm}@{}}
+\toprule
+\textbf{参数} & \textbf{值} & \textbf{解释} \\
+\midrule
+\texttt{integrator} & md & \textcolor{notecolor}{速度 Verlet 积分器，GROMACS 标准。} \\[2pt]
+\texttt{dt} & 0.002 & \textcolor{notecolor}{时间步长 0.002 ps = 2 fs。} \textcolor{sourcecolor}{SI p.S3。配合 LINCS 约束使用。} \\[2pt]
+\texttt{nsteps} & 25000000 & \textcolor{notecolor}{总步数。25M $\times$ 0.002 = 50 ns。} \textcolor{sourcecolor}{SI p.S4: "50--100 ns per replica"。} \\[2pt]
+\texttt{nstxout-compressed} & 5000 & \textcolor{notecolor}{每 5000 步（10 ps）写一帧轨迹。} \textcolor{iocolor}{operational default。} \\[2pt]
+\texttt{rcoulomb / rvdw} & 0.8 & \textcolor{notecolor}{静电和 vdW 截断 0.8 nm = 8 \AA。} \textcolor{sourcecolor}{SI p.S3。} \\[2pt]
+\texttt{coulombtype} & PME & \textcolor{notecolor}{Particle Mesh Ewald 长程静电算法。} \textcolor{sourcecolor}{SI p.S3。} \\[2pt]
+\texttt{tcoupl} & v-rescale & \textcolor{notecolor}{Bussi 速度重标恒温器。给出正确的 NVT 系综。} \textcolor{iocolor}{operational default（SI 未指定 GROMACS 恒温器关键字）。} \\[2pt]
+\texttt{ref\_t} & 350 & \textcolor{notecolor}{目标温度 350 K。P. furiosus 嗜热菌。} \textcolor{sourcecolor}{SI p.S3。} \\[2pt]
+\texttt{pcoupl} & no & \textcolor{notecolor}{无压力耦合（NVT 系综）。} \textcolor{sourcecolor}{SI p.S3: "NVT ensemble"。} \\[2pt]
+\texttt{constraints} & h-bonds & \textcolor{notecolor}{LINCS 约束含氢键。等效 AMBER 的 SHAKE (ntc=2)。} \textcolor{sourcecolor}{SI p.S3。} \\[2pt]
+\texttt{continuation} & yes & \textcolor{notecolor}{续跑模式，不重新生成速度。从 AMBER 平衡结构继续。} \\[2pt]
+\texttt{gen\_vel} & no & \textcolor{notecolor}{不生成新速度。配合 continuation=yes 使用。} \\
+\bottomrule
+\end{tabular}
+
+% ===================================================================
+\newpage
+\section{文件 3: submit.sh — Slurm 提交脚本}
+% ===================================================================
+
+\begin{iobox}[使用方法]
+\begin{enumerate}[nosep]
+\item 确保所有输入文件在同一目录：\texttt{plumed.dat, metad.mdp, start.gro, topol.top, frames/}
+\item \texttt{cd /path/to/single\_walker/}
+\item \texttt{sbatch submit.sh}
+\item 查看状态：\texttt{squeue -u \$USER}
+\item 查看输出：\texttt{cat slurm-trpb\_metad-*.out}
+\end{enumerate}
+\end{iobox}
+
+\begin{iobox}[怎么确认提交成功]
+\begin{itemize}[nosep]
+\item \texttt{squeue} 显示 RUNNING 或 PENDING
+\item slurm 输出文件开头打印环境信息（PLUMED\_KERNEL、OMP\_NUM\_THREADS）
+\item \texttt{ls -lh COLVAR HILLS}：文件在增长
+\item 如果秒退（Elapsed < 10s）：看 slurm 输出末尾的报错信息
+\end{itemize}
+\end{iobox}
+
+\vspace{5pt}
+
+\noindent 以下是原始脚本，每行后面附带注释：
+
+\vspace{5pt}
+
+\noindent\texttt{\textcolor{paramcolor}{\#!/bin/bash}}\\
+\textcolor{notecolor}{↳ 指定用 bash 解释器运行此脚本。}
+
+\vspace{3pt}
+\noindent\texttt{\textcolor{paramcolor}{\#SBATCH --job-name=trpb\_metad}}\\
+\textcolor{notecolor}{↳ 作业名称，会显示在 squeue 列表中。}
+
+\vspace{3pt}
+\noindent\texttt{\textcolor{paramcolor}{\#SBATCH --partition=general}}\\
+\textcolor{notecolor}{↳ 使用 general 分区（CPU）。} \textcolor{warncolor}{不用 GPU 的原因：conda GROMACS 的 OpenCL 检测不到 Longleaf 的 CUDA GPU。}
+
+\vspace{3pt}
+\noindent\texttt{\textcolor{paramcolor}{\#SBATCH --cpus-per-task=8}}\\
+\textcolor{notecolor}{↳ 8 个 CPU 核心。GROMACS 用 OpenMP 并行。PLUMED 的 bias 计算也在 CPU 上。}
+
+\vspace{3pt}
+\noindent\texttt{\textcolor{paramcolor}{\#SBATCH --mem=16G}}\\
+\textcolor{notecolor}{↳ 16 GB 内存。39268 原子体系足够。}
+
+\vspace{3pt}
+\noindent\texttt{\textcolor{paramcolor}{\#SBATCH --time=72:00:00}}\\
+\textcolor{notecolor}{↳ 最长运行 72 小时。50 ns CPU 估计 24--48 小时，留余量。}
+
+\vspace{8pt}
+\noindent\texttt{\textcolor{paramcolor}{export PLUMED\_KERNEL=/work/.../plumed-2.9.2/lib/libplumedKernel.so}}
+
+\begin{warnbox}[为什么不用 conda 的 PLUMED]
+conda-forge 安装的 PLUMED 2.9.2 的 \texttt{libplumedKernel.so} 缺少多个模块（colvar、mapping、function），导致 METAD 和 PATHMSD 在 mdrun 中无法使用。必须从源码编译 PLUMED，用自编译的 \texttt{libplumedKernel.so}。（参见 FP-020）
+\end{warnbox}
+
+\vspace{5pt}
+\noindent\texttt{\textcolor{paramcolor}{gmx grompp -f metad.mdp -c start.gro -p topol.top -o metad.tpr -maxwarn 2}}\\
+\textcolor{notecolor}{↳ grompp = 预处理器。读取 mdp（参数）+ gro（坐标）+ top（拓扑），编译成 tpr（可执行运行文件）。}\\
+\textcolor{iocolor}{输入：metad.mdp, start.gro, topol.top → 输出：metad.tpr}
+
+\vspace{5pt}
+\noindent\texttt{\textcolor{paramcolor}{gmx mdrun -deffnm metad -plumed plumed.dat -ntmpi 1 -ntomp \$\{OMP\_NUM\_THREADS\}}}\\
+\textcolor{notecolor}{↳ 运行 MD + PLUMED MetaDynamics。\texttt{-deffnm metad} 让所有输出文件都叫 metad.*。\texttt{-plumed} 指定 PLUMED 输入。\texttt{-ntmpi 1} 单进程（PLUMED 不支持多 MPI rank）。\texttt{-ntomp 8} 使用 8 个 OpenMP 线程。}\\
+\textcolor{iocolor}{输入：metad.tpr, plumed.dat → 输出：metad.xtc, metad.log, metad.edr, metad.cpt, COLVAR, HILLS}
+
+% ===================================================================
+\newpage
+\section{单位转换速查表}
+% ===================================================================
+
+\begin{center}
+\begin{tabular}{@{}lcll@{}}
+\toprule
+\textbf{转换} & \textbf{因子} & \textbf{例子} & \textbf{何时需要} \\
+\midrule
+\AA{} → nm & $\div$ 10 & 8 \AA{} = 0.8 nm & 截断距离、盒子尺寸 \\
+\AA$^2$ → nm$^2$ & $\div$ 100 & 80 \AA$^2$ = 0.80 nm$^2$ & MSD \\
+\textbf{\AA$^{-2}$ → nm$^{-2}$} & \textbf{$\times$ 100} & \textbf{0.034 \AA$^{-2}$ = 3.4 nm$^{-2}$} & \textbf{LAMBDA}（FP-018） \\
+kcal/mol → kJ/mol & $\times$ 4.184 & 0.15 kcal = 0.628 kJ & HEIGHT \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

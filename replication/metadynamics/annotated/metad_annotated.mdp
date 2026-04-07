@@ -1,0 +1,185 @@
+; ===========================================================================
+; GROMACS .mdp 参数文件：PfTrpS(Ain) 的 well-tempered MetaD 生产运行
+; 复刻来源：Romero-Rivera et al., JACS 2019, SI p.S2-S3
+; ===========================================================================
+;
+; 这个文件是什么？
+;   .mdp (Molecular Dynamics Parameter) 文件告诉 GROMACS 怎么跑 MD 模拟：
+;   用什么积分器、跑多久、温度多少、怎么处理长程相互作用等等
+;   它和 .gro（坐标）、.top（拓扑）一起喂给 gmx grompp，生成 .tpr（便携运行文件）
+;
+; 输入文件（gmx grompp 需要）：
+;   start.gro   - 平衡后的坐标文件（从 AMBER prep 转换而来）
+;                  包含所有原子的坐标和盒子信息，坐标单位 nm
+;   topol.top   - GROMACS 拓扑文件（力场 ff14SB + 水模型 TIP3P + PLP 的 GAFF 参数）
+;                  定义了所有原子的连接关系和力场参数
+;
+; 输出文件（gmx grompp 和 gmx mdrun 产生）：
+;   metad.tpr   - 便携运行输入文件（gmx grompp 输出）：包含拓扑+坐标+参数的二进制文件
+;                  可以在不同机器上运行，不需要原始输入文件
+;   metad.xtc   - 压缩轨迹文件（每 10 ps 保存一帧），用于后续分析
+;                  50 ns 大约 0.5-2 GB，取决于原子数
+;   metad.edr   - 能量文件（每 2 ps 一个数据点）：温度、压力、势能、动能等
+;                  用 gmx energy 命令读取
+;   metad.log   - MD 引擎日志：性能信息（ns/day）、邻居搜索统计等
+;   metad.cpt   - 检查点文件（自动定期更新）：如果作业中断，可以从这里续跑
+;                  用 gmx mdrun -cpi metad.cpt 续跑
+;
+; ===========================================================================
+
+; --- 积分器设置 ---
+integrator              = md                ; leap-frog 积分器 [SI p.S2: "MD simulations"]
+                                            ; 这是 GROMACS 最常用的积分器，用速度 Verlet 的等价形式
+                                            ; 时间可逆、辛格式，适合 NVT/NPT 模拟
+                                            ; 不能改成 sd（随机动力学），因为 sd 会干扰 MetaD 的偏置势
+dt                      = 0.002             ; 时间步长 2 fs (0.002 ps) [SI p.S2: "time step of 2 fs"]
+                                            ; 为什么是 2 fs？因为用了 LINCS 约束氢键（见下方），
+                                            ; 去掉了最快的振动（O-H、N-H 伸缩，周期约 10 fs），
+                                            ; 2 fs 是约束后的安全上限
+                                            ; 如果不约束氢键，必须用 1 fs 甚至 0.5 fs
+                                            ; 如果用氢质量重分配（HMR），可以用 4 fs
+nsteps                  = 25000000          ; 总步数 25,000,000 步 = 50 ns (25e6 × 0.002 ps)
+                                            ; [SI p.S3: "50 ns per walker"]
+                                            ; 为什么 50 ns？这是单个 walker 的运行时间
+                                            ; 原文用 4 个 walker × 50 ns = 200 ns 总采样
+                                            ; 对于 MetaD，50 ns 通常足以观察到至少一次 O→C 转变
+                                            ; 如果 FES 没收敛，需要延长到 100-200 ns
+
+; --- 输出频率 ---
+; 这些参数控制各种输出文件的写入频率
+; 单位都是"步数"，实际时间 = 步数 × dt
+nstlog                  = 1000              ; 每 1000 步 = 2 ps 写一次日志 [operational default]
+                                            ; 日志包含步数、时间、温度、压力等
+                                            ; 太频繁会减慢模拟速度（I/O 瓶颈）
+nstcalcenergy           = 1000              ; 每 1000 步计算一次能量 [operational default]
+                                            ; 这控制能量计算频率，不是写入频率
+                                            ; 必须是 nstenergy 的因子
+nstenergy               = 1000              ; 每 1000 步 = 2 ps 写一次能量到 .edr [operational default]
+                                            ; 用 gmx energy -f metad.edr 可以提取温度、势能等曲线
+nstxout                 = 0                 ; 不输出 .trr 坐标（关闭以节省磁盘） [operational default]
+                                            ; .trr 是无压缩格式，单精度下 50 ns 可能几十 GB
+                                            ; 我们用 .xtc 代替（下面设置）
+nstvout                 = 0                 ; 不输出 .trr 速度 [operational default]
+                                            ; 速度几乎不用于后续分析，不需要保存
+nstfout                 = 0                 ; 不输出 .trr 力 [operational default]
+                                            ; 除非做力相关的分析（如 friction），否则不需要
+nstxout-compressed      = 5000              ; 每 5000 步 = 10 ps 输出一帧到 .xtc [operational default]
+                                            ; .xtc 是有损压缩格式，精度约 0.001 nm，文件小很多
+                                            ; 10 ps 的分辨率足以分析蛋白质构象变化（微秒级过程）
+                                            ; 如果需要看更快的运动（如侧链翻转），可以改成 1000（2 ps）
+compressed-x-grps       = System            ; 写入 .xtc 的原子组：全系统（蛋白质+水+离子） [operational default]
+                                            ; 如果只关心蛋白质，可以改成 Protein 来减小文件大小
+
+; --- 邻居搜索 ---
+; 控制非键相互作用的计算方式：先列出所有在截断距离内的原子对（邻居列表），
+; 然后只计算列表中原子对的相互作用
+cutoff-scheme           = Verlet            ; Verlet 缓冲列表方案 [GROMACS 2016+ 默认值; SI 未明确说明]
+                                            ; 相比旧版的 group scheme，Verlet 更准确（能量守恒更好）
+                                            ; 且在 GPU 上性能更好。GROMACS 2020+ 已移除 group scheme
+nstlist                 = 20                ; 每 20 步更新一次邻居列表 [operational default]
+                                            ; Verlet scheme 会自动加缓冲区补偿 20 步之间的原子移动
+                                            ; 调大可以稍微提高性能但降低精度
+rlist                   = 0.8               ; 邻居列表截断 0.8 nm = 8 Å [SI p.S2: "8 Å cutoff"]
+                                            ; 来源：SI 明确写了 8 Å cutoff
+                                            ; 只有在 rlist 内的原子对才会被加入邻居列表
+                                            ; 注意 Verlet scheme 会自动加缓冲区（实际列表半径 > 0.8 nm）
+
+; --- 静电相互作用 ---
+; 静电力是长程力（1/r 衰减很慢），不能简单截断。PME 方法把静电分为：
+; 短程部分（直接在实空间计算）+ 长程部分（在傅里叶空间用 FFT 快速计算）
+coulombtype             = PME               ; Particle Mesh Ewald 方法 [SI p.S2: "PME for long-range electrostatics"]
+                                            ; 这是处理周期性体系长程静电的标准方法
+                                            ; 精度约 10⁻⁵，计算量 O(N log N)
+                                            ; 如果改成 Cut-off 会严重影响结构稳定性（蛋白质会"崩塌"）
+rcoulomb                = 0.8               ; PME 实空间截断 0.8 nm = 8 Å [SI p.S2]
+                                            ; 短于此距离的静电在实空间直接计算，
+                                            ; 长于此距离的在倒易空间用 FFT 计算
+                                            ; 必须 ≤ rlist，否则会丢失相互作用
+pme-order               = 4                 ; PME 插值阶数 = 4（三次插值） [operational default]
+                                            ; 把点电荷"抹"到 FFT 网格上时的插值精度
+                                            ; 4 是精度和速度的平衡点，极少需要改动
+fourier-spacing         = 0.12              ; PME 网格间距约 0.12 nm [operational default]
+                                            ; GROMACS 会自动根据盒子大小计算网格点数
+                                            ; 0.12 nm 约等于每 Å 一个网格点，足够精确
+                                            ; 调小（如 0.08）更精确但计算更慢
+
+; --- 范德华相互作用 ---
+; 范德华力是短程力（1/r⁶ 衰减很快），可以安全截断
+vdwtype                 = Cut-off           ; 简单截断处理范德华 [SI p.S2: "8 Å cutoff"]
+                                            ; 不需要像静电那样做长程校正（衰减足够快）
+rvdw                    = 0.8               ; 范德华截断 0.8 nm = 8 Å [SI p.S2]
+                                            ; 超过 8 Å 的 VdW 作用力极小（<1% 的总能量）
+
+; --- 温控器（恒温器） ---
+; 温控器通过调节原子速度来维持目标温度
+; UNVERIFIED：SI 没有明确指定 GROMACS 温控器算法
+; v-rescale（Bussi et al. 2007）是 GROMACS 生产 MD 的标准选择
+; 它正确产生 NVT 正则系综，比 Berendsen 温控器更物理
+; 原文在 AMBER 平衡阶段用了 Langevin 温控器，但 GROMACS 阶段没有说明
+tcoupl                  = v-rescale         ; Bussi-Donadio-Parrinello 速度重标定温控器 [operational default]
+                                            ; 优点：正确产生正则系综 + 不引入额外摩擦力
+                                            ; Berendsen 温控器不产生正则系综（能量涨落不对），
+                                            ; 不适合生产 MD
+                                            ; Nose-Hoover 也行但需要更长的耦合时间常数
+tc-grps                 = System            ; 单一温控组（全系统） [operational default]
+                                            ; 也可以分成 Protein 和 Non-Protein 两个组分开控温
+                                            ; 单一组更简单，对大多数体系足够
+tau_t                   = 0.1               ; 温控耦合时间常数 0.1 ps [operational default]
+                                            ; 越小控温越"紧"（温度波动小但可能干扰动力学）
+                                            ; 越大控温越"松"（温度波动大但对动力学干扰小）
+                                            ; 0.1 ps 是 v-rescale 的典型值
+                                            ; 注意：MetaD 中温控器和偏置势有耦合，太紧的控温
+                                            ; 可能不利于 MetaD 的势垒穿越
+ref_t                   = 350               ; 目标温度 350 K [SI p.S2: "350 K"]
+                                            ; 来源：PfTrpS 是超嗜热古菌 P. furiosus 的酶
+                                            ; 最适温度约 75-80°C（348-353 K）
+                                            ; 这个值必须与 plumed.dat 中的 TEMP=350 完全一致！
+                                            ; 不一致会导致 well-tempering 公式计算错误
+
+; --- 压力控制（恒压器） ---
+pcoupl                  = no                ; 不使用压力控制 = NVT 系综 [SI p.S3: MetaD 在 NVT 下运行]
+                                            ; 为什么不用 NPT？MetaD 在 NVT 下更稳定，
+                                            ; 因为体积波动会引入额外的 CV 噪声
+                                            ; 前面的平衡阶段（AMBER）已经在 NPT 下把密度平衡好了
+                                            ; 所以生产 MetaD 用 NVT 即可
+
+; --- 周期性边界条件 ---
+pbc                     = xyz               ; 三个方向都有周期性边界条件 [SI p.S2: "periodic boundary conditions"]
+                                            ; 模拟的盒子在 x/y/z 三个方向上无限重复
+                                            ; 原子跑出盒子一边会从另一边"重新进入"
+                                            ; 这是溶剂化蛋白质模拟的标准做法
+
+; --- 长程色散校正 ---
+DispCorr                = no                ; 不做 LJ 色散校正 [operational default]
+                                            ; 色散校正补偿 VdW 截断造成的能量和压力偏差
+                                            ; 在 NVT（无压力控制）下，压力偏差无所谓
+                                            ; 能量偏差很小（<0.1%），对构象采样影响可忽略
+                                            ; 如果改成 NPT 就应该打开（DispCorr = EnerPres）
+
+; --- 约束 ---
+; 约束把氢键（O-H, N-H, C-H）的键长固定为平衡值，
+; 去掉了最快的振动自由度，允许使用更大的时间步长（2 fs 而不是 0.5 fs）
+constraints             = h-bonds           ; 约束所有含氢键的键长 [SI p.S2: "LINCS constraints"]
+                                            ; h-bonds 只约束含 H 的键（最常用）
+                                            ; all-bonds 约束所有键（可以用 4 fs 但需要 HMR）
+                                            ; none 不约束（必须用 ≤1 fs 步长）
+constraint-algorithm    = lincs             ; LINCS 算法 [SI p.S2: "LINCS"]
+                                            ; LINCS (Linear Constraint Solver) 是 GROMACS 默认
+                                            ; 比 SHAKE 快，适合并行计算
+                                            ; 注意：LINCS 不能用于纯水（用 SETTLE 代替，GROMACS 自动处理）
+lincs_iter              = 1                 ; LINCS 迭代次数 = 1 [operational default]
+                                            ; 1 次迭代对 h-bonds 约束精度足够
+                                            ; 如果约束 all-bonds 或有大角度运动，可能需要 2
+lincs_order             = 4                 ; LINCS 展开阶数 = 4 [operational default]
+                                            ; 控制约束耦合的精度（多个约束共享同一个原子时）
+                                            ; 4 是默认值，几乎不需要改
+continuation            = yes               ; 从前一个模拟继续（不重新设置约束）
+                                            ; 因为这是从 AMBER 平衡后续跑的，不是从头开始
+                                            ; 如果设成 no，GROMACS 会在第一步重新施加约束，
+                                            ; 可能导致轻微的能量跳变
+
+; --- 速度生成 ---
+gen_vel                 = no                ; 不生成新速度，从 start.gro 读取 [continuation run]
+                                            ; 因为 continuation=yes，速度已经存在于输入文件中
+                                            ; 如果设成 yes，会随机生成新速度（打断轨迹连续性）
+                                            ; 只有从头开始的模拟（如能量最小化后）才设 gen_vel=yes

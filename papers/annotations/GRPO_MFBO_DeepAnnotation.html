@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GRPO + MFBO 逐段深度标注 | Ramanathan Lab Pipeline | Zhenpeng · aNima Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1a2744; --blue:#2563EB; --teal:#0d9488;
+  --paper:#faf8f3; --paper2:#f3f0e8; --border:#d4c9a8;
+  --text:#2d2d2d; --gray:#6b7280; --lg:#f3f4f6;
+  --hl-thesis:#fef3c7; --hl-thesis-b:#d97706;
+  --hl-concept:#fee2e2; --hl-concept-b:#dc2626;
+  --hl-evidence:#dbeafe; --hl-evidence-b:#2563eb;
+  --hl-counter:#dcfce7; --hl-counter-b:#16a34a;
+  --hl-method:#f3e8ff; --hl-method-b:#7c3aed;
+  --sidebar-w:230px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--text);font-size:15px;line-height:1.7;}
+#topnav{position:sticky;top:0;z-index:100;background:var(--navy);color:white;padding:0 20px;display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap;}
+#topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:15px;white-space:nowrap;}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.leg{padding:2px 10px;border-radius:12px;font-size:11.5px;font-weight:600;cursor:default;}
+.leg-y{background:var(--hl-thesis);color:#92400e;}
+.leg-r{background:var(--hl-concept);color:#991b1b;}
+.leg-b{background:var(--hl-evidence);color:#1e40af;}
+.leg-g{background:var(--hl-counter);color:#166534;}
+.leg-p{background:var(--hl-method);color:#5b21b6;}
+#layout{display:flex;min-height:calc(100vh - 52px);}
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:#f0ede4;border-right:1px solid var(--border);padding:16px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+#sidebar .sec-head{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;padding:12px 16px 4px;}
+#sidebar .nav-link{display:block;padding:5px 16px;font-size:12.5px;color:#374151;text-decoration:none;border-left:3px solid transparent;transition:.15s;}
+#sidebar .nav-link:hover{background:#e8e4db;color:var(--navy);}
+#sidebar .nav-link.active{border-left-color:var(--blue);color:var(--blue);background:#e8eef8;}
+#sidebar .nav-link.sub{padding-left:26px;font-size:12px;color:var(--gray);}
+main{flex:1;padding:0 0 60px;overflow-x:hidden;}
+.meta-card{background:var(--navy);color:white;padding:28px 36px;margin:0;}
+.meta-card h1{font-family:'Lora',serif;font-size:20px;line-height:1.4;margin-bottom:12px;}
+.meta-card .byline{font-size:13px;opacity:.8;margin-bottom:6px;}
+.meta-card .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.meta-card .tag{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;font-size:11.5px;}
+.meta-card .doi-link{color:#93c5fd;font-size:13px;text-decoration:none;}
+.meta-card .doi-link:hover{text-decoration:underline;}
+.sec-label{background:var(--paper2);border-top:3px solid var(--blue);padding:10px 36px;font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px;}
+.sec-label .sec-num{background:var(--blue);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;}
+.paper-divider{background:var(--navy);color:white;padding:14px 36px;font-family:'Lora',serif;font-size:16px;font-weight:700;letter-spacing:.03em;}
+.para-block{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5dfd0;gap:0;}
+.para-block:hover{background:#f7f4ed;}
+.para-left{padding:22px 28px;border-right:1px solid #e5dfd0;font-size:14.5px;line-height:1.85;}
+.para-right{padding:18px 22px;background:#f7f5ef;font-size:13px;line-height:1.65;}
+.para-id{display:inline-block;background:var(--navy);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;font-weight:700;margin-bottom:10px;}
+.hl-y{background:var(--hl-thesis);border-bottom:2px solid var(--hl-thesis-b);padding:0 2px;border-radius:2px;}
+.hl-r{background:var(--hl-concept);border-bottom:2px solid var(--hl-concept-b);padding:0 2px;border-radius:2px;}
+.hl-b{background:var(--hl-evidence);border-bottom:2px solid var(--hl-evidence-b);padding:0 2px;border-radius:2px;}
+.hl-g{background:var(--hl-counter);border-bottom:2px solid var(--hl-counter-b);padding:0 2px;border-radius:2px;}
+.hl-p{background:var(--hl-method);border-bottom:2px solid var(--hl-method-b);padding:0 2px;border-radius:2px;}
+.term-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;}
+.term-table th{background:#e8e4db;padding:4px 8px;text-align:left;font-weight:600;font-size:11px;}
+.term-table td{padding:4px 8px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.term-table tr:last-child td{border-bottom:none;}
+.notable-box{background:#fff7ed;border-left:3px solid #f59e0b;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.project-box{background:#eff6ff;border-left:3px solid #2563eb;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.warning-box{background:#fef2f2;border-left:3px solid #dc2626;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.role-badge{display:inline-block;background:#e0e7ff;color:#3730a3;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:6px;}
+.synth-section{padding:28px 36px;}
+.synth-section h2{font-family:'Lora',serif;font-size:18px;color:var(--navy);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+.synth-section h3{font-size:14px;font-weight:700;color:var(--blue);margin:16px 0 8px;}
+.logic-chain{display:flex;flex-wrap:wrap;gap:0;margin:16px 0;align-items:center;}
+.lc-node{background:var(--navy);color:white;padding:8px 14px;font-size:12px;border-radius:6px;text-align:center;min-width:120px;}
+.lc-arrow{display:flex;align-items:center;padding:0 6px;color:var(--gray);font-size:18px;}
+.proj-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.proj-table th{background:var(--navy);color:white;padding:8px 12px;text-align:left;font-size:12px;}
+.proj-table td{padding:8px 12px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.proj-table tr:nth-child(even) td{background:#f7f5ef;}
+.gloss-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.gloss-table th{background:#e8e4db;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;}
+.gloss-table td{padding:6px 10px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.gloss-table tr:last-child td{border-bottom:none;}
+.data-box{background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:12px;font-family:'IBM Plex Mono',monospace;}
+.data-box .label{font-weight:700;color:#15803d;font-size:11px;text-transform:uppercase;margin-bottom:4px;}
+.code-block{background:#1e293b;color:#e2e8f0;border-radius:6px;padding:12px 16px;margin:8px 0;font-size:12px;font-family:'IBM Plex Mono',monospace;white-space:pre;overflow-x:auto;line-height:1.55;}
+.code-block .cm{color:#94a3b8;}
+.code-block .ck{color:#7dd3fc;}
+.code-block .cv{color:#86efac;}
+.code-block .cs{color:#fde68a;}
+</style>
+</head>
+<body>
+
+<div id="topnav">
+  <div class="logo">GRPO + MFBO · Ramanathan Lab TrpB Pipeline · Optimization &amp; RL</div>
+  <div class="legend">
+    <span class="leg leg-y">黄=核心论点</span>
+    <span class="leg leg-r">红=技术概念</span>
+    <span class="leg leg-b">蓝=实验证据</span>
+    <span class="leg leg-g">绿=局限/对照</span>
+    <span class="leg leg-p">紫=方法/流程</span>
+  </div>
+</div>
+
+<div id="layout">
+<div id="sidebar">
+  <div class="sec-head">元信息</div>
+  <a class="nav-link" href="#meta">两篇论文信息</a>
+
+  <div class="sec-head">Paper 1 — GRPO</div>
+  <a class="nav-link" href="#g-abs">Abstract</a>
+  <a class="nav-link sub" href="#g-p1">P1 问题 &amp; 动机</a>
+  <a class="nav-link sub" href="#g-p2">P2 GRPO算法核心</a>
+  <a class="nav-link sub" href="#g-p3">P3 优势计算 A_i</a>
+  <a class="nav-link sub" href="#g-p4">P4 vs PPO vs DPO</a>
+  <a class="nav-link sub" href="#g-p5">P5 奖励函数设计</a>
+  <a class="nav-link sub" href="#g-p6">P6 ESR指标</a>
+  <a class="nav-link sub" href="#g-p7">P7 三因子交互模型</a>
+  <a class="nav-link sub" href="#g-p8">P8 实验结果</a>
+  <a class="nav-link sub" href="#g-p9">P9 迭代精化</a>
+
+  <div class="sec-head">Paper 2 — MFBO</div>
+  <a class="nav-link" href="#m-abs">Abstract</a>
+  <a class="nav-link sub" href="#m-p1">P1 问题 &amp; 动机</a>
+  <a class="nav-link sub" href="#m-p2">P2 GP代理模型</a>
+  <a class="nav-link sub" href="#m-p3">P3 UCB采集函数</a>
+  <a class="nav-link sub" href="#m-p4">P4 进化算法集成</a>
+  <a class="nav-link sub" href="#m-p5">P5 多保真度理论</a>
+  <a class="nav-link sub" href="#m-p6">P6 acqf_MF公式</a>
+  <a class="nav-link sub" href="#m-p7">P7 实验结果</a>
+  <a class="nav-link sub" href="#m-p8">P8 F0/F1/F2映射</a>
+
+  <div class="sec-head">综合分析</div>
+  <a class="nav-link" href="#synth-arch">§A GRPO+MFBO架构</a>
+  <a class="nav-link" href="#synth-table">§B Pipeline对应表</a>
+  <a class="nav-link" href="#synth-open">§C 开放问题</a>
+  <a class="nav-link" href="#glossary">§D 术语总表</a>
+</div>
+
+<main>
+
+<!-- META CARD -->
+<div id="meta" class="meta-card">
+  <h1>GRPO for Protein Language Models + Multi-Fidelity Bayesian Optimization<br>
+      <span style="font-size:15px;font-weight:400;opacity:.8;">RL + BO 双引擎驱动的 TrpB 序列优化框架</span></h1>
+  <div class="byline" style="margin-top:10px;font-weight:600;">Paper 1 (GRPO): Cao, Zhang, Xu et al. — arXiv 2510.01571 (2025)</div>
+  <div class="byline">"From Supervision to Exploration: What Does Protein Language Model Learn During Reinforcement Learning?"</div>
+  <div class="byline" style="margin-top:8px;">
+    <a class="doi-link" href="https://arxiv.org/abs/2510.01571" target="_blank">arXiv:2510.01571</a>
+  </div>
+  <div class="byline" style="margin-top:10px;font-weight:600;">Paper 2 (MFBO/BO-EVO): Hu, Fu, Chen et al. — Briefings in Bioinformatics 24(1), 2023</div>
+  <div class="byline">"Protein engineering via Bayesian optimization-guided evolutionary algorithm and robotic experiments"</div>
+  <div class="byline" style="margin-top:8px;">
+    <a class="doi-link" href="https://doi.org/10.1093/bib/bbac570" target="_blank">DOI: 10.1093/bib/bbac570</a> · PubMed: 36562723
+  </div>
+  <div class="byline" style="margin-top:10px;font-size:12px;opacity:.65;">
+    本标注聚焦于 Ramanathan Lab 的 GenSLM+TrpB pipeline 实际应用。GRPO 是序列生成器的 RL 训练算法；MFBO 是协调 F0/F1/F2 多保真度评估的决策框架。两者协同工作，构成整个优化循环的两个核心。
+  </div>
+  <div class="tags">
+    <span class="tag">GRPO</span><span class="tag">Group Relative Policy Optimization</span>
+    <span class="tag">Protein Language Model</span><span class="tag">RL Fine-tuning</span>
+    <span class="tag">ESR metric</span><span class="tag">Bayesian Optimization</span>
+    <span class="tag">Multi-Fidelity</span><span class="tag">GP Surrogate</span>
+    <span class="tag">UCB Acquisition</span><span class="tag">F0/F1/F2 Tiers</span>
+    <span class="tag">GenSLM</span><span class="tag">TrpB</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAPER 1: GRPO -->
+<!-- ============================================================ -->
+<div class="paper-divider">Paper 1 · GRPO / ProtRL · arXiv 2510.01571</div>
+
+<!-- GRPO ABSTRACT -->
+<div id="g-abs" class="sec-label"><span class="sec-num">ABS</span> Abstract — GRPO Paper</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">G-ABS</span>
+    <p>Protein language models (PLMs) have achieved remarkable success in sequence modeling through large-scale supervised pretraining. However, this training paradigm fundamentally constrains the model to distributions observed in natural evolutionary history. The central question addressed in this work: <span class="hl-y">can reinforcement learning push protein language models to discover sequence-structure-function relationships that lie beyond the coverage of natural protein databases?</span> The authors introduce a framework applying <span class="hl-r">Group Relative Policy Optimization (GRPO)</span> to PLM fine-tuning for protein design, framing sequence generation as a reinforcement learning problem where the reward is a fitness signal from an external evaluator. The study systematically investigates <span class="hl-p">four protein engineering tasks</span>: antimicrobial peptide (AMP) generation, kinase variant optimization, antibody engineering, and inverse folding. A key conceptual contribution is the identification of a <span class="hl-y">three-factor interaction model</span> — task headroom, reward fidelity, and policy capacity — that jointly determines the magnitude of RL gains. The paper also introduces the <span class="hl-r">Expansion-Shrinkage Ratio (ESR)</span> metric to quantify whether RL training causes the model to expand into novel sequence space or collapse toward a narrow high-fitness mode.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">G-ABS</div>
+    <p><strong>段落功能：</strong>建立全文框架——从监督学习到强化学习，解决PLM被自然序列分布束缚的根本问题。四个任务验证普适性；三因子模型和ESR是两个关键概念贡献。</p>
+    <div class="role-badge">论文全貌</div>
+    <table class="term-table">
+      <tr><th>概念</th><th>一句话定义</th></tr>
+      <tr><td>PLM (Protein Language Model)</td><td>在大规模蛋白质序列数据库上预训练的神经网络语言模型；ESM、ProtTrans等</td></tr>
+      <tr><td>GRPO</td><td>Group Relative Policy Optimization：无需价值网络的强化学习算法，来自DeepSeekMath</td></tr>
+      <tr><td>ESR (Expansion-Shrinkage Ratio)</td><td>量化RL训练后序列空间的"扩展vs收缩"比率</td></tr>
+      <tr><td>三因子模型</td><td>Headroom × Fidelity × Capacity → 决定RL收益上限</td></tr>
+    </table>
+    <div class="notable-box"><strong>为什么这篇论文对本项目关键：</strong>Ramanathan Lab 的计划是用 RL 微调 GenSLM，让它生成更高适应度的 TrpB 变体。GRPO 是实现这一目标的具体算法。本文给出了"哪些条件下 RL 有效"的定量理论框架——这直接影响我们应该怎么设计奖励函数（F0 vs F1 vs F2）。</div>
+    <div class="project-box"><strong>与你的项目：</strong>GenSLM 是 genome-scale PLM，当前在自然序列分布上预训练。GRPO 微调后，GenSLM 应该能生成自然数据库中不存在的、具备高 TrpB 活性的序列。你的 MetaDynamics FEL 是 F1 层奖励信号的核心来源。</div>
+  </div>
+</div>
+
+<!-- G-P1: Problem and Motivation -->
+<div id="g-p1" class="sec-label"><span class="sec-num">§G1</span> Problem &amp; Motivation</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">G-P1</span>
+    <p>Directed evolution (DE) remains the gold standard for protein engineering — but it is experimentally expensive and can only explore a small neighborhood around the parent sequence. <span class="hl-g">The combinatorial space of a 200-residue protein is approximately 20<sup>200</sup>, making exhaustive search computationally and experimentally intractable.</span> PLMs offer an alternative: sample from a learned distribution over sequences conditioned on function. But this immediately raises a fundamental problem. <span class="hl-y">A PLM trained purely on natural sequences can only generate sequences whose fitness was "seen" by evolution — it cannot reliably extrapolate to engineered sequences with non-natural substrate specificity or enhanced catalytic activity.</span> Furthermore, standard fine-tuning approaches (supervised fine-tuning on curated high-fitness sequences) require large labeled datasets that are typically unavailable for any specific protein engineering campaign. <span class="hl-r">Reinforcement learning addresses this gap by replacing labeled pairs with a scalar reward signal</span>: any fitness function — experimental assay, computational predictor, or physics simulation — can serve as the reward, enabling the model to explore beyond its pretraining prior without requiring a labeled dataset of optimal sequences.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">G-P1</div>
+    <p><strong>段落功能：</strong>建立 RL 用于蛋白质工程的动机——DE 太慢太局部；PLM 被自然序列束缚；监督微调需要大量标注数据。RL 同时解决三个问题：允许超越自然分布、只需标量奖励、可以整合任意计算/实验评估器。</p>
+    <div class="role-badge">方法动机</div>
+    <table class="term-table">
+      <tr><th>问题</th><th>RL 如何解决</th></tr>
+      <tr><td>DE 探索空间局限</td><td>PLM+RL 可在整个序列空间采样，不受突变邻域限制</td></tr>
+      <tr><td>PLM 被自然分布束缚</td><td>RL 的奖励信号将模型拉向高适应度区域，无论是否见过</td></tr>
+      <tr><td>监督微调需要标注数据</td><td>RL 只需标量 reward，任何评估器都可以</td></tr>
+    </table>
+    <div class="notable-box"><strong>关键洞察：</strong>DE 的局限是"从亲本序列出发只能走一小步"。PLM 的局限是"只能采样自然界已发现的序列模式"。RL 是两者的综合解方：PLM 提供结构化的序列采样；RL 通过奖励引导将采样推向自然界未见的高适应度区域。</div>
+    <div class="project-box"><strong>与你的项目：</strong>TrpB 的 non-native substrate (D-Trp) 活性根本不在自然序列数据库里——这正是 RL 最有用的场景（high headroom）。GenSLM 的预训练先验无法告诉我们 D-Trp 选择性需要什么序列特征；只有通过 RL + MetaD 奖励才能引导模型到达这个区域。</div>
+  </div>
+</div>
+
+<!-- G-P2: GRPO Algorithm -->
+<div id="g-p2" class="sec-label"><span class="sec-num">§G2</span> GRPO Algorithm Core</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">G-P2</span>
+    <p>GRPO was originally proposed in DeepSeekMath for LLM mathematical reasoning. Its defining feature — the innovation that makes it practical for large protein language models — is the <span class="hl-y">complete elimination of the critic/value network</span> that is central to standard PPO. In PPO, a separate value network V(s) is trained in parallel to estimate expected returns and compute advantage estimates. This doubles the model parameters and GPU memory footprint. GRPO replaces this with a <span class="hl-r">group-relative baseline</span>: for each prompt (protein context), a group of G sequences is sampled from the current policy, scored, and the advantage of each sample is computed relative to the group mean. <span class="hl-p">The training objective:</span></p>
+    <div style="font-family:'IBM Plex Mono',monospace;background:#1e293b;color:#e2e8f0;padding:12px 16px;border-radius:6px;font-size:12px;line-height:1.6;margin:12px 0;">
+      <span style="color:#7dd3fc;">For each prompt context:</span><br>
+      1. Sample G sequences {s₁, ..., s_G} from π_θ<br>
+      2. Evaluate reward r_i for each s_i<br>
+      3. Compute group advantage:<br>
+      &nbsp;&nbsp;&nbsp;<span style="color:#86efac;">A_i = (r_i - mean(r)) / (std(r) + ε)</span><br>
+      4. Policy gradient loss:<br>
+      &nbsp;&nbsp;&nbsp;<span style="color:#fde68a;">L = -E[min(A_i·ρ_i, A_i·clip(ρ_i, 1-ε, 1+ε))]</span><br>
+      &nbsp;&nbsp;&nbsp;+ β · KL(π_θ ‖ π_ref)<br>
+      where ρ_i = π_θ(s_i) / π_ref(s_i)
+    </div>
+    <p>The <span class="hl-r">KL penalty term</span> with coefficient β prevents the policy from drifting too far from the reference model (typically the pretrained PLM), balancing exploration with preservation of the pretraining prior. <span class="hl-g">Without KL regularization, RL training can cause catastrophic forgetting of the structural knowledge encoded during pretraining.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">G-P2</div>
+    <p><strong>段落功能：</strong>GRPO 算法的完整描述——核心创新是用"组内相对优势"替代价值网络，减少约50%显存。公式的每一项都有明确的物理意义。</p>
+    <div class="role-badge">算法核心</div>
+    <table class="term-table">
+      <tr><th>符号</th><th>含义</th></tr>
+      <tr><td>π_θ</td><td>当前策略（正在训练的 PLM 参数）</td></tr>
+      <tr><td>π_ref</td><td>参考策略（预训练的 PLM，固定不变）</td></tr>
+      <tr><td>G</td><td>每个 prompt 的采样组大小（典型值 8–64）</td></tr>
+      <tr><td>A_i</td><td>序列 s_i 的组内归一化优势（见 P3 详解）</td></tr>
+      <tr><td>ρ_i</td><td>概率比 π_θ/π_ref，衡量策略偏移程度</td></tr>
+      <tr><td>clip(ρ, 1-ε, 1+ε)</td><td>PPO 风格的概率比截断，防止单步更新过大</td></tr>
+      <tr><td>β</td><td>KL 惩罚系数，控制探索vs保留先验的平衡</td></tr>
+    </table>
+    <div class="notable-box"><strong>为什么去掉价值网络很重要：</strong>GenSLM 是 genome-scale 模型，参数量巨大。如果需要同时训练等规模的价值网络，计算成本会翻倍。GRPO 的组内相对基准是一个优雅的工程解决方案——用统计学（组内均值/方差归一化）代替神经网络估计。</div>
+    <div class="warning-box"><strong>KL 惩罚的重要性：</strong>没有 β·KL 项，RL 训练会导致 catastrophic forgetting——PLM 丢失预训练中学到的蛋白质结构知识（例如疏水核心、二级结构偏好），生成根本不可折叠的序列。β 需要仔细调参：太小→探索过度；太大→几乎不更新。</div>
+    <div class="project-box"><strong>与你的项目：</strong>对 GenSLM 的 GRPO 训练，G（每轮采样数）决定了每次迭代需要运行多少次 F1（MetaDynamics）评估。如果 G=16，每轮需要 16 次 MetaD 仿真——计算成本巨大。实践中应分级：G 个序列先跑 F0（PLACER），顶部几个才跑 F1。</div>
+  </div>
+</div>
+
+<!-- G-P3: Advantage Computation -->
+<div id="g-p3" class="sec-label"><span class="sec-num">§G3</span> Group Advantage A_i — 核心公式解析</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">G-P3</span>
+    <p>The group advantage A_i is the heart of GRPO's innovation and deserves careful analysis. For a group of G sequences sampled from the same protein context:</p>
+    <div style="font-family:'IBM Plex Mono',monospace;background:#1e293b;color:#e2e8f0;padding:12px 16px;border-radius:6px;font-size:12px;line-height:1.6;margin:12px 0;">
+      <span style="color:#94a3b8;"># Given rewards: r = [r_1, r_2, ..., r_G]</span><br>
+      <span style="color:#7dd3fc;">mean_r</span> = sum(r) / G<br>
+      <span style="color:#7dd3fc;">std_r</span> = sqrt(sum((r_i - mean_r)^2) / G)<br>
+      <br>
+      <span style="color:#94a3b8;"># Group-relative advantage</span><br>
+      <span style="color:#86efac;">A_i = (r_i - mean_r) / (std_r + epsilon)</span><br>
+      <br>
+      <span style="color:#94a3b8;"># Properties:</span><br>
+      <span style="color:#fde68a;"># A_i > 0  →  sequence i is above-average (reinforce)</span><br>
+      <span style="color:#fde68a;"># A_i < 0  →  sequence i is below-average (suppress)</span><br>
+      <span style="color:#fde68a;"># A_i ≈ 0  →  sequence i is median (minimal update)</span>
+    </div>
+    <p>This formulation has a crucial property: <span class="hl-y">the baseline is purely empirical, computed from the same generation batch, with no additional neural network required.</span> The absolute reward scale is irrelevant — only the relative ranking within the group matters. This means <span class="hl-r">reward shaping and normalization are automatically handled</span> by the group statistics. The epsilon term (typically 1e-8) prevents division by zero when all rewards are identical (a degenerate case where no learning signal is available).</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">G-P3</div>
+    <p><strong>段落功能：</strong>对 A_i 公式进行逐行解析，强调三个关键性质：① 不需要额外神经网络；② 只关注组内相对排名，不关注绝对奖励大小；③ 自动处理奖励归一化问题。</p>
+    <div class="role-badge">公式深析</div>
+    <table class="term-table">
+      <tr><th>场景</th><th>A_i 值</th><th>效果</th></tr>
+      <tr><td>该序列奖励显著高于组平均</td><td>A_i >> 0 (e.g., +2.0)</td><td>强化该序列的生成概率</td></tr>
+      <tr><td>该序列奖励等于组平均</td><td>A_i ≈ 0</td><td>几乎不更新策略</td></tr>
+      <tr><td>该序列奖励低于组平均</td><td>A_i < 0</td><td>抑制该序列的生成概率</td></tr>
+      <tr><td>组内所有奖励完全相同</td><td>std_r≈0, A_i→0</td><td>退化：无学习信号！</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">示例计算（G=5，AMP任务）</div>
+      奖励: r = [0.2, 0.5, 0.8, 0.3, 0.7]<br>
+      mean_r = 0.50，std_r = 0.228<br>
+      A = [-1.32, 0.00, +1.32, -0.88, +0.88]<br>
+      → 序列 3（r=0.8）获最强正梯度
+    </div>
+    <div class="warning-box"><strong>退化陷阱：</strong>如果所有 G 个序列的奖励都几乎相同（std_r ≈ 0），GRPO 产生几乎零梯度。这可能发生在 F0 奖励（PLACER）的辨别力很低时——所有序列得分相似。解决方案：使用更高分辨率的奖励函数，或者增大组大小 G。</div>
+    <div class="notable-box"><strong>与 PPO 的实质差异：</strong>PPO 的优势 A = r - V(s)，其中 V(s) 是价值网络对"未来期望收益"的预测。V(s) 需要被分开训练，且在 RL 早期往往不准确（导致高方差梯度）。GRPO 的组内均值是对同等条件下期望收益的无偏估计，统计上更可靠。</div>
+  </div>
+</div>
+
+<!-- G-P4: vs PPO vs DPO -->
+<div id="g-p4" class="sec-label"><span class="sec-num">§G4</span> GRPO vs PPO vs DPO — 算法比较</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">G-P4</span>
+    <p>Three prominent RL/preference-alignment algorithms compete for the task of fine-tuning PLMs. Understanding their differences is essential for making the right algorithmic choice.</p>
+    <p><span class="hl-r">Proximal Policy Optimization (PPO)</span> is the canonical on-policy RL algorithm. It requires a critic/value network trained in parallel, approximately doubling GPU memory. The clipped surrogate objective ensures stable training. PPO works well when the reward function is well-defined and the environment is stationary, but the value network adds significant engineering complexity.</p>
+    <p><span class="hl-r">Direct Preference Optimization (DPO)</span> sidesteps the RL formulation entirely. It learns directly from preference pairs (winner sequence w, loser sequence l), maximizing the log-ratio of their probabilities under the policy relative to the reference. <span class="hl-g">The critical limitation: DPO requires preference pairs — binary comparisons — not scalar rewards.</span> This means DPO cannot directly use physics-based fitness scores (e.g., MetaDynamics free energy values) without converting them to pairwise comparisons, which discards quantitative information.</p>
+    <p><span class="hl-y">GRPO's decisive advantage for protein engineering: it requires only scalar rewards, works with any fitness oracle, and eliminates the critic model — making it the practical choice when the reward is a computational simulation (slow, expensive) rather than a classifier.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">G-P4</div>
+    <p><strong>段落功能：</strong>三算法对比，论证 GRPO 是蛋白质工程 RL 的最优选择——核心理由是 scalar reward 灵活性和无需价值网络的内存效率。</p>
+    <div class="role-badge">算法对比</div>
+    <table class="term-table">
+      <tr><th>特性</th><th>PPO</th><th>DPO</th><th>GRPO</th></tr>
+      <tr><td>需要价值网络</td><td>是</td><td>否</td><td><strong>否</strong></td></tr>
+      <tr><td>奖励类型</td><td>标量</td><td>偏好对</td><td><strong>标量</strong></td></tr>
+      <tr><td>内存开销</td><td>~2×</td><td>1×</td><td><strong>1×</strong></td></tr>
+      <tr><td>适合 MetaD 奖励</td><td>是</td><td>需转换</td><td><strong>直接适用</strong></td></tr>
+      <tr><td>探索能力</td><td>中等</td><td>有限</td><td><strong>最强</strong></td></tr>
+    </table>
+    <div class="notable-box"><strong>为什么 DPO 不适合 MetaD 奖励：</strong>DPO 需要"序列 A 比序列 B 更好"这样的二元比较。如果你有 MetaD 算出的 F1 值（连续的自由能数值），用 DPO 需要先把数值转成排序，损失了定量精度。GRPO 直接用数值作为奖励，保留所有量化信息。</div>
+    <div class="project-box"><strong>实践建议：</strong>用 GRPO 而不是 PPO/DPO 来微调 GenSLM。内存节约的优势在 genome-scale PLM 上尤为重要；scalar reward 的灵活性使得 F0/F1/F2 任何层的评估都可以直接作为奖励信号插入。</div>
+  </div>
+</div>
+
+<!-- G-P5: Reward Functions -->
+<div id="g-p5" class="sec-label"><span class="sec-num">§G5</span> 奖励函数设计 — Reward Functions</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">G-P5</span>
+    <p>The reward function is the single most important design decision in any RL system. This paper tests four distinct reward formulations across its four tasks:</p>
+    <p><strong>AMP Task:</strong> <span class="hl-p">R(s) = 2·(f_MIC(s) − 0.4)</span>, where f_MIC is the binary probability output of the ApexMIC classifier predicting antimicrobial activity. The formula centers the reward at 0 when f_MIC = 0.4 (baseline), making R positive for above-baseline sequences and negative for below-baseline sequences. The factor of 2 scales the reward range to approximately [−0.8, +1.2].</p>
+    <p><strong>Kinase Task:</strong> Direct experimentally measured fitness values from a published dataset, normalized to zero mean and unit variance before use as rewards.</p>
+    <p><strong>Antibody Task:</strong> ΔΔG binding affinity predicted by ProtAttBA model — negative values indicate improved binding.</p>
+    <p><strong>Inverse Folding:</strong> TM-score of the designed sequence's predicted structure against the target structure.</p>
+    <p>A consistent observation: <span class="hl-y">the accuracy of the reward function is more predictive of RL success than the choice of algorithm.</span> A noisy reward that incorrectly ranks sequences leads to RL updates that reinforce low-fitness sequences, ultimately degrading model quality regardless of the RL algorithm used.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">G-P5</div>
+    <p><strong>段落功能：</strong>展示四种奖励函数设计，归纳出核心结论——奖励准确性比算法选择更重要。这直接影响 F0 vs F1 vs F2 奖励层级的设计选择。</p>
+    <div class="role-badge">奖励设计</div>
+    <table class="term-table">
+      <tr><th>任务</th><th>奖励信号</th><th>准确性</th></tr>
+      <tr><td>AMP</td><td>ApexMIC 分类器概率</td><td>中等（分类器）</td></tr>
+      <tr><td>Kinase</td><td>实验测量适应度</td><td>高（实验真值）</td></tr>
+      <tr><td>Antibody</td><td>ProtAttBA ΔΔG</td><td>中等（计算模型）</td></tr>
+      <tr><td>Inverse folding</td><td>TM-score vs 目标结构</td><td>高（结构级指标）</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">TrpB F1奖励函数设计建议</div>
+      R_F1(s) = -ΔG_barrier(O→C) / RT  + w·ΔΔG_binding<br>
+      其中 ΔG_barrier 来自 MetaDynamics FEL，<br>
+      ΔΔG_binding 来自 MM-GBSA 或 FEP<br>
+      (符号: 壁垒越低/结合越强 → 奖励越高)
+    </div>
+    <div class="warning-box"><strong>关键警告：</strong>如果 F0（PLACER 序列评分）对 GenSLM 生成的序列准确性差（超出训练分布），用 F0 作为主要 RL 信号会导致 RL 在错误方向优化。在正式 RL 训练前，应先用少量 F1 评估校验 F0 预测的 Spearman 相关性。</div>
+    <div class="notable-box"><strong>奖励居中化的技巧：</strong>AMP 的 R = 2·(f-0.4) 公式非常实用——它把奖励居中在 0 而不是 [0,1]，使得负反馈信号明确（低于基线的序列得到负奖励），避免模型只学会"生成任何序列都得正奖励"的懒惰策略。对 F1 奖励应类似处理。</div>
+  </div>
+</div>
+
+<!-- G-P6: ESR Metric -->
+<div id="g-p6" class="sec-label"><span class="sec-num">§G6</span> ESR — Expansion-Shrinkage Ratio</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">G-P6</span>
+    <p>One of the paper's original contributions is the <span class="hl-r">Expansion-Shrinkage Ratio (ESR)</span>, a diagnostic metric for understanding what RL training is doing to the model's sequence space coverage. The intuition: after RL training, some sequence regions become more likely (expanded) while others become less likely (shrunk). ESR quantifies this change at the token/amino acid level.</p>
+    <p>Formally, for each amino acid position and residue type, compare the sampling probability before and after RL training. <span class="hl-p">ESR is defined as the ratio of the fraction of amino acid/token positions whose probability increased (expanded) to the fraction whose probability decreased (shrunk).</span></p>
+    <p>Key empirical results:</p>
+    <p><span class="hl-b">AMP task: ESR = 0.14</span> — only 14% of the change was expansion, 86% was shrinkage. The model focused tightly on high-antimicrobial-activity regions, discarding most of the pretraining diversity. This is good for the AMP task (we want AMP-specific sequences) but means the model lost generality.</p>
+    <p><span class="hl-b">Kinase task: ESR = 0.08</span> — extreme focus on the small high-fitness kinase region. Very high exploitation, very low exploration.</p>
+    <p><span class="hl-b">Antibody task: ESR = 0.50</span> — mixed, indicating the antibody RL training both expanded and shrunk different regions approximately equally. This task showed the worst RL outcomes, consistent with the view that mixed ESR reflects confused/conflicting reward signals.</p>
+    <p><span class="hl-y">ESR close to 0 = surgical focus on a narrow high-reward region (risk: diversity collapse). ESR close to 1 = balanced exploration-exploitation. ESR &gt;&gt; 1 = the model is expanding into novel territory (risk: reward hacking).</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">G-P6</div>
+    <p><strong>段落功能：</strong>详解 ESR 这个新指标——它是一个"序列空间探索程度"的实时诊断工具，在整个 RL 训练过程中应持续监控。</p>
+    <div class="role-badge">诊断指标</div>
+    <table class="term-table">
+      <tr><th>ESR 值</th><th>解读</th><th>风险</th></tr>
+      <tr><td>≈ 0.0–0.15</td><td>极度聚焦，序列多样性大幅下降</td><td>diversity collapse</td></tr>
+      <tr><td>≈ 0.3–0.6</td><td>平衡探索与利用</td><td>最理想范围</td></tr>
+      <tr><td>≈ 0.8–1.0</td><td>大量扩展到新区域</td><td>可能偏离功能空间</td></tr>
+      <tr><td>&gt; 1.0</td><td>净扩展 → 扩散/发散</td><td>reward hacking 风险</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">本论文 ESR 数据</div>
+      AMP:    ESR = 0.14  (focused, high-quality)</div>
+    <div class="data-box">
+      <div class="label">（续）</div>
+      Kinase: ESR = 0.08  (extreme focus)<br>
+      Ab:     ESR = 0.50  (mixed, poor RL gain)
+    </div>
+    <div class="project-box"><strong>在 GenSLM RL 训练中如何使用 ESR：</strong><br>
+      1. 每 N 步计算 ESR，绘制 ESR vs 训练步数曲线<br>
+      2. 如果 ESR 快速下降到 &lt;0.1，说明模型在快速 collapse——降低学习率或增大 β（KL 惩罚）<br>
+      3. 如果 ESR 维持在 0.3–0.6，说明训练健康<br>
+      4. 目标：以低 ESR（&lt;0.2）结束训练，确保高适应度区域被充分利用；但中途 ESR 不能降得太快</div>
+    <div class="notable-box"><strong>ESR 与多样性的关系：</strong>ESR 低 ≠ 模型不好，关键是 ESR 低的区域是否真的是高适应度区域。AMP 任务的 ESR=0.14 产生了很好的 AMP，因为收缩发生在"非 AMP 区域"。问题在于：我们需要确认 GenSLM 收缩到的区域确实是高 D-Trp 活性区域，而不是奖励函数的盲点。</div>
+  </div>
+</div>
+
+<!-- G-P7: Three-Factor Model -->
+<div id="g-p7" class="sec-label"><span class="sec-num">§G7</span> 三因子交互模型 — Headroom × Fidelity × Capacity</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">G-P7</span>
+    <p>The paper's central theoretical contribution is identifying three factors that jointly determine RL gains:</p>
+    <p><span class="hl-y"><strong>Factor 1 — Task Headroom:</strong></span> How much improvement is possible beyond the supervised pretraining baseline? If the PLM already generates near-optimal sequences (high baseline fitness), RL has little room to improve. Conversely, if the task requires properties far from natural sequences (e.g., non-natural substrate specificity), the RL improvement potential is high. Operationally measured as: mean fitness of RL-generated sequences minus mean fitness of PLM-baseline sequences, normalized by the theoretical maximum improvement.</p>
+    <p><span class="hl-y"><strong>Factor 2 — Reward Fidelity:</strong></span> How accurately does the reward function rank sequences? A perfectly correlated reward (rank correlation = 1.0 between predicted and true fitness) maximizes learning signal. A noisy reward (random ranking) provides no signal and may actively mislead. The paper demonstrates that RL gains plateau and reverse when reward fidelity drops below approximately 0.4 Spearman correlation.</p>
+    <p><span class="hl-y"><strong>Factor 3 — Policy Capacity:</strong></span> Is the model large enough to learn the new patterns required by the task? Small PLMs hit hard capacity limits — they can improve on simple tasks but cannot learn complex new sequence-function relationships. Larger models benefit more from RL, assuming sufficient headroom and fidelity.</p>
+    <p><span class="hl-y">RL gain ≈ f(headroom) × g(fidelity) × h(capacity)</span> — the three factors are multiplicative, not additive. A single bottleneck factor can nullify gains from the other two.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">G-P7</div>
+    <p><strong>段落功能：</strong>建立一个预测 RL 收益的理论框架——三因子乘法模型。这是本文最重要的理论贡献，对设计 TrpB RL 训练 campaign 有直接指导价值。</p>
+    <div class="role-badge">理论框架</div>
+    <table class="term-table">
+      <tr><th>因子</th><th>TrpB 项目评估</th><th>结论</th></tr>
+      <tr><td>Task Headroom</td><td>D-Trp 活性完全超出自然序列范围 → 极高 headroom</td><td>有利 ✓</td></tr>
+      <tr><td>Reward Fidelity</td><td>F1 MetaDynamics FEL 是高保真物理奖励；F0 PLACER 可能噪声较高</td><td>F1 有利；F0 需验证</td></tr>
+      <tr><td>Policy Capacity</td><td>GenSLM 是 genome-scale PLM，参数量足够</td><td>有利 ✓</td></tr>
+    </table>
+    <div class="notable-box"><strong>乘法性质的含义：</strong>如果我们用 F0 奖励（低保真度，fidelity ≈ 0.3），即使 headroom 和 capacity 都很高，RL 收益也会被 fidelity 拖低到接近零。这就是为什么必须用 F1 MetaDynamics 作为主要 RL 奖励信号，而不是 F0 快速评分。</div>
+    <div class="project-box"><strong>量化三因子 → pipeline 设计决策：</strong><br>
+      Headroom: TrpB D-Trp 非天然活性 → 估计高 headroom → RL 有价值<br>
+      Fidelity: 需要先用 50–100 个序列同时跑 F0 和 F1 评估，计算 Spearman 相关系数<br>
+      Capacity: GenSLM 规模足够 → 不是瓶颈<br>
+      → 瓶颈是 Fidelity：如果 F0 vs F1 Spearman &lt; 0.4，必须改用 F1 作为奖励</div>
+    <div class="warning-box"><strong>常见错误：</strong>因为 F1（MetaD）计算贵，研究者可能倾向用 F0 凑数。但三因子模型明确告诉我们：这样做等于在 fidelity 瓶颈上卡死整个 RL campaign。宁可每轮评估更少序列（G 更小），也要保证奖励质量。</div>
+  </div>
+</div>
+
+<!-- G-P8: Experimental Results -->
+<div id="g-p8" class="sec-label"><span class="sec-num">§G8</span> 实验结果 — 跨任务数据</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">G-P8</span>
+    <p>Quantitative results across four tasks provide empirical grounding for the three-factor model:</p>
+    <p><strong>AMP design:</strong> <span class="hl-b">GRPO outperformed both PPO and DPO</span> on the percentage of generated sequences passing the ApexMIC antimicrobial threshold (72% vs 58% PPO vs 51% DPO). ESR = 0.14, confirming focused exploration. The reward signal (f_MIC classifier) has moderate fidelity — yet RL still produced clear gains, consistent with high headroom for AMP (many unnatural AMP sequences exist outside the training distribution).</p>
+    <p><strong>Kinase variant optimization:</strong> <span class="hl-b">ESR = 0.08</span> — the smallest value observed, indicating extreme mode collapse toward high-fitness kinase sequences. This is acceptable for kinase optimization (we want kinase-specific sequences), but <span class="hl-g">diversity dropped dramatically</span>, which would be problematic if we wanted to maintain functional diversity or avoid overfitting to a specific assay.</p>
+    <p><strong>Antibody engineering:</strong> <span class="hl-b">ESR = 0.50, mixed RL outcomes</span>. This task showed the weakest RL gains despite high policy capacity. Retrospective analysis suggests the antibody task had lower headroom (the PLM baseline already generates reasonable antibodies) and the ΔΔG reward signal has higher noise for sequences far outside the antibody training distribution.</p>
+    <p><strong>Inverse folding:</strong> <span class="hl-b">TM-score improved by approximately +0.08</span> on held-out test structures. High reward fidelity (TM-score is a robust, widely-validated metric) contributed to strong RL gains.</p>
+    <p>Overall: <span class="hl-y">"RL reliably improves sampling efficiency across domains" — the key qualifier being "reliably" rather than "always greatly".</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">G-P8</div>
+    <p><strong>段落功能：</strong>用四个具体数据集验证三因子理论——同时揭示不同场景下 GRPO 表现的差异性，强调没有"万能的 RL 算法"，只有"合适场景下有效的 RL"。</p>
+    <div class="role-badge">实验证据</div>
+    <table class="term-table">
+      <tr><th>任务</th><th>ESR</th><th>RL 增益</th><th>限制因子</th></tr>
+      <tr><td>AMP</td><td>0.14</td><td>强（+21%）</td><td>奖励噪声中等</td></tr>
+      <tr><td>Kinase</td><td>0.08</td><td>中等，多样性损失</td><td>探索不足</td></tr>
+      <tr><td>Antibody</td><td>0.50</td><td>弱</td><td>低 headroom + 高噪声</td></tr>
+      <tr><td>Inv. folding</td><td>—</td><td>强（+0.08 TM-score）</td><td>高保真奖励</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">AMP 任务具体数字</div>
+      PLM baseline: 51% pass AMP threshold<br>
+      DPO:   51% → 51% (no gain)<br>
+      PPO:   51% → 58% (+7%)<br>
+      GRPO:  51% → 72% (+21%)
+    </div>
+    <div class="notable-box"><strong>抗体任务的警示意义：</strong>抗体工程是蛋白质 RL 研究的"主要战场"，但这篇论文显示 RL 在这个任务上表现最差。原因是抗体设计的预训练先验已经很强（低 headroom），而且 ΔΔG 预测噪声较高（低 fidelity）。这个例子告诉我们：不能假设 RL 在每个蛋白质任务上都有效。</div>
+    <div class="project-box"><strong>TrpB vs 抗体的对比：</strong>TrpB D-Trp 活性是 high headroom 任务（与抗体相反），且 MetaDynamics FEL 是高保真奖励（与 ΔΔG 预测相反）。从三因子分析来看，TrpB RL 的理论预期增益比抗体任务要好得多——这是 Ramanathan Lab 方向选择的有力支撑。</div>
+  </div>
+</div>
+
+<!-- G-P9: Iterative Refinement -->
+<div id="g-p9" class="sec-label"><span class="sec-num">§G9</span> 迭代精化 — Multi-Round RL Training</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">G-P9</span>
+    <p>A critical but often overlooked aspect of RL fine-tuning is that it is not a one-shot procedure. <span class="hl-p">The reference policy π_ref must be periodically refreshed to prevent the KL penalty from becoming an increasingly tight leash as the policy diverges over many training steps.</span></p>
+    <p>The iterative refinement protocol:</p>
+    <div style="font-family:'IBM Plex Mono',monospace;background:#1e293b;color:#e2e8f0;padding:12px 16px;border-radius:6px;font-size:12px;line-height:1.6;margin:12px 0;">
+      <span style="color:#7dd3fc;">Round 0:</span> π_ref = pretrained PLM<br>
+      <span style="color:#7dd3fc;">Round 1:</span> GRPO train → π_1; check ESR, fitness<br>
+      &nbsp;&nbsp;→ update: π_ref = π_1<br>
+      <span style="color:#7dd3fc;">Round 2:</span> GRPO train → π_2; check ESR, fitness<br>
+      &nbsp;&nbsp;→ update: π_ref = π_2<br>
+      ...<br>
+      <span style="color:#86efac;">Stop when: ESR &lt; threshold OR fitness plateaus</span>
+    </div>
+    <p>The reference update serves two purposes: (1) it allows the KL constraint to "relax" around the new, better policy, enabling further improvement; (2) it uses the improved policy as a starting point for the next round, compounding gains. <span class="hl-y">Without reference updates, the KL penalty would eventually prevent any further RL improvement, regardless of how much headroom remains.</span></p>
+    <p><span class="hl-g">Risk of over-refreshing: if π_ref is updated too frequently (every few steps), the KL constraint becomes ineffective and the policy can drift catastrophically. Typical refresh schedule: every 500–2000 gradient steps.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">G-P9</div>
+    <p><strong>段落功能：</strong>解释多轮 RL 训练的必要性和具体协议——参考策略的定期更新是防止"KL 套死"和保持持续改进的关键机制。</p>
+    <div class="role-badge">训练协议</div>
+    <table class="term-table">
+      <tr><th>参数</th><th>推荐值</th><th>说明</th></tr>
+      <tr><td>每轮 GRPO 步数</td><td>500–2000</td><td>每轮内固定 π_ref</td></tr>
+      <tr><td>总轮数</td><td>3–8 轮</td><td>监控 ESR 下降决定停止</td></tr>
+      <tr><td>参考更新条件</td><td>fitness 增长 > 5% 或 ESR &lt; 0.15</td><td>两者都需满足</td></tr>
+      <tr><td>早停条件</td><td>连续2轮 fitness 不再提升</td><td>防止过度收缩</td></tr>
+    </table>
+    <div class="notable-box"><strong>多轮更新的直觉：</strong>第一轮 RL 训练让模型学会"什么样的序列比平均好"（相对知识）。参考更新后，第二轮 RL 训练的基准提高了——它现在学会的是"什么样的序列比第一轮改进后的平均更好"。每轮都在前一轮的成果上累积。</div>
+    <div class="project-box"><strong>与 MFBO 循环的整合：</strong>多轮 GRPO 训练恰好对应 MFBO 的多轮 BO-EVO 循环。每轮 GRPO 生成新序列 → MFBO 决定哪些跑 F1 → F1 结果更新 GP surrogate → 更新 GRPO 参考策略 → 下一轮。这是两个框架的自然对齐点。</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAPER 2: MFBO -->
+<!-- ============================================================ -->
+<div class="paper-divider">Paper 2 · MFBO / BO-EVO · Briefings in Bioinformatics 2023</div>
+
+<!-- MFBO ABSTRACT -->
+<div id="m-abs" class="sec-label"><span class="sec-num">ABS</span> Abstract — MFBO Paper</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">M-ABS</span>
+    <p>Directed evolution is limited by the experimental throughput available to any single lab. Even with robotics, exhaustive screening of a 160,000-variant combinatorial library is infeasible. The BO-EVO framework addresses this by treating protein fitness optimization as a <span class="hl-r">Bayesian optimization (BO) problem</span>: instead of random or heuristic screening, a probabilistic surrogate model (Gaussian Process) predicts fitness across the sequence space with uncertainty estimates, and an <span class="hl-r">acquisition function (UCB)</span> strategically selects the most informative sequences to evaluate next. The evolutionary algorithm component generates biologically plausible candidate sequences via single-point mutations, restricting search to the functional neighborhood. <span class="hl-b">Applied to the RhlA enzyme, the framework achieves 4.8× improvement in rhamnolipid production specificity within 4 rounds of 384-variant batches — evaluating less than 1% of the theoretical sequence space.</span> The paper extends this to a <span class="hl-r">multi-fidelity (MFBO) formulation</span> where evaluations at different cost/accuracy tiers are coordinated by a cost-normalized acquisition function: acqf_MF = acqf / cost(l), systematically routing sequences to the appropriate evaluation tier based on predicted benefit per unit cost.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">M-ABS</div>
+    <p><strong>段落功能：</strong>建立 MFBO 框架的全貌——GP 代理模型 + UCB 采集 + 进化算法生成候选 + 多保真度成本归一化采集。核心数字：4.8× 提升，4 轮，384 变体/轮，&lt;1% 序列空间。</p>
+    <div class="role-badge">论文全貌</div>
+    <table class="term-table">
+      <tr><th>概念</th><th>角色</th></tr>
+      <tr><td>GP (Gaussian Process)</td><td>概率代理模型：预测所有序列的适应度分布 (μ ± σ)</td></tr>
+      <tr><td>UCB</td><td>采集函数：选择下一批评估序列；平衡利用/探索</td></tr>
+      <tr><td>EVO (进化算法)</td><td>候选序列生成器：单点突变生成生物学合理的邻居</td></tr>
+      <tr><td>Multi-fidelity</td><td>允许在不同精度/成本层级上评估，按性价比路由</td></tr>
+    </table>
+    <div class="notable-box"><strong>为什么 BO 比随机筛选好：</strong>随机筛选的假设是"不知道哪里好，所以随机采样"。BO 的假设是"我们能从已有数据中学习序列-适应度关系，然后用这个知识指导下一批筛选"。关键是 GP 的不确定性估计——它告诉我们哪些区域"可能很好但还没验证"（高 σ），这些区域值得去看。</div>
+    <div class="project-box"><strong>与 TrpB 的直接类比：</strong>BO-EVO 的4轮 × 384变体 ≈ Ramanathan Lab 的多轮 GenSLM-GRPO → F0筛选 → F1评估循环。唯一区别是 Ramanathan Lab 用 GenSLM（深度生成模型）而不是纯粹的进化算法来生成候选序列，理论上采样质量更高。</div>
+  </div>
+</div>
+
+<!-- M-P1: Problem and Motivation -->
+<div id="m-p1" class="sec-label"><span class="sec-num">§M1</span> Problem &amp; Motivation — 蛋白质工程的组合爆炸</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">M-P1</span>
+    <p>Protein engineering faces a fundamental combinatorial challenge: a protein with n mutable positions and 20 amino acid choices has 20<sup>n</sup> possible variants. For n=5 positions, this is 3.2 million variants; for n=10, 10 trillion. <span class="hl-g">Even with robotic high-throughput screening capable of testing 10,000 variants per day, sampling n=10 positions exhaustively would take 2,700 years.</span> Standard directed evolution addresses this by limiting exploration to single or double mutations per round, focusing on local optima rather than global optima. The central open problem: can we identify high-fitness variants in the global sequence space using only 1% of the experimental budget?</p>
+    <p>The authors frame this as a <span class="hl-r">sequential decision problem under uncertainty</span>: at each round, given the fitness data from previous rounds, which sequences should we evaluate next to maximize the expected improvement in our best variant? This framing immediately suggests Bayesian optimization — the mathematical framework specifically designed for sequential decision-making under uncertainty with expensive function evaluations.</p>
+    <p>The key insight that distinguishes this work: <span class="hl-y">a surrogate model trained on ESM-1v sequence embeddings can generalize across the sequence space, predicting fitness for sequences that have never been experimentally evaluated.</span> This generalization power is what allows BO to guide search far beyond the local mutation neighborhood explored by standard DE.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">M-P1</div>
+    <p><strong>段落功能：</strong>建立组合爆炸问题的量化严重性，然后提出"序列决策问题"的框架化，引出 BO 的数学工具。关键创新点：ESM-1v 嵌入使 GP 能在整个序列空间泛化。</p>
+    <div class="role-badge">问题建立</div>
+    <table class="term-table">
+      <tr><th>n 个突变位点</th><th>理论空间大小</th><th>穷举时间（10k/天）</th></tr>
+      <tr><td>3</td><td>8,000</td><td>1 天</td></tr>
+      <tr><td>5</td><td>3.2 × 10⁶</td><td>320 天</td></tr>
+      <tr><td>8</td><td>2.56 × 10¹⁰</td><td>7,000 年</td></tr>
+      <tr><td>10</td><td>10¹³</td><td>2,700 年</td></tr>
+    </table>
+    <div class="notable-box"><strong>ESM-1v 的关键作用：</strong>GP 需要输入特征向量。如果用 one-hot 编码，序列之间没有"相似性"信息，GP 无法泛化。ESM-1v 的嵌入表示把氨基酸序列映射到一个连续的语义空间，相似序列在这个空间中距离近，允许 GP 在未测序列上做有意义的插值预测。这是整个 BO 框架能工作的技术前提。</div>
+    <div class="project-box"><strong>TrpB 非天然底物的特殊性：</strong>对于 D-Trp 活性这个任务，ESM-1v 嵌入可能有问题——ESM-1v 在自然序列上训练，D-Trp 活性对应的序列特征可能在 ESM-1v 的语义空间中没有清晰的表示。这是一个需要验证的假设：要检查 GP surrogate 对 F1 评估的预测准确性（Spearman 相关）。</div>
+  </div>
+</div>
+
+<!-- M-P2: GP Surrogate -->
+<div id="m-p2" class="sec-label"><span class="sec-num">§M2</span> GP 代理模型 — Gaussian Process Surrogate</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">M-P2</span>
+    <p>The Gaussian Process Regression (GPR) surrogate model is the probabilistic backbone of BO-EVO. For a set of evaluated sequences X = {x_1, ..., x_n} with measured fitness y = {y_1, ..., y_n}, the GP models the fitness function as a random process with a prior over functions defined by a kernel (covariance function):</p>
+    <div style="font-family:'IBM Plex Mono',monospace;background:#1e293b;color:#e2e8f0;padding:12px 16px;border-radius:6px;font-size:12px;line-height:1.6;margin:12px 0;">
+      <span style="color:#94a3b8;"># GP prior: f ~ GP(μ_0, k)</span><br>
+      <span style="color:#94a3b8;"># After observing data (X, y):</span><br>
+      <span style="color:#7dd3fc;">f(x*) | X, y ~ N(μ(x*), σ²(x*))</span><br>
+      <br>
+      <span style="color:#86efac;">μ(x*) = K(x*,X) · [K(X,X)+σ²I]⁻¹ · y</span><br>
+      <span style="color:#fde68a;">σ²(x*) = k(x*,x*) - K(x*,X)·[K(X,X)+σ²I]⁻¹·K(X,x*)</span>
+    </div>
+    <p>The <span class="hl-r">kernel k(x, x') = exp(−‖φ(x)−φ(x')‖² / 2l²)</span> where φ(x) is the ESM-1v embedding of sequence x and l is the length scale hyperparameter. This RBF kernel measures sequence similarity in the learned embedding space. The key properties of GP posterior: <span class="hl-y">μ(x*) is the best prediction of fitness for unobserved sequence x*; σ(x*) quantifies our uncertainty — high σ means we have little data near x* in the embedding space.</span> <span class="hl-g">GP inference scales as O(N³) in the number of data points N</span> — with thousands of evaluations, sparse GP approximations become necessary.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">M-P2</div>
+    <p><strong>段落功能：</strong>详解 GP 代理模型的数学结构——均值 μ(x*) 是预测，方差 σ²(x*) 是不确定性。两者共同驱动 UCB 采集函数。</p>
+    <div class="role-badge">数学推导</div>
+    <table class="term-table">
+      <tr><th>量</th><th>物理含义</th><th>在 UCB 中的作用</th></tr>
+      <tr><td>μ(x*)</td><td>序列 x* 的预测适应度均值</td><td>驱动 exploitation（利用高预测值）</td></tr>
+      <tr><td>σ(x*)</td><td>序列 x* 的预测不确定性</td><td>驱动 exploration（探索未知区域）</td></tr>
+      <tr><td>K(X,X)</td><td>已观测序列的协方差矩阵</td><td>N×N，计算复杂度 O(N³)</td></tr>
+      <tr><td>k(x,x') kernel</td><td>序列 x 和 x' 之间的相似性</td><td>定义什么是"相邻序列"</td></tr>
+    </table>
+    <div class="warning-box"><strong>O(N³) 扩展性问题：</strong>如果我们在 F0 层评估 10,000 个 GenSLM 序列，GP 训练时间变得难以承受（精确 GP 需要 N³ = 10¹² 次运算）。解决方案：使用稀疏 GP（Sparse GP / SVGP），只保留 M << N 个"诱导点"，将复杂度降到 O(M²N)。BoTorch 库原生支持这个。</div>
+    <div class="data-box">
+      <div class="label">GP 规模与计算时间</div>
+      N=100:   精确 GP，毫秒级<br>
+      N=1000:  精确 GP，秒级<br>
+      N=10000: 稀疏 GP 必要，分钟级<br>
+      N=100000: 深度GP/神经过程更合适
+    </div>
+    <div class="project-box"><strong>实践选择：</strong>对 TrpB pipeline 来说，每轮 F1 评估的序列数通常在 20–100 之间（MetaD 计算贵），每轮 F0 评估可能到 500–2000。在这个规模上精确 GP 完全可行。如果 F0 规模扩到 10,000+，切换到稀疏 GP（BoTorch 的 ApproximateGP）。</div>
+  </div>
+</div>
+
+<!-- M-P3: UCB Acquisition -->
+<div id="m-p3" class="sec-label"><span class="sec-num">§M3</span> UCB 采集函数 — 探索与利用的平衡</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">M-P3</span>
+    <p>The acquisition function determines which sequences to evaluate next. Among all BO acquisition functions, <span class="hl-r">Upper Confidence Bound (UCB)</span> provides the clearest exploration-exploitation tradeoff:</p>
+    <div style="font-family:'IBM Plex Mono',monospace;background:#1e293b;color:#e2e8f0;padding:12px 16px;border-radius:6px;font-size:12px;line-height:1.6;margin:12px 0;">
+      <span style="color:#86efac;">UCB(x) = μ(x) + κ · σ(x)</span><br>
+      <br>
+      <span style="color:#94a3b8;"># κ = 0.0: pure exploitation (always pick highest μ)</span><br>
+      <span style="color:#94a3b8;"># κ → ∞: pure exploration (always pick highest σ)</span><br>
+      <span style="color:#94a3b8;"># κ = 2.0: typical balanced value</span><br>
+      <br>
+      <span style="color:#7dd3fc;">Select: x* = argmax_x UCB(x)</span><br>
+      <span style="color:#7dd3fc;">        (over evolutionary algorithm candidate set)</span>
+    </div>
+    <p>The term κ·σ(x) is often called the "optimism bonus" — it gives extra value to sequences in unexplored regions of sequence space, ensuring the algorithm doesn't prematurely converge to a local optimum. <span class="hl-y">UCB is "optimistic in the face of uncertainty": if we're uncertain about a sequence's fitness, we optimistically assume it might be very good and invest in finding out.</span></p>
+    <p><span class="hl-g">UCB's key limitation: it requires the GP uncertainty to be well-calibrated. If σ(x) is systematically underestimated (overconfident GP), UCB collapses to pure exploitation. If σ(x) is overestimated (underconfident GP), UCB wastes evaluations on low-fitness unexplored regions.</span> Calibration checks (comparing predicted σ to empirical residuals) should be part of the BO pipeline.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">M-P3</div>
+    <p><strong>段落功能：</strong>UCB 公式的完整解析——μ 项负责利用，κ·σ 项负责探索，κ 是唯一需要调整的超参数。同时指出 GP 校准是 UCB 有效性的前提条件。</p>
+    <div class="role-badge">采集函数</div>
+    <table class="term-table">
+      <tr><th>κ 值</th><th>行为模式</th><th>适合阶段</th></tr>
+      <tr><td>0.0–0.5</td><td>exploitation 主导：优化已知高适应度区域</td><td>BO 后期（收敛阶段）</td></tr>
+      <tr><td>1.0–2.0</td><td>平衡利用和探索</td><td>BO 中期（常用默认值）</td></tr>
+      <tr><td>3.0–5.0</td><td>exploration 主导：积极探索不确定区域</td><td>BO 早期（数据稀少）</td></tr>
+    </table>
+    <div class="notable-box"><strong>UCB vs EI vs PI：</strong>BO 还有其他采集函数：EI（Expected Improvement，期望改进）和 PI（Probability of Improvement，改进概率）。UCB 最直观（两项之和），EI 理论上更优（积分整个改进分布），但计算复杂度相当。对蛋白质工程的批量评估（一次选 N 个序列），需要用 qUCB 或 qEI（批量版本），BoTorch 库提供实现。</div>
+    <div class="project-box"><strong>κ 的实践设置：</strong>建议第1轮用 κ=3.0（优先探索，因为 GP 数据少），第2-3轮用 κ=2.0（平衡），最后一轮用 κ=0.5（收敛到最优）。也可以用 UCB-schedule（κ 随轮数降低），这与退火调度在直觉上类似。</div>
+  </div>
+</div>
+
+<!-- M-P4: Evolutionary Algorithm Integration -->
+<div id="m-p4" class="sec-label"><span class="sec-num">§M4</span> 进化算法集成 — 候选序列生成</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">M-P4</span>
+    <p>A pure BO approach would need to evaluate UCB over all possible sequences — computationally intractable for the full 20<sup>n</sup> space. BO-EVO's solution: use an <span class="hl-p">evolutionary algorithm as a candidate generator</span>, restricting the UCB optimization to biologically plausible sequences reachable by mutation from a parent sequence.</p>
+    <p>The evolutionary algorithm component:</p>
+    <p>1. Start from a parent sequence (highest fitness in current data, or initial parent)</p>
+    <p>2. Generate all single-point mutations (or a random subset): systematically substitute each position with all 20 amino acids to create a pool of ~20n candidates</p>
+    <p>3. Score all candidates via the GP surrogate: compute UCB(x) for each</p>
+    <p>4. Select the top-B candidates by UCB score as the next evaluation batch (B = 384 in the paper)</p>
+    <p>5. Evaluate the selected B sequences experimentally (or computationally)</p>
+    <p>6. Update the GP with new data: re-condition the GP on all observed (x, y) pairs</p>
+    <p>Repeat for R rounds. <span class="hl-y">This single-point mutation strategy achieves two goals simultaneously: it ensures generated sequences are biologically plausible (within one mutation of a known functional sequence) and it restricts the UCB search space to O(20n) rather than 20<sup>n</sup>, making GP-UCB optimization tractable.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">M-P4</div>
+    <p><strong>段落功能：</strong>解释进化算法作为候选生成器的核心作用——将指数级的序列空间收缩到 O(20n) 的单点突变邻域，使 GP-UCB 优化变得可行。</p>
+    <div class="role-badge">候选生成</div>
+    <table class="term-table">
+      <tr><th>步骤</th><th>操作</th><th>规模</th></tr>
+      <tr><td>突变生成</td><td>对每个位点枚举 20 种氨基酸</td><td>~20×L 候选（L=序列长度）</td></tr>
+      <tr><td>GP 打分</td><td>计算每个候选的 UCB(x)</td><td>O(N²) 预测</td></tr>
+      <tr><td>选择批次</td><td>取 top-B UCB 分数</td><td>B = 384（论文设置）</td></tr>
+      <tr><td>实验评估</td><td>机器人高通量实验</td><td>B 个湿实验</td></tr>
+      <tr><td>GP 更新</td><td>重新条件化 GP</td><td>O(N³)</td></tr>
+    </table>
+    <div class="notable-box"><strong>GenSLM 替代进化算法：</strong>在 Ramanathan Lab 的 pipeline 中，GenSLM 取代了"枚举单点突变"这个步骤。GenSLM 生成的候选序列质量更高（能生成多位点协同突变），覆盖更大的序列空间，但生成成本也更高。关键是：GP surrogate 的打分步骤完全一样，BO 框架的其余部分不需要改变。</div>
+    <div class="project-box"><strong>批量大小 B 的选择：</strong>论文用 B=384（标准 384 孔板格式）。在 TrpB pipeline 中：F0 批量可以大（B=200–500 个 GenSLM 序列），F1 批量必须小（B=10–50，受 MetaD 计算成本限制）。MFBO 的工作正是协调这两层的批量大小。</div>
+  </div>
+</div>
+
+<!-- M-P5: Multi-Fidelity Theory -->
+<div id="m-p5" class="sec-label"><span class="sec-num">§M5</span> 多保真度理论 — Multi-Fidelity Framework</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">M-P5</span>
+    <p>Standard BO evaluates all candidates at the same fidelity level. <span class="hl-r">Multi-Fidelity BO (MFBO) introduces a hierarchy of evaluators</span> at different cost-accuracy tradeoffs. The key observation: many cheap low-fidelity evaluations can collectively provide information comparable to one expensive high-fidelity evaluation, if the fidelity levels are correlated.</p>
+    <p>The MFBO framework requires three components:</p>
+    <p><strong>1. Multi-fidelity GP kernel:</strong> The GP kernel is extended to include a fidelity dimension, allowing information from cheap evaluations to inform predictions at expensive fidelity levels:</p>
+    <div style="font-family:'IBM Plex Mono',monospace;background:#1e293b;color:#e2e8f0;padding:12px 16px;border-radius:6px;font-size:12px;line-height:1.6;margin:12px 0;">
+      <span style="color:#86efac;">k((x,l), (x',l')) = k_input(x,x') × k_fidelity(l,l')</span><br>
+      <br>
+      <span style="color:#94a3b8;"># k_input: sequence similarity (ESM-1v kernel)</span><br>
+      <span style="color:#94a3b8;"># k_fidelity: correlation between fidelity levels</span><br>
+      <span style="color:#94a3b8;"># l=0 (F0, fast), l=1 (F1, medium), l=2 (F2, expensive)</span>
+    </div>
+    <p><strong>2. Cost model:</strong> Each fidelity level has an associated cost. In the TrpB context: cost(F0) ~ seconds per sequence; cost(F1) ~ hours per sequence (MetaD run); cost(F2) ~ days per sequence (EVB/QM-MM).</p>
+    <p><strong>3. Cost-normalized acquisition:</strong> See P6.</p>
+    <p><span class="hl-y">The multi-fidelity GP exploits cross-fidelity correlations: if F0 predicts that sequence X is a top candidate, and the F0-to-F1 correlation is 0.7, then the GP can update its F1 prediction for X even before running any F1 evaluation. This information transfer reduces the number of expensive F1/F2 evaluations needed.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">M-P5</div>
+    <p><strong>段落功能：</strong>建立多保真度 BO 的理论基础——多保真度 GP 核、成本模型、跨保真度信息传递三个核心组件。</p>
+    <div class="role-badge">多保真度理论</div>
+    <table class="term-table">
+      <tr><th>保真度层级</th><th>TrpB 对应</th><th>单次评估成本</th><th>准确性</th></tr>
+      <tr><td>l₀ (F0)</td><td>PLACER 序列评分</td><td>秒级</td><td>低（序列级）</td></tr>
+      <tr><td>l₁ (F1)</td><td>MetaDynamics + ΔΔG</td><td>小时-天级</td><td>中（物理级）</td></tr>
+      <tr><td>l₂ (F2)</td><td>EVB / QM-MM</td><td>天-周级</td><td>高（量子化学级）</td></tr>
+    </table>
+    <div class="notable-box"><strong>跨保真度相关性是关键前提：</strong>MFBO 只有在 F0 和 F1 适应度排序之间存在合理相关性时才有效（Spearman ρ > 0.4）。如果 F0 预测和 F1 结果毫不相关，多保真度 GP 退化为单独的单保真度 GP，跨层信息传递失效。验证 F0-F1 相关性是 pipeline 启动前的必做检查。</div>
+    <div class="data-box">
+      <div class="label">F0-F1 相关性对 MFBO 效率的影响</div>
+      ρ(F0,F1) = 0.8: MFBO 降低 F1 评估需求 ~60%<br>
+      ρ(F0,F1) = 0.5: MFBO 降低 F1 评估需求 ~30%<br>
+      ρ(F0,F1) = 0.2: MFBO 几乎无帮助（≈ 独立 BO）
+    </div>
+    <div class="project-box"><strong>如何验证 F0-F1 相关性：</strong>在第一轮评估中，随机选取 30–50 个 GenSLM 生成的序列，同时跑 F0（PLACER）和 F1（MetaD）评估，计算 Spearman 相关系数。如果 ρ &lt; 0.4，MFBO 的跨层信息传递有限，应降低对 F0 奖励的依赖。</div>
+  </div>
+</div>
+
+<!-- M-P6: acqf_MF Formula -->
+<div id="m-p6" class="sec-label"><span class="sec-num">§M6</span> 多保真度采集函数 — acqf_MF = acqf / cost(l)</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">M-P6</span>
+    <p>The heart of MFBO is the cost-normalized acquisition function, which makes decisions about both <em>which sequence to evaluate</em> and <em>at which fidelity level</em>:</p>
+    <div style="font-family:'IBM Plex Mono',monospace;background:#1e293b;color:#e2e8f0;padding:12px 16px;border-radius:6px;font-size:12px;line-height:1.6;margin:12px 0;">
+      <span style="color:#86efac;">acqf_MF(x, l) = acqf_standard(x, l) / cost(l)</span><br>
+      <br>
+      <span style="color:#94a3b8;"># acqf_standard: e.g., UCB, EI, PI at fidelity l</span><br>
+      <span style="color:#94a3b8;"># cost(l): computational/experimental cost of fidelity l</span><br>
+      <br>
+      <span style="color:#7dd3fc;">Decision: (x*, l*) = argmax_{x,l} acqf_MF(x, l)</span><br>
+      <br>
+      <span style="color:#94a3b8;"># Example TrpB costs:</span><br>
+      <span style="color:#fde68a;">cost(F0) = 1     # seconds → normalized to 1</span><br>
+      <span style="color:#fde68a;">cost(F1) = 3600  # ~1 hour MetaD run</span><br>
+      <span style="color:#fde68a;">cost(F2) = 86400 # ~1 day EVB calculation</span>
+    </div>
+    <p>Interpretation: <span class="hl-y">acqf_MF measures "information gain per unit computational cost". A medium-fidelity evaluation that provides 80% of the information at 10% of the cost of high-fidelity will be preferred until the marginal gain of high-fidelity justifies its cost.</span></p>
+    <p>The algorithm automatically routes sequences to F0 for initial screening, promotes borderline candidates to F1 when F0 uncertainty is high, and only commits to F2 when F1 data confirms a candidate is likely near-optimal. This creates the natural "funnel" shape characteristic of efficient screening campaigns.</p>
+    <p><span class="hl-g">Critical caveat: the cost model must be accurate. If cost(F1) is underestimated (e.g., a MetaD run takes 3 days instead of 1 hour), the algorithm will over-invest in F1 evaluations, defeating the purpose.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">M-P6</div>
+    <p><strong>段落功能：</strong>acqf_MF 公式的完整解析及其物理含义——成本归一化的信息增益。展示如何用这个公式自动决定每个序列应该在哪层评估。</p>
+    <div class="role-badge">核心公式</div>
+    <table class="term-table">
+      <tr><th>场景</th><th>acqf_MF 行为</th></tr>
+      <tr><td>F0 σ(x) 高（未知区域）</td><td>F0 的 acqf/cost 很高 → 优先 F0 探索</td></tr>
+      <tr><td>F0 预测 x 很好但不确定</td><td>提升到 F1 → F1 的 acqf/cost 超过 F0</td></tr>
+      <tr><td>F1 确认 x 很好且低不确定性</td><td>考虑 F2 验证 → F2 的 acqf/cost 最高</td></tr>
+      <tr><td>F1 否定 x（低适应度）</td><td>F2 的 acqf/cost 低 → 不做 F2 评估</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">漏斗结构示意（F0→F1→F2）</div>
+      F0: 评估 500 个 GenSLM 序列 (秒级)<br>
+      F1: 选 top 30 跑 MetaDynamics (小时级)<br>
+      F2: 选 top 3–5 跑 EVB/QM-MM (天级)<br>
+      → 实验: 选 top 1–3 做实际合成
+    </div>
+    <div class="notable-box"><strong>acqf_MF 的决定性优势：</strong>普通 BO（只有一个保真度）选择序列时不考虑成本——它可能推荐一个"可能很好"的序列跑昂贵的 F2 计算，尽管 F0 数据已经足以否定它。acqf_MF 强制考虑性价比：只有当 F2 评估的信息增益足以覆盖其成本时，才会做 F2 评估。</div>
+    <div class="warning-box"><strong>成本模型准确性是瓶颈：</strong>在实际实现中，MetaD 运行时间可能因序列而异（有些序列收敛快，有些需要更长时间）。建议用实际 wall-clock 时间（而不是理论时间）更新 cost(F1) 的估计，使用滑动平均。</div>
+  </div>
+</div>
+
+<!-- M-P7: Experimental Results -->
+<div id="m-p7" class="sec-label"><span class="sec-num">§M7</span> 实验结果 — RhlA 4.8× 改进</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">M-P7</span>
+    <p>The BO-EVO framework is validated on both benchmark fitness landscapes and a real enzyme engineering case:</p>
+    <p><strong>Benchmark validation:</strong></p>
+    <ul style="padding-left:20px;margin:8px 0;">
+      <li><span class="hl-b">GB1 protein domain:</span> 75% of campaigns successfully find the global maximum, versus ~20% for random screening at equivalent budget</li>
+      <li><span class="hl-b">PhoQ kinase:</span> Consistent outperformance of random/DE strategies across multiple random seeds</li>
+      <li><span class="hl-b">NK landscapes (mathematical model):</span> Robust performance validated across different epistasis (ruggedness) levels</li>
+    </ul>
+    <p><strong>Real application — RhlA enzyme:</strong></p>
+    <p><span class="hl-b">Starting from a wild-type RhlA with low rhamnolipid mono-specificity, 4 rounds of BO-EVO (384 variants/round, total 1,536 evaluated) achieve a 4.8× improvement in rhamnolipid production specificity.</span> Key metrics:</p>
+    <table style="width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;">
+      <tr style="background:#1a2744;color:white;"><th style="padding:6px 10px;">Metric</th><th style="padding:6px 10px;">Value</th></tr>
+      <tr style="background:#f7f5ef;"><td style="padding:6px 10px;border-bottom:1px solid #e5dfd0;">Improvement factor</td><td style="padding:6px 10px;border-bottom:1px solid #e5dfd0;">4.8×</td></tr>
+      <tr><td style="padding:6px 10px;border-bottom:1px solid #e5dfd0;">Rounds</td><td style="padding:6px 10px;border-bottom:1px solid #e5dfd0;">4</td></tr>
+      <tr style="background:#f7f5ef;"><td style="padding:6px 10px;border-bottom:1px solid #e5dfd0;">Variants per round</td><td style="padding:6px 10px;border-bottom:1px solid #e5dfd0;">384 (robotic)</td></tr>
+      <tr><td style="padding:6px 10px;border-bottom:1px solid #e5dfd0;">Total evaluated</td><td style="padding:6px 10px;border-bottom:1px solid #e5dfd0;">1,536 (&lt;1% of space)</td></tr>
+      <tr style="background:#f7f5ef;"><td style="padding:6px 10px;">Campaign duration</td><td style="padding:6px 10px;">~1 month</td></tr>
+    </table>
+    <p><span class="hl-g">Limitation acknowledged by authors: the evolutionary algorithm restricts search to single-point mutation neighborhoods, potentially missing distant high-fitness peaks reachable only through multi-residue coordinated mutations.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">M-P7</div>
+    <p><strong>段落功能：</strong>用 4.8× 这个具体数字锚定 MFBO/BO-EVO 框架的实际效果，同时通过 GB1/PhoQ/NK benchmark 验证方法的普适性。局限性（单点突变限制）诚实地承认。</p>
+    <div class="role-badge">实验验证</div>
+    <table class="term-table">
+      <tr><th>测试体系</th><th>关键结论</th></tr>
+      <tr><td>GB1 benchmark</td><td>75% 成功率找到全局最优（随机筛选 ~20%）</td></tr>
+      <tr><td>PhoQ kinase</td><td>稳定优于随机/DE 策略</td></tr>
+      <tr><td>NK landscape</td><td>在不同 epistasis 程度下均有效</td></tr>
+      <tr><td>RhlA（真实酶）</td><td>4.8× 改进，4 轮，&lt;1% 序列空间</td></tr>
+    </table>
+    <div class="notable-box"><strong>4.8× 的意义：</strong>这不是在已知最优附近的微调，而是从 WT 出发的大幅度改进。4 轮 × 384 = 1,536 次实验——相比穷举 160,000 变体，这是 100× 的效率提升。对 TrpB pipeline 来说，这意味着用 GenSLM + MFBO，我们应该能在 3–6 轮 F1 评估后显著改进 D-Trp 活性。</div>
+    <div class="warning-box"><strong>单点突变局限性与 GenSLM 的解决方案：</strong>BO-EVO 的进化算法只能做单点突变，无法探索多残基协同突变（可能存在的 epistasis）。GenSLM 的自回归生成能够一次性生成全长序列，天然包含多位点协同，理论上可以越过单点突变无法到达的适应度峰。这是 Ramanathan Lab 用 GenSLM 替代纯进化算法的核心理由之一。</div>
+  </div>
+</div>
+
+<!-- M-P8: F0/F1/F2 Mapping -->
+<div id="m-p8" class="sec-label"><span class="sec-num">§M8</span> F0/F1/F2 映射 — Ramanathan Lab Pipeline</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">M-P8</span>
+    <p>The Ramanathan Lab's F0/F1/F2 evaluation tiers directly instantiate the multi-fidelity framework. Each tier corresponds to an evaluator with distinct cost, accuracy, and information content:</p>
+    <p><span class="hl-r">F0 — PLACER Sequence Scoring:</span> Fast sequence-level predictor (seconds per sequence). Evaluates amino acid composition, evolutionary conservation, physicochemical properties. Cannot assess conformational dynamics or substrate specificity directly. Serves as the initial funnel: screen thousands of GenSLM sequences, eliminate obvious non-starters.</p>
+    <p><span class="hl-r">F1 — MetaDynamics + ΔΔG:</span> Physics-based conformational and binding evaluation (hours per sequence). MetaDynamics FEL provides the COMM domain O→C transition probability — the key indicator of whether the protein can adopt the catalytically active conformation. ΔΔG binding energy assesses substrate affinity. <span class="hl-y">This is the authoritative fitness signal for GRPO training: it encodes whether a sequence has the right conformational dynamics for D-Trp catalysis.</span></p>
+    <p><span class="hl-r">F2 — EVB / QM-MM:</span> Quantum chemistry-level catalytic barrier calculation (days per sequence). The gold standard for confirming catalytic activity. Only the top 1–5% of F1 candidates warrant F2 evaluation.</p>
+    <p>The pipeline: <span class="hl-p">GenSLM samples G sequences → all G sequences evaluated at F0 → MFBO selects top subset for F1 → F1 results used as GRPO reward to update GenSLM → MFBO selects top F1 candidates for F2 → F2 validates final candidates for synthesis.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">M-P8</div>
+    <p><strong>段落功能：</strong>把 MFBO 的抽象保真度层级具体映射到 Ramanathan Lab 的三层实验体系，明确每层的工具、成本、准确性、在 BO 中的角色。</p>
+    <div class="role-badge">Pipeline 映射</div>
+    <table class="term-table">
+      <tr><th>层级</th><th>工具</th><th>成本</th><th>在 MFBO 中的角色</th></tr>
+      <tr><td>F0</td><td>PLACER</td><td>秒级</td><td>大规模初筛（漏斗入口）</td></tr>
+      <tr><td>F1</td><td>MetaDynamics + ΔΔG</td><td>小时-天</td><td>物理验证 + GRPO 主奖励</td></tr>
+      <tr><td>F2</td><td>EVB / QM-MM</td><td>天-周</td><td>催化壁垒最终确认</td></tr>
+    </table>
+    <div class="project-box"><strong>你当前工作在 F1 层：</strong>你正在跑的 well-tempered MetaD（Job 41514529，single-walker）就是 F1 层的核心计算。这个 MetaD 结果——具体说是 O→C 转变壁垒高度（kcal/mol）——将成为 F1 适应度评分的主要组成部分。你的工作直接为 Ramanathan Lab 的 MFBO pipeline 提供 F1 奖励信号。</div>
+    <div class="data-box">
+      <div class="label">F1 适应度评分建议公式</div>
+      fitness_F1(s) = -ΔG_barrier(O→C) / RT<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ w₁ · (-ΔΔG_binding)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ w₂ · I(K82-substrate ≤ 3.6Å)<br>
+      归一化: r_F1 = (fitness_F1 - mean) / std
+    </div>
+    <div class="notable-box"><strong>Single-walker MetaD 够用吗：</strong>对 F1 奖励信号，单 walker MetaD 产生的 FEL 存在一定噪声（FEL 收敛需要多次重新填充同一势阱）。但对 MFBO 的 F1 评估，我们只需要 FEL 的相对排名，不需要精确的绝对值——即使 FEL 有 ±2 kcal/mol 的噪声，只要不同序列之间的排名是正确的，GRPO 就能有效训练。这是 single-walker MetaD 在 F1 层合理性的关键论证。</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SYNTHESIS -->
+<!-- ============================================================ -->
+<div class="paper-divider">综合分析 · GRPO + MFBO 协同架构</div>
+
+<!-- SYNTH-ARCH -->
+<div id="synth-arch" class="sec-label"><span class="sec-num">§A</span> GRPO + MFBO 完整系统架构</div>
+<div class="synth-section">
+  <h2>§A · GRPO + MFBO 联合运作逻辑链</h2>
+
+  <h3>系统整体数据流</h3>
+  <div class="logic-chain">
+    <div class="lc-node">GenSLM<br><small>序列生成器</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">F0 筛选<br><small>PLACER × G</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">MFBO 决策<br><small>acqf_MF</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">F1 评估<br><small>MetaD × ~30</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">GRPO 更新<br><small>A_i = (r-μ)/σ</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">F2 确认<br><small>EVB × ~5</small></div>
+  </div>
+
+  <h3>GRPO 和 MFBO 的角色分工</h3>
+  <table class="proj-table">
+    <tr><th>组件</th><th>问题</th><th>答案</th></tr>
+    <tr><td>GRPO</td><td>如何更新 GenSLM 的序列生成策略？</td><td>用 F1 奖励计算组内优势 A_i，通过策略梯度更新 θ</td></tr>
+    <tr><td>MFBO</td><td>G 个序列中，哪些应该升级到 F1 评估？</td><td>用 GP surrogate + acqf_MF 计算每个序列在 F1 评估的性价比</td></tr>
+    <tr><td>GP surrogate</td><td>没有 F1 数据的序列，其 F1 适应度是多少？</td><td>从历史 F1 数据插值，给出 μ ± σ 估计</td></tr>
+    <tr><td>ESR 监控</td><td>GenSLM 是否在 collapse 到窄序列模式？</td><td>计算每轮训练前后的 token 概率变化比率</td></tr>
+    <tr><td>三因子检查</td><td>这个 RL campaign 值得继续吗？</td><td>周期性评估 headroom / fidelity / capacity 瓶颈</td></tr>
+  </table>
+
+  <h3>关键张力：GRPO 奖励层级选择</h3>
+  <p>这是整个系统最关键的设计决策。三因子模型告诉我们：奖励保真度是乘法瓶颈。</p>
+  <table class="proj-table">
+    <tr><th>奖励层级</th><th>优点</th><th>缺点</th><th>建议</th></tr>
+    <tr><td>F0 (PLACER)</td><td>每秒可评估数百个序列；GRPO 每轮可用大 G</td><td>可能对 GenSLM 生成的非天然序列准确性差；三因子 fidelity 低</td><td>仅用于硬过滤，不用于 GRPO 梯度</td></tr>
+    <tr><td>F1 (MetaD)</td><td>物理级准确性；直接反映 D-Trp 活性相关的构象动力学</td><td>贵：每序列小时-天级；G 必须小</td><td><strong>主要 GRPO 奖励信号</strong></td></tr>
+    <tr><td>F0+F1 混合</td><td>覆盖两层信息</td><td>权重 α 需要仔细调参</td><td>备选：先验证 F0-F1 Spearman 相关后决定 α</td></tr>
+  </table>
+
+  <div class="project-box">
+    <strong>给 Raswanth 的具体建议（基于两篇论文的综合）：</strong><br>
+    1. 用 GRPO（不用 PPO/DPO）微调 GenSLM — 无价值网络，节省 50% 显存<br>
+    2. F1 MetaD 是主要奖励信号 — 低保真度 F0 奖励受三因子 fidelity 瓶颈限制<br>
+    3. 每轮 GRPO 组大小 G：先跑 G=16 个序列 → F0 筛选 → 送 top 8 去 F1<br>
+    4. MFBO 用 acqf_MF 决定哪些序列升级到 F1 — 不要人工拍脑袋决定<br>
+    5. 持续监控 ESR：目标维持在 0.15–0.40 之间，防止 GenSLM collapse<br>
+    6. 每 2–3 轮更新参考策略 π_ref — 避免 KL 约束卡死探索空间
+  </div>
+</div>
+
+<!-- SYNTH-TABLE -->
+<div id="synth-table" class="sec-label"><span class="sec-num">§B</span> Pipeline 完整对应表</div>
+<div class="synth-section">
+  <h2>§B · 论文概念 → TrpB Pipeline 的完整对应</h2>
+
+  <h3>GRPO 概念 → TrpB 具体实现</h3>
+  <table class="proj-table">
+    <tr><th>GRPO 概念</th><th>TrpB Pipeline 实现</th><th>注释</th></tr>
+    <tr><td>Prompt (protein context)</td><td>TrpB 的 N-端结构域 + 保守活性位点残基序列</td><td>条件化生成的输入</td></tr>
+    <tr><td>Completion (sequence)</td><td>GenSLM 生成的 TrpB COMM domain 变体序列</td><td>每个 prompt 生成 G 个</td></tr>
+    <tr><td>Reward r_i</td><td>F1 MetaD 适应度评分（见 M-P8 公式）</td><td>D-Trp 活性代理</td></tr>
+    <tr><td>Group advantage A_i</td><td>(r_F1_i - mean(r_F1)) / std(r_F1)</td><td>组内归一化</td></tr>
+    <tr><td>π_ref 更新</td><td>每 2–3 轮后将当前 GenSLM checkpoint 设为新 π_ref</td><td>防止 KL 套死</td></tr>
+    <tr><td>ESR 监控</td><td>每轮计算 GenSLM 的 token 概率分布变化</td><td>目标 ESR = 0.15–0.4</td></tr>
+    <tr><td>Group size G</td><td>建议 G=16：16 个 GenSLM 序列 → F0 → top 8 → F1</td><td>受 MetaD 计算成本约束</td></tr>
+  </table>
+
+  <h3>MFBO 概念 → TrpB 具体实现</h3>
+  <table class="proj-table">
+    <tr><th>MFBO 概念</th><th>TrpB Pipeline 实现</th><th>注释</th></tr>
+    <tr><td>GP surrogate</td><td>在 ESM-1v 嵌入空间上的 GPR 模型</td><td>用历史 F0/F1 数据训练</td></tr>
+    <tr><td>UCB acquisition</td><td>UCB(x) = μ_F1(x) + κ·σ_F1(x)</td><td>κ 从 3.0 降到 0.5 随轮数</td></tr>
+    <tr><td>acqf_MF 路由</td><td>对 F0 top 候选计算 acqf_MF(x,F1) vs acqf_MF(x,F0)</td><td>决定哪些升级到 F1</td></tr>
+    <tr><td>Multi-fidelity GP 核</td><td>k_input(ESM-1v) × k_fidelity(F0,F1,F2)</td><td>跨层信息传递</td></tr>
+    <tr><td>cost(F1)</td><td>MetaD wall-clock 时间滑动平均（初估 1–4 小时）</td><td>需要实测后更新</td></tr>
+    <tr><td>F0-F1 相关性验证</td><td>首轮随机选 30–50 序列同时跑 F0 和 F1</td><td>Spearman ρ 目标 &gt;0.4</td></tr>
+    <tr><td>漏斗结构</td><td>F0:500 → F1:30 → F2:5 → 合成:1–3</td><td>每层约 10× 收缩</td></tr>
+  </table>
+
+  <h3>JACS 2019 MetaDynamics → F1 评估指标</h3>
+  <table class="proj-table">
+    <tr><th>JACS 2019 发现</th><th>在 F1 评估中的使用方式</th><th>阈值</th></tr>
+    <tr><td>PC→C 自由能壁垒</td><td>F1 主要奖励组成部分（壁垒低 → 高奖励）</td><td>参考值：PfTrpS ~6, 0B2 ~2 kcal/mol</td></tr>
+    <tr><td>K82-底物距离</td><td>生产性 C 态判定指标（需 ≤3.6 Å）</td><td>3.6 Å（JACS 标准）</td></tr>
+    <tr><td>COMM domain RMSD</td><td>C 态质量判定（需 &lt;1.5 Å）</td><td>1.5 Å（JACS 标准）</td></tr>
+    <tr><td>z 轴新型构象</td><td>可能指示 D-Trp 特异性的新型 PC* 构象</td><td>定性分析（z &gt;0.05 nm²）</td></tr>
+  </table>
+</div>
+
+<!-- SYNTH-OPEN -->
+<div id="synth-open" class="sec-label"><span class="sec-num">§C</span> 开放问题 — 尚未解决</div>
+<div class="synth-section">
+  <h2>§C · 五个核心开放问题</h2>
+
+  <h3>1. 奖励归一化：F0 + F1 如何合并？</h3>
+  <div class="para-block" style="margin:0;">
+    <div class="para-left" style="padding:16px 20px;">
+      <p>GRPO 需要单一标量奖励。如果同时使用 F0 和 F1 评估，需要合并为一个 reward：</p>
+      <p style="font-family:'IBM Plex Mono',monospace;background:#1e293b;color:#e2e8f0;padding:10px;border-radius:4px;font-size:12px;">r_i = α · r_F0_i + (1-α) · r_F1_i</p>
+      <p>问题：α 应该取什么值？如何随训练进展动态调整 α？</p>
+    </div>
+    <div class="para-right" style="padding:16px 20px;">
+      <div class="warning-box">三因子模型的建议：α 应该随 F0-F1 Spearman 相关性 ρ 调整。如果 ρ &lt; 0.4，令 α → 0（完全用 F1）。如果 ρ &gt; 0.7，可以令 α = 0.3（F0 作为辅助信号加速训练）。先验证 ρ 再决定 α。</div>
+    </div>
+  </div>
+
+  <h3>2. ESR 的具体计算协议</h3>
+  <div class="para-block" style="margin:0;">
+    <div class="para-left" style="padding:16px 20px;">
+      <p>论文给出了 ESR 的定义（扩展 token 占比 / 收缩 token 占比），但没有给出 GenSLM codon-level token space 的具体实现。GenSLM 的输入可能是密码子而不是氨基酸——ESR 的计算是在密码子层面还是氨基酸层面？</p>
+    </div>
+    <div class="para-right" style="padding:16px 20px;">
+      <div class="notable-box">建议：在氨基酸层面计算 ESR（用 GenSLM 输出概率解码到氨基酸），这样与 GRPO 论文的定义保持一致，也更易于与序列多样性指标对比。密码子层面的 ESR 会高估真实序列多样性变化（同义突变会贡献 ESR 但不改变蛋白质序列）。</div>
+    </div>
+  </div>
+
+  <h3>3. 稀疏 GP 的必要性阈值</h3>
+  <div class="para-block" style="margin:0;">
+    <div class="para-left" style="padding:16px 20px;">
+      <p>精确 GP 在 N &gt;~2000 时计算成本过高（O(N³)）。对 TrpB pipeline，F0 评估可能累积数千条记录。何时需要切换到稀疏 GP（SVGP）？诱导点数量 M 应该取多少？</p>
+    </div>
+    <div class="para-right" style="padding:16px 20px;">
+      <div class="notable-box">实践建议：N &lt; 2000 用精确 GP；N = 2000–10000 用稀疏 GP，M = min(500, N/4)；N &gt; 10000 考虑 Deep Kernel Learning（DKL）或神经过程替代。BoTorch 的 ApproximateGP 实现稀疏 GP，接口与精确 GP 相同，切换成本低。</div>
+    </div>
+  </div>
+
+  <h3>4. F0 对 GenSLM 序列的准确性验证</h3>
+  <div class="para-block" style="margin:0;">
+    <div class="para-left" style="padding:16px 20px;">
+      <p>PLACER 在自然 TrpB 序列上训练，可能对 GenSLM 生成的非自然序列（远离自然分布）准确性很差。这是三因子模型"奖励保真度"瓶颈的核心风险。</p>
+    </div>
+    <div class="para-right" style="padding:16px 20px;">
+      <div class="warning-box">必做实验：收集第一批 F1 评估数据（~30 个序列）后，立即计算 PLACER F0 分数与 MetaD F1 分数的 Spearman 相关系数。如果 ρ &lt; 0.4，立即停止使用 F0 作为 RL 奖励；如果 ρ &gt; 0.6，可以在早期训练轮次中使用 F0 加速探索。</div>
+    </div>
+  </div>
+
+  <h3>5. Single-walker MetaD 作为 F1 的噪声水平</h3>
+  <div class="para-block" style="margin:0;">
+    <div class="para-left" style="padding:16px 20px;">
+      <p>当前 Job 41514529 是 single-walker MetaD。Single-walker FEL 存在收敛噪声（同一序列跑两次可能给出 ±2–3 kcal/mol 的壁垒差异）。对 GRPO 来说，奖励噪声会降低三因子的"保真度"因子。多少噪声是可接受的？</p>
+    </div>
+    <div class="para-right" style="padding:16px 20px;">
+      <div class="notable-box">理论分析：GRPO 的组内归一化（A_i = (r-μ)/σ）对奖励噪声有一定容忍度。如果噪声标准差 δ 远小于组内 reward 的真实标准差 σ_true，则 SNR = σ_true / δ &gt; 1，RL 仍然有效。建议：同一序列跑 2 次 single-walker MetaD，比较壁垒估计差异（δ）；估计不同序列间的 reward 差异范围（σ_true）；确保 SNR &gt; 2 才用 single-walker 作为 F1 奖励。</div>
+    </div>
+  </div>
+</div>
+
+<!-- GLOSSARY -->
+<div id="glossary" class="sec-label"><span class="sec-num">§D</span> 术语总表 — GRPO + MFBO</div>
+<div class="synth-section">
+  <h2>§D · 两篇论文关键术语速查表（30项）</h2>
+  <table class="gloss-table">
+    <tr><th style="width:25%">术语 (英文)</th><th style="width:12%">中文</th><th>一句话定义</th><th style="width:20%">在 TrpB Pipeline 中的作用</th></tr>
+
+    <tr><td colspan="4" style="background:#e8e4db;font-weight:700;padding:6px 10px;font-size:11px;">GRPO 相关</td></tr>
+    <tr><td>GRPO (Group Relative Policy Optimization)</td><td>组相对策略优化</td><td>无需价值网络的 RL 算法：用组内均值/方差归一化优势替代价值函数基准</td><td>GenSLM 微调算法选择</td></tr>
+    <tr><td>PPO (Proximal Policy Optimization)</td><td>近端策略优化</td><td>标准 on-policy RL 算法，需要额外训练价值网络；GRPO 的性能基准</td><td>被 GRPO 替代（内存成本高）</td></tr>
+    <tr><td>DPO (Direct Preference Optimization)</td><td>直接偏好优化</td><td>从偏好对（胜者/败者）直接学习的对齐算法；不需要 RL 循环</td><td>不适合标量 MetaD 奖励</td></tr>
+    <tr><td>Group Advantage A_i</td><td>组内相对优势</td><td>A_i = (r_i - mean(r)) / (std(r) + ε)；衡量序列相对于同组的相对质量</td><td>GRPO 梯度的核心驱动量</td></tr>
+    <tr><td>KL Penalty (β·KL)</td><td>KL 散度惩罚</td><td>约束当前策略不偏离参考策略太远；防止 catastrophic forgetting</td><td>保留 GenSLM 的蛋白质结构先验</td></tr>
+    <tr><td>π_θ / π_ref</td><td>当前/参考策略</td><td>π_θ 是正在训练的 PLM；π_ref 是固定的参考点（通常是预训练 PLM）</td><td>GRPO 更新的两个策略</td></tr>
+    <tr><td>Clipped Surrogate Loss</td><td>截断代理损失</td><td>min(A·ρ, A·clip(ρ,1-ε,1+ε))；防止单步策略更新过大</td><td>PPO/GRPO 共享的稳定训练技巧</td></tr>
+    <tr><td>ESR (Expansion-Shrinkage Ratio)</td><td>扩展收缩比</td><td>RL 训练后，序列空间中扩展区域占比 / 收缩区域占比；监控多样性变化</td><td>监控 GenSLM 是否 diversity collapse</td></tr>
+    <tr><td>Task Headroom</td><td>任务提升空间</td><td>任务目标与预训练基线之间的差距；越大则 RL 可能收益越大</td><td>TrpB D-Trp 活性 = 高 headroom（利好）</td></tr>
+    <tr><td>Reward Fidelity</td><td>奖励保真度</td><td>奖励函数对真实适应度的预测准确性；Spearman ρ 量化</td><td>F1 MetaD 高保真；F0 PLACER 需验证</td></tr>
+    <tr><td>Policy Capacity</td><td>策略容量</td><td>PLM 模型大小是否足以学习任务所需的新序列-功能规律</td><td>GenSLM genome-scale = 容量不是瓶颈</td></tr>
+    <tr><td>Three-Factor Model</td><td>三因子模型</td><td>RL 收益 ≈ f(headroom) × g(fidelity) × h(capacity)；乘法性质，单一瓶颈决定上限</td><td>设计 F0/F1/F2 奖励层级的理论依据</td></tr>
+    <tr><td>Multi-Round RL</td><td>多轮 RL 训练</td><td>分轮训练，每轮后更新参考策略 π_ref，解除 KL 约束积累</td><td>TrpB RL campaign 的训练协议</td></tr>
+    <tr><td>Reward Normalization</td><td>奖励归一化</td><td>R(s) = c·(r(s) - baseline)；将奖励居中，使负反馈信号明确</td><td>F1 奖励的前处理步骤</td></tr>
+
+    <tr><td colspan="4" style="background:#e8e4db;font-weight:700;padding:6px 10px;font-size:11px;">MFBO 相关</td></tr>
+    <tr><td>Bayesian Optimization (BO)</td><td>贝叶斯优化</td><td>用概率代理模型指导序列评估的序贯决策框架；适合评估昂贵的函数</td><td>TrpB 候选序列评估的决策框架</td></tr>
+    <tr><td>GP (Gaussian Process)</td><td>高斯过程</td><td>定义在函数空间上的概率分布；给出每个序列的预测均值 μ 和不确定性 σ</td><td>MFBO 的概率代理模型</td></tr>
+    <tr><td>GP Posterior μ(x*), σ(x*)</td><td>GP 后验均值/方差</td><td>μ(x*) = 序列 x* 的预测适应度；σ(x*) = 预测不确定性</td><td>UCB 采集函数的两个输入</td></tr>
+    <tr><td>UCB (Upper Confidence Bound)</td><td>置信上界</td><td>UCB(x) = μ(x) + κ·σ(x)；κ 控制探索-利用平衡</td><td>MFBO 的序列选择策略</td></tr>
+    <tr><td>acqf_MF</td><td>多保真度采集函数</td><td>acqf_MF(x,l) = acqf(x,l) / cost(l)；成本归一化的信息增益</td><td>决定序列在哪层（F0/F1/F2）评估</td></tr>
+    <tr><td>Multi-Fidelity GP Kernel</td><td>多保真度 GP 核</td><td>k((x,l),(x',l')) = k_input × k_fidelity；允许跨保真度信息传递</td><td>F0 数据辅助 F1 预测的数学机制</td></tr>
+    <tr><td>ESM-1v Embedding</td><td>ESM-1v 嵌入</td><td>由 ESM-1v 蛋白质语言模型生成的序列向量表示；语义相似序列距离近</td><td>GP kernel 的输入特征空间</td></tr>
+    <tr><td>Cost Model</td><td>成本模型</td><td>每个保真度层级的计算/实验成本估计；cost(F0)≪cost(F1)≪cost(F2)</td><td>acqf_MF 公式的分母</td></tr>
+    <tr><td>BO-EVO (Bayesian Optimization + Evolutionary Algorithm)</td><td>贝叶斯优化+进化算法</td><td>GP-UCB 指导单点突变搜索；候选生成限制在进化可达的序列邻域</td><td>GenSLM 替代进化算法的前身框架</td></tr>
+    <tr><td>Fidelity Correlation ρ(F0,F1)</td><td>保真度相关性</td><td>F0 和 F1 适应度评分的 Spearman 相关系数；决定多保真度信息传递的效率</td><td>MFBO 启动前的必做验证指标</td></tr>
+    <tr><td>Sparse GP (SVGP)</td><td>稀疏高斯过程</td><td>用 M 个诱导点近似 N 个数据点，将 O(N³) 降到 O(M²N)</td><td>F0 评估数据 &gt;2000 时的计算扩展方案</td></tr>
+    <tr><td>Acquisition Batch (qUCB/qEI)</td><td>批量采集函数</td><td>一次选 B 个候选序列的批量 BO；考虑 B 个序列之间的相关性</td><td>每轮选 B=30 个序列送去 F1 评估</td></tr>
+    <tr><td>F0/F1/F2 Tiers</td><td>三层评估体系</td><td>F0=快速序列评分(PLACER)，F1=物理仿真(MetaD+ΔΔG)，F2=量化学(EVB/QM-MM)</td><td>整个 pipeline 的评估架构</td></tr>
+    <tr><td>4.8× Improvement</td><td>4.8 倍改进</td><td>RhlA 酶经 4 轮 BO-EVO（1536 次评估，&lt;1% 序列空间）达到的底物特异性改进因子</td><td>MFBO 框架的实验效率基准</td></tr>
+    <tr><td>GenSLM</td><td>GenSLM 序列模型</td><td>Ramanathan Lab 的 genome-scale 蛋白质语言模型；用于 TrpB 变体序列生成</td><td>GRPO+MFBO 系统的序列生成器</td></tr>
+    <tr><td>Funnel Strategy</td><td>漏斗策略</td><td>F0大规模初筛 → F1精选验证 → F2最终确认；每层 10× 收缩</td><td>TrpB pipeline 的整体设计原则</td></tr>
+  </table>
+</div>
+
+</main>
+</div>
+
+<script>
+// Intersection observer for active nav links
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, {rootMargin: '-10% 0px -80% 0px'});
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

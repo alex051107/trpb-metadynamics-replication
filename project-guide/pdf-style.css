@@ -1,0 +1,219 @@
+/* ===== 全局页面设置 ===== */
+@page {
+  size: A4;
+  margin: 2cm 2.2cm 2cm 2.2cm;
+
+  @bottom-center {
+    content: counter(page);
+    font-size: 9pt;
+    color: #888;
+    font-family: "Helvetica Neue", "PingFang SC", sans-serif;
+  }
+}
+
+/* ===== 基础排版 ===== */
+body {
+  font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.75;
+  color: #1a1a2e;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ===== 标题层级 ===== */
+h1 {
+  font-size: 22pt;
+  font-weight: 700;
+  color: #0d1b2a;
+  border-bottom: 3px solid #1b4965;
+  padding-bottom: 10px;
+  margin-top: 1.8em;
+  margin-bottom: 0.8em;
+  page-break-after: avoid;
+}
+
+h2 {
+  font-size: 16pt;
+  font-weight: 700;
+  color: #1b4965;
+  border-bottom: 1.5px solid #bee9e8;
+  padding-bottom: 6px;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  page-break-after: avoid;
+}
+
+h3 {
+  font-size: 13pt;
+  font-weight: 600;
+  color: #274c77;
+  margin-top: 1.3em;
+  margin-bottom: 0.5em;
+  page-break-after: avoid;
+}
+
+h4 {
+  font-size: 11.5pt;
+  font-weight: 600;
+  color: #3d5a80;
+  margin-top: 1.1em;
+  margin-bottom: 0.4em;
+  page-break-after: avoid;
+}
+
+/* ===== 段落与列表 ===== */
+p {
+  margin: 0.5em 0;
+  text-align: justify;
+  orphans: 3;
+  widows: 3;
+}
+
+ul, ol {
+  padding-left: 1.8em;
+  margin: 0.4em 0;
+}
+
+li {
+  margin: 0.2em 0;
+}
+
+li > p {
+  margin: 0.15em 0;
+}
+
+/* ===== 引用块 (> blockquote) ===== */
+blockquote {
+  border-left: 4px solid #62b6cb;
+  background: #f0f7fa;
+  padding: 0.6em 1em;
+  margin: 0.8em 0;
+  border-radius: 0 6px 6px 0;
+  color: #2c3e50;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+
+blockquote p {
+  margin: 0.3em 0;
+}
+
+blockquote strong {
+  color: #1b4965;
+}
+
+/* ===== 表格 ===== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  font-size: 9.5pt;
+  page-break-inside: avoid;
+}
+
+thead {
+  background: linear-gradient(135deg, #1b4965, #274c77);
+}
+
+thead th {
+  color: #ffffff;
+  font-weight: 600;
+  padding: 8px 10px;
+  text-align: left;
+  border: 1px solid #1b4965;
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 6px 10px;
+  border: 1px solid #d6e4ee;
+  vertical-align: top;
+}
+
+tbody tr:nth-child(even) {
+  background: #f4f8fb;
+}
+
+tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+tbody tr:hover {
+  background: #e8f1f8;
+}
+
+/* ===== 代码 ===== */
+code {
+  font-family: "SF Mono", "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+  font-size: 9pt;
+  background: #edf2f7;
+  color: #c7254e;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid #dce4ec;
+}
+
+pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 14px 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 8.5pt;
+  line-height: 1.55;
+  margin: 0.7em 0;
+  page-break-inside: avoid;
+  border: 1px solid #334155;
+}
+
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* ===== 水平线 ===== */
+hr {
+  border: none;
+  border-top: 2px solid #bee9e8;
+  margin: 1.5em 0;
+}
+
+/* ===== 强调与链接 ===== */
+strong {
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+em {
+  font-style: italic;
+  color: #4a5568;
+}
+
+a {
+  color: #2b6cb0;
+  text-decoration: none;
+}
+
+/* ===== 分页控制 ===== */
+h1 {
+  page-break-before: always;
+}
+
+h1:first-of-type {
+  page-break-before: avoid;
+}
+
+table, pre, blockquote {
+  page-break-inside: avoid;
+}
+
+/* ===== ASCII-art 流程图 in pre ===== */
+pre code {
+  white-space: pre;
+  word-wrap: normal;
+}

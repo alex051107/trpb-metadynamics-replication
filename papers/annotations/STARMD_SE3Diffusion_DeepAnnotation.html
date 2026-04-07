@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STAR-MD · SE(3) Diffusion · Deep Annotation | Zhenpeng · aNima Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1a2744; --blue:#2563EB; --teal:#0d9488;
+  --paper:#faf8f3; --paper2:#f3f0e8; --border:#d4c9a8;
+  --text:#2d2d2d; --gray:#6b7280; --lg:#f3f4f6;
+  --hl-thesis:#fef3c7; --hl-thesis-b:#d97706;
+  --hl-concept:#fee2e2; --hl-concept-b:#dc2626;
+  --hl-evidence:#dbeafe; --hl-evidence-b:#2563eb;
+  --hl-counter:#dcfce7; --hl-counter-b:#16a34a;
+  --hl-method:#f3e8ff; --hl-method-b:#7c3aed;
+  --sidebar-w:230px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--text);font-size:15px;line-height:1.7;}
+#topnav{position:sticky;top:0;z-index:100;background:var(--navy);color:white;padding:0 20px;display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap;}
+#topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:15px;white-space:nowrap;}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.leg{padding:2px 10px;border-radius:12px;font-size:11.5px;font-weight:600;cursor:default;}
+.leg-y{background:var(--hl-thesis);color:#92400e;}
+.leg-r{background:var(--hl-concept);color:#991b1b;}
+.leg-b{background:var(--hl-evidence);color:#1e40af;}
+.leg-g{background:var(--hl-counter);color:#166534;}
+.leg-p{background:var(--hl-method);color:#5b21b6;}
+#layout{display:flex;min-height:calc(100vh - 52px);}
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:#f0ede4;border-right:1px solid var(--border);padding:16px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+#sidebar .sec-head{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;padding:12px 16px 4px;}
+#sidebar .nav-link{display:block;padding:5px 16px;font-size:12.5px;color:#374151;text-decoration:none;border-left:3px solid transparent;transition:.15s;}
+#sidebar .nav-link:hover{background:#e8e4db;color:var(--navy);}
+#sidebar .nav-link.active{border-left-color:var(--blue);color:var(--blue);background:#e8eef8;}
+#sidebar .nav-link.sub{padding-left:26px;font-size:12px;color:var(--gray);}
+main{flex:1;padding:0 0 60px;overflow-x:hidden;}
+.meta-card{background:var(--navy);color:white;padding:28px 36px;margin:0;}
+.meta-card h1{font-family:'Lora',serif;font-size:20px;line-height:1.4;margin-bottom:12px;}
+.meta-card .byline{font-size:13px;opacity:.8;margin-bottom:6px;}
+.meta-card .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.meta-card .tag{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;font-size:11.5px;}
+.meta-card .doi-link{color:#93c5fd;font-size:13px;text-decoration:none;}
+.meta-card .doi-link:hover{text-decoration:underline;}
+.sec-label{background:var(--paper2);border-top:3px solid var(--blue);padding:10px 36px;font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px;}
+.sec-label .sec-num{background:var(--blue);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;}
+.para-block{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5dfd0;gap:0;}
+.para-block:hover{background:#f7f4ed;}
+.para-left{padding:22px 28px;border-right:1px solid #e5dfd0;font-size:14.5px;line-height:1.85;}
+.para-right{padding:18px 22px;background:#f7f5ef;font-size:13px;line-height:1.65;}
+.para-id{display:inline-block;background:var(--navy);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;font-weight:700;margin-bottom:10px;}
+.hl-y{background:var(--hl-thesis);border-bottom:2px solid var(--hl-thesis-b);padding:0 2px;border-radius:2px;}
+.hl-r{background:var(--hl-concept);border-bottom:2px solid var(--hl-concept-b);padding:0 2px;border-radius:2px;}
+.hl-b{background:var(--hl-evidence);border-bottom:2px solid var(--hl-evidence-b);padding:0 2px;border-radius:2px;}
+.hl-g{background:var(--hl-counter);border-bottom:2px solid var(--hl-counter-b);padding:0 2px;border-radius:2px;}
+.hl-p{background:var(--hl-method);border-bottom:2px solid var(--hl-method-b);padding:0 2px;border-radius:2px;}
+.term-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;}
+.term-table th{background:#e8e4db;padding:4px 8px;text-align:left;font-weight:600;font-size:11px;}
+.term-table td{padding:4px 8px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.term-table tr:last-child td{border-bottom:none;}
+.notable-box{background:#fff7ed;border-left:3px solid #f59e0b;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.project-box{background:#eff6ff;border-left:3px solid #2563eb;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.warning-box{background:#fef2f2;border-left:3px solid #dc2626;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.role-badge{display:inline-block;background:#e0e7ff;color:#3730a3;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:6px;}
+.synth-section{padding:28px 36px;}
+.synth-section h2{font-family:'Lora',serif;font-size:18px;color:var(--navy);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+.synth-section h3{font-size:14px;font-weight:700;color:var(--blue);margin:16px 0 8px;}
+.logic-chain{display:flex;flex-wrap:wrap;gap:0;margin:16px 0;align-items:center;}
+.lc-node{background:var(--navy);color:white;padding:8px 14px;font-size:12px;border-radius:6px;text-align:center;min-width:120px;}
+.lc-arrow{display:flex;align-items:center;padding:0 6px;color:var(--gray);font-size:18px;}
+.proj-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.proj-table th{background:var(--navy);color:white;padding:8px 12px;text-align:left;font-size:12px;}
+.proj-table td{padding:8px 12px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.proj-table tr:nth-child(even) td{background:#f7f5ef;}
+.gloss-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.gloss-table th{background:#e8e4db;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;}
+.gloss-table td{padding:6px 10px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.gloss-table tr:last-child td{border-bottom:none;}
+.data-box{background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:12px;font-family:'IBM Plex Mono',monospace;}
+.data-box .label{font-weight:700;color:#15803d;font-size:11px;text-transform:uppercase;margin-bottom:4px;}
+</style>
+</head>
+<body>
+
+<div id="topnav">
+  <div class="logo">STAR-MD · arXiv 2602.02128 · SE(3) Diffusion · Protein Dynamics</div>
+  <div class="legend">
+    <span class="leg leg-y">黄=核心论点</span>
+    <span class="leg leg-r">红=技术概念</span>
+    <span class="leg leg-b">蓝=实验证据</span>
+    <span class="leg leg-g">绿=局限/对照</span>
+    <span class="leg leg-p">紫=方法/流程</span>
+  </div>
+</div>
+
+<div id="layout">
+<div id="sidebar">
+  <div class="sec-head">元信息</div>
+  <a class="nav-link" href="#meta">论文信息</a>
+  <div class="sec-head">摘要</div>
+  <a class="nav-link" href="#abs">Abstract</a>
+  <div class="sec-head">问题背景</div>
+  <a class="nav-link sub" href="#p1">P1 时间尺度困境</a>
+  <a class="nav-link sub" href="#p2">P2 先前方法的缺陷</a>
+  <div class="sec-head">方法架构</div>
+  <a class="nav-link sub" href="#p3">P3 SE(3)等变扩散</a>
+  <a class="nav-link sub" href="#p4">P4 因果扩散Transformer</a>
+  <a class="nav-link sub" href="#p5">P5 自回归展开与噪声注入</a>
+  <a class="nav-link sub" href="#p6">P6 训练数据与ATLAS</a>
+  <div class="sec-head">实验结果</div>
+  <a class="nav-link sub" href="#p7">P7 ATLAS基准测试 100ns</a>
+  <a class="nav-link sub" href="#p8">P8 长时程外推 240ns/1μs</a>
+  <a class="nav-link sub" href="#p9">P9 消融实验与设计验证</a>
+  <div class="sec-head">局限性</div>
+  <a class="nav-link sub" href="#p10">P10 已知局限与边界</a>
+  <div class="sec-head">综合分析</div>
+  <a class="nav-link" href="#skeleton">§A 论证骨架</a>
+  <a class="nav-link" href="#projconn">§B 与TrpB项目对照</a>
+  <a class="nav-link" href="#glossary">§C 术语总表</a>
+</div>
+
+<main>
+
+<!-- META -->
+<div id="meta" class="meta-card">
+  <h1>STAR-MD: Scalable Spatio-Temporal SE(3) Diffusion for Long-Horizon Protein Dynamics</h1>
+  <div class="byline">Nima Shoghi, Yuxuan Liu, Yuning Shen, Rob Brekelmans, Pan Li, Quanquan Gu · ICLR 2026 (accepted)</div>
+  <div class="byline">
+    arXiv: 2602.02128 · February 2026 ·
+    <a class="doi-link" href="https://arxiv.org/abs/2602.02128" target="_blank">arxiv.org/abs/2602.02128</a>
+  </div>
+  <div class="byline" style="margin-top:8px;font-size:12px;opacity:.65;">
+    本标注基于 arXiv 全文及结构化阅读笔记（SE3_Diffusion_DeepTDA_ReadingNotes.md）综合整理。部分段落为逻辑分组而非原文编号。请以原文为准核实具体数据。
+  </div>
+  <div class="tags">
+    <span class="tag">SE(3) Equivariance</span>
+    <span class="tag">Diffusion Model</span>
+    <span class="tag">Causal Transformer</span>
+    <span class="tag">ATLAS Benchmark</span>
+    <span class="tag">Long-Horizon MD</span>
+    <span class="tag">IGSO₃</span>
+    <span class="tag">Autoregressive Rollout</span>
+    <span class="tag">ConfRover Comparison</span>
+    <span class="tag">1μs Extrapolation</span>
+  </div>
+</div>
+
+<!-- ABSTRACT -->
+<div id="abs" class="sec-label"><span class="sec-num">ABS</span> Abstract</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">ABS</span>
+    <p>We present <span class="hl-y">STAR-MD (Scalable Spatio-Temporal SE(3) Diffusion for Long-Horizon Protein Dynamics)</span>, a generative model designed to produce physically realistic all-atom protein trajectories at timescales previously inaccessible to most MD-based generative approaches. Existing generative methods either <span class="hl-g">fail catastrophically when extrapolated beyond their training horizon</span> or suffer from <span class="hl-g">O(N³L) memory scaling</span> that makes them impractical for longer sequences or trajectories. STAR-MD addresses both limitations through two innovations: (1) a <span class="hl-r">SE(3)-equivariant diffusion process</span> that separately handles translational (standard Gaussian) and rotational (IGSO₃) degrees of freedom, preserving physical symmetry throughout generation; and (2) a <span class="hl-r">Causal Diffusion Transformer</span> with joint spatio-temporal attention that achieves <span class="hl-y">O(N²L²) memory complexity</span> — delivering a <span class="hl-b">196× reduction in KV-cache memory vs. ConfRover</span> at N=200, L=32. On the ATLAS benchmark (100 ns), STAR-MD achieves <span class="hl-b">0.54 conformational recall</span> and <span class="hl-b">86.81% combined structural validity</span>. Critically, on long-horizon extrapolation to <span class="hl-b">1 μs</span>, recall improves to <span class="hl-b">0.61</span>, with validity maintained at 79.93% — whereas all prior models degrade catastrophically at this scale.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">ABS</div>
+    <p><strong>段落功能：</strong>概括双核心贡献——SE(3)等变扩散（物理正确性）+ 因果扩散Transformer（效率）——并用数字支撑：196× 内存节省、0.54/0.61 recall、86.81%结构有效性。</p>
+    <div class="role-badge">论点宣言</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>SE(3) equivariance</td><td>平移+旋转等变性：对蛋白质做任意刚体变换，模型输出以同样方式变换，不改变物理预测</td></tr>
+      <tr><td>IGSO₃</td><td>Isotropic Gaussian on SO(3)：旋转自由度的扩散分布，相当于旋转空间中的高斯噪声</td></tr>
+      <tr><td>Causal Diffusion Transformer</td><td>时间维度带因果掩码的Transformer：每帧只能关注之前的帧，使自回归生成成为可能</td></tr>
+      <tr><td>Conformational recall</td><td>STAR-MD生成的轨迹中，覆盖参考MD轨迹构象空间的比例（越高越好）</td></tr>
+      <tr><td>Combined structural validity</td><td>生成轨迹中维持合理蛋白质结构（键长、骨架几何等）的帧比例</td></tr>
+    </table>
+    <div class="notable-box"><strong>关键数字：</strong>196× 内存减少是工程突破，0.54 recall 是科学进展。两者同等重要：前者使长时程生成在实际 GPU 上可行，后者证明生成轨迹物理上有意义。</div>
+    <div class="project-box"><strong>与你的项目：</strong>Amin（Ramanathan Lab）正在建立 STAR-MD vs MetaDynamics 的基准测试。这篇论文是 STAR-MD 方法的原始来源。你需要理解它的能力边界，才能设计有意义的对比实验。</div>
+  </div>
+</div>
+
+<!-- PROBLEM BACKGROUND -->
+<div class="sec-label"><span class="sec-num">§1</span> 问题背景 — The Timescale Challenge</div>
+
+<div id="p1" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1</span>
+    <p>Molecular dynamics simulation is the gold standard for studying protein conformational dynamics, but it faces a fundamental computational barrier: <span class="hl-y">the timescales relevant to most biologically important processes — protein folding, allosteric conformational changes, ligand binding, and catalytic cycle transitions — span microseconds to milliseconds, while current MD can economically access only nanoseconds to microseconds per simulation</span>. This "timescale gap" is not a mere engineering problem solvable by faster hardware; it reflects a fundamental gap between the characteristic relaxation times of biological processes and the step size of atomistic integrators (typically 2 fs). For a protein like TrpB, the COMM domain O→C conformational transition occurs on the microsecond-to-millisecond timescale. Even with GPU-accelerated MD, <span class="hl-g">500 ns of unbiased simulation is insufficient to sample a single O→C transition</span> — a fact directly demonstrated in JACS 2019 (Osuna lab). This motivates enhanced sampling approaches, of which two categories have emerged: physics-based (MetaDynamics, OPES, replica exchange) and machine learning-based (generative trajectory models).</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1</div>
+    <p><strong>段落功能：</strong>建立研究背景——时间尺度鸿沟是本文存在的根本原因。强调这不是工程问题，而是物理上的采样挑战。</p>
+    <div class="role-badge">背景建立</div>
+    <table class="term-table">
+      <tr><th>概念</th><th>解释</th></tr>
+      <tr><td>Timescale gap</td><td>生物过程特征时间（μs–ms）vs MD可及时间（ns–μs）之间的鸿沟</td></tr>
+      <tr><td>MD integrator step size</td><td>2 fs 时间步长；每步必须积分所有原子的牛顿方程，计算量巨大</td></tr>
+      <tr><td>Enhanced sampling</td><td>通过偏置势（MetaDynamics）或复制（replica exchange）加速采样的MD改进策略</td></tr>
+    </table>
+    <div class="notable-box"><strong>两类解决方案：</strong>物理增强采样（如 MetaDynamics）vs 机器学习生成模型（如 STAR-MD）。前者对物理正确，能给出自由能；后者快速，能到达更长时间尺度。两者并不互相替代，而是互补。</div>
+    <div class="warning-box"><strong>关键事实（你已经亲身经历）：</strong>你正在跑的 500 ns conventional MD（Job 40806029）确实没有采样到 O→C 转变——这就是为什么你还需要 MetaDynamics。STAR-MD 宣称能解决这个问题，但方式完全不同（无物理偏置，纯生成）。</div>
+  </div>
+</div>
+
+<div id="p2" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2</span>
+    <p>Prior generative models for protein dynamics have attempted to bridge this gap with varying degrees of success. <span class="hl-g">FrameDiff</span> demonstrated SE(3)-equivariant diffusion for protein structure generation but was designed for static structures, not dynamic trajectories. <span class="hl-g">MDGen</span> applied diffusion to MD trajectory generation but suffered from poor structural validity at long timescales. <span class="hl-g">ConfRover</span> — perhaps the closest precursor to STAR-MD — achieved competitive performance at 100 ns but used a <span class="hl-g">Pairformer-based architecture with O(N³L + N²L²) memory complexity</span>, making it computationally prohibitive for proteins with N &gt; 300 residues or trajectories with L &gt; 64 frames. Its most critical failure: <span class="hl-g">ConfRover fails catastrophically when rolled out beyond its training horizon (~100 ns)</span>, generating structurally invalid trajectories at 240 ns and 1 μs. <span class="hl-g">AlphaFold</span>, while capable of generating diverse protein conformations, achieves <span class="hl-g">near-zero combined structural validity (0.47%)</span> when evaluated as a trajectory generator — it can produce multiple static structures, but these are not dynamically connected trajectories and lack temporal coherence.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2</div>
+    <p><strong>段落功能：</strong>对比先前方法，明确各自缺陷，建立 STAR-MD 要解决的具体技术问题。</p>
+    <div class="role-badge">文献对比 / 研究空白</div>
+    <table class="term-table">
+      <tr><th>模型</th><th>核心问题</th></tr>
+      <tr><td>FrameDiff</td><td>设计用于静态结构生成，非轨迹生成</td></tr>
+      <tr><td>MDGen</td><td>长时间尺度结构有效性差（~0%）</td></tr>
+      <tr><td>ConfRover</td><td>O(N³L + N²L²) 内存，外推时结构崩塌</td></tr>
+      <tr><td>AlphaFold</td><td>0.47% 结构有效性——不是轨迹生成器</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">ConfRover 内存（N=200, L=32，每层 attention）</div>
+      ConfRover Pairformer: ~1.3 GB<br>
+      STAR-MD Causal DiT:   ~6.6 MB<br>
+      比值: 196× reduction
+    </div>
+    <div class="notable-box"><strong>AlphaFold 的 0.47% 有效性是什么意思？</strong>AlphaFold 可以生成多种构象（多重 MSA 采样），但这些结构之间没有动力学联系——把它们串成轨迹，得到的"运动"是物理上不真实的跳变，而非真实的动力学过渡。STAR-MD 生成的是时间上连续、物理上连贯的轨迹。</div>
+    <div class="project-box"><strong>与你的项目：</strong>如果 Amin 用 AlphaFold 做构象多样性生成与 STAR-MD 比较，需要注意：AlphaFold 生成的是独立构象样本，不是轨迹。两者不能直接比较 recall 等轨迹质量指标，需要用不同的评估框架。</div>
+  </div>
+</div>
+
+<!-- METHODS -->
+<div class="sec-label"><span class="sec-num">§2</span> 方法架构 — SE(3) Diffusion + Causal Transformer</div>
+
+<div id="p3" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P3</span>
+    <p>The foundation of STAR-MD is a <span class="hl-r">SE(3)-equivariant diffusion process</span> that separately models translations and rotations. For a protein with N residues, the state at each frame t is represented as a set of N rigid body frames {T₁, ..., T_N}, where each Tᵢ ∈ SE(3) encodes both the position and orientation of residue i. The forward diffusion process adds noise independently to the translational and rotational components:</p>
+    <ul style="margin:10px 0 10px 20px;">
+      <li><span class="hl-p">Translations: standard Gaussian diffusion</span> — x_τ = √(ᾱ_τ)x₀ + √(1−ᾱ_τ)ε, ε ~ N(0, I). This is identical to DDPM-style diffusion in Euclidean space.</li>
+      <li><span class="hl-p">Rotations: IGSO₃ diffusion</span> — R_τ = Exp(ω_τ)R₀, where ω_τ is sampled from an isotropic Gaussian on the tangent space of SO(3). This ensures that rotational noise respects the non-Euclidean geometry of the rotation group.</li>
+    </ul>
+    <p><span class="hl-y">The key physical requirement is that the generative model must be equivariant: rotating the entire protein in 3D space should produce a trajectory that is simply the rotated version of the original</span>. By building equivariance directly into the diffusion noise process (rather than imposing it as a post-processing constraint), STAR-MD guarantees this property for any generated trajectory.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P3</div>
+    <p><strong>段落功能：</strong>解释 SE(3) 等变扩散的数学基础——为什么平移和旋转需要分开处理，以及 IGSO₃ 的物理必要性。</p>
+    <div class="role-badge">方法基础</div>
+    <table class="term-table">
+      <tr><th>符号</th><th>含义</th></tr>
+      <tr><td>SE(3)</td><td>三维特殊欧氏群 = 平移（R³）× 旋转（SO(3)）的半直积；描述刚体运动的对称群</td></tr>
+      <tr><td>SO(3)</td><td>三维特殊正交群 = 所有旋转矩阵 R 的集合（det R = +1）</td></tr>
+      <tr><td>IGSO₃</td><td>Isotropic Gaussian on SO(3)：旋转群上的各向同性高斯分布；旋转扩散噪声的概率分布</td></tr>
+      <tr><td>Equivariance</td><td>f(g·x) = g·f(x)：先变换输入再运行模型 = 先运行模型再变换输出</td></tr>
+      <tr><td>Rigid body frame Tᵢ</td><td>每个残基的空间状态 = 位置（3D 坐标）+ 方向（旋转矩阵），合称 SE(3) 元素</td></tr>
+    </table>
+    <div class="notable-box"><strong>为什么旋转不能用普通高斯噪声？</strong>SO(3) 不是欧氏空间——你不能简单地对旋转矩阵加高斯噪声（结果不再是旋转矩阵）。IGSO₃ 在 SO(3) 的黎曼流形上定义噪声，保证每一步扩散后仍然得到合法的旋转。这是 SE(3) 扩散模型的核心数学挑战。</div>
+    <div class="project-box"><strong>与你的项目：</strong>你的 MetaDynamics 使用笛卡尔坐标 + FUNCPATHMSD，不需要显式处理旋转等变性（PLUMED 在 MSD 计算中自动对齐结构）。STAR-MD 的 SE(3) 框架更接近蛋白质物理的本质表示，但计算上也更复杂。</div>
+  </div>
+</div>
+
+<div id="p4" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P4</span>
+    <p>The denoising network in STAR-MD is a <span class="hl-r">Causal Diffusion Transformer (Causal DiT)</span> that jointly models spatial interactions between residues and temporal dependencies between frames. Given a noisy trajectory {x̃_{1:L}}, the network predicts the denoised trajectory through two types of attention:</p>
+    <ul style="margin:10px 0 10px 20px;">
+      <li><span class="hl-p">Spatial attention:</span> Standard multi-head self-attention over N residues at each frame. Complexity per frame: O(N²). This captures residue–residue interactions within each snapshot.</li>
+      <li><span class="hl-p">Temporal attention with causal masking:</span> Each residue attends to its own representations from all previous frames, using a lower-triangular attention mask. Complexity: O(L²) per residue, or O(N·L²) total. This captures temporal correlations in protein dynamics.</li>
+    </ul>
+    <p>Combined complexity: <span class="hl-y">O(N²L²)</span>. Compared to ConfRover's Pairformer (O(N³L + N²L²)), STAR-MD eliminates the cubic N³ term — the dominant cost for large proteins. At N=200, L=32, <span class="hl-b">ConfRover requires ~1.3 GB per attention layer while STAR-MD requires ~6.6 MB, a 196× reduction</span>. The causal masking also enables <span class="hl-y">autoregressive generation</span>: once trained, the network can generate trajectories of arbitrary length by rolling out frame-by-frame, each time conditioning on all previously generated frames.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P4</div>
+    <p><strong>段落功能：</strong>详细说明因果扩散 Transformer 的架构——双重 attention（空间 + 时间因果）如何实现 O(N²L²) 复杂度，以及因果掩码如何支持自回归展开。</p>
+    <div class="role-badge">核心架构</div>
+    <table class="term-table">
+      <tr><th>组件</th><th>复杂度</th><th>捕捉的信息</th></tr>
+      <tr><td>Spatial attention（每帧）</td><td>O(N²)</td><td>同一时刻残基间相互作用</td></tr>
+      <tr><td>Temporal causal attention</td><td>O(L²) per residue</td><td>同一残基的时间演化历史</td></tr>
+      <tr><td>总复杂度</td><td>O(N²L²)</td><td>时空联合建模</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">架构对比（N=200, L=32，每层 KV cache）</div>
+      ConfRover (Pairformer): O(N³L + N²L²) → ~1.3 GB<br>
+      STAR-MD (Causal DiT):  O(N²L²)        → ~6.6 MB<br>
+      Reduction: 196×
+    </div>
+    <div class="notable-box"><strong>因果掩码的双重作用：</strong>① 训练时：使模型学习给定前缀轨迹预测下一帧的条件分布；② 推理时：支持无限长轨迹的自回归生成——只需不断追加新帧，模型始终只看过去。这是 ConfRover 不具备的关键特性。</div>
+    <div class="project-box"><strong>与你的项目：</strong>如果将来你想在 TrpB 上运行 STAR-MD，需要确保 N（序列长度）≤ 384（训练时的截断限制），并且从 5DVZ 的 Open-state 起始结构开始。Causal DiT 会自回归生成后续帧，不需要你提供中间结构。</div>
+  </div>
+</div>
+
+<div id="p5" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P5</span>
+    <p>STAR-MD generates long trajectories via <span class="hl-p">autoregressive rollout with contextual noise injection</span>. At inference time, the model generates trajectories in blocks of L frames, where each block is conditioned on the previous block (or the initial structure for the first block). The process is:</p>
+    <ol style="margin:10px 0 10px 20px;">
+      <li>Start from a known protein structure (e.g., a PDB crystal structure or AlphaFold model).</li>
+      <li>Generate the first L frames by running the full diffusion reverse process (T denoising steps), conditioned on the starting structure.</li>
+      <li>Generate the next L frames, conditioning on all previously generated frames using the causal attention mechanism.</li>
+      <li>Repeat indefinitely to produce trajectories of arbitrary length.</li>
+    </ol>
+    <p>A critical training detail is <span class="hl-r">contextual noise injection</span>: during training, diffusion noise τ ~ U[0, 0.1] is applied to the historical context (previously generated frames). This prevents the model from overfitting to exact atomic positions in the conditioning window and forces it to learn the <span class="hl-y">distribution of trajectories rather than memorizing specific atomic trajectories</span>. Without this regularization, autoregressive rollout accumulates errors rapidly and the trajectory diverges.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P5</div>
+    <p><strong>段落功能：</strong>解释推理时的自回归展开流程，以及训练时使用的关键技巧——上下文噪声注入，这是防止误差累积的核心设计。</p>
+    <div class="role-badge">推理算法 / 训练细节</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Autoregressive rollout</td><td>逐帧（或逐块）自回归生成：每块新帧都条件依赖所有已生成帧</td></tr>
+      <tr><td>Contextual noise injection</td><td>训练时对历史上下文帧加小量噪声（τ~U[0,0.1]），防止过拟合到精确坐标</td></tr>
+      <tr><td>Error accumulation</td><td>自回归模型在推理时，每步的小误差累积，最终导致轨迹偏离真实分布</td></tr>
+    </table>
+    <div class="notable-box"><strong>噪声注入的直觉：</strong>如果训练时总给模型看"完美的"历史帧，推理时遇到略有误差的已生成帧就会失败（分布偏移）。加上小噪声让模型学会在"不完美条件"下工作——类似于 Dropout 的作用，但在数据层面而非激活层面。</div>
+    <div class="warning-box"><strong>局限：长时程时误差仍然累积。</strong>虽然上下文噪声注入延缓了误差累积，但 79.93% 的 1μs 有效性（vs 86.81% at 100ns）说明即使 STAR-MD，在更长时间尺度下结构有效性也会下降。这是所有自回归模型的固有限制。</div>
+    <div class="project-box"><strong>与你的项目：</strong>STAR-MD 的生成轨迹在 1μs 仍有 20% 的"无效帧"。在对比实验中，你需要先过滤 STAR-MD 的无效构象（clash 检查、键长检查），然后再投影到你的路径 CV 做比较，否则无效构象会污染分析结果。</div>
+  </div>
+</div>
+
+<div id="p6" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P6</span>
+    <p>STAR-MD is trained exclusively on the <span class="hl-r">ATLAS dataset</span>, a comprehensive collection of all-atom MD trajectories assembled specifically for benchmarking generative protein dynamics models. ATLAS contains <span class="hl-b">1,390 proteins, each simulated for 100 ns</span> using a consistent MD protocol (CHARMM36m force field, TIP3P water, 300 K). Key dataset statistics:</p>
+    <ul style="margin:10px 0 10px 20px;">
+      <li><span class="hl-p">Training split: 1,080 proteins</span>, filtered to exclude sequences longer than 384 residues (hardware memory constraint).</li>
+      <li><span class="hl-p">Test split: 82 proteins</span>, held out on a time-based split to prevent data leakage (newer proteins are in the test set).</li>
+      <li><span class="hl-p">Extended evaluation set:</span> Custom 250 ns and 1 μs MD simulations run by the STAR-MD authors for long-horizon evaluation.</li>
+    </ul>
+    <p>Importantly, <span class="hl-g">ATLAS covers predominantly globular, soluble, well-characterized proteins — mostly from well-studied organisms at standard conditions (300 K)</span>. This has significant implications for out-of-distribution generalization: proteins that differ from this distribution (thermophilic enzymes, membrane proteins, multimeric complexes, disordered proteins) are likely to be out-of-distribution for STAR-MD.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P6</div>
+    <p><strong>段落功能：</strong>描述训练数据——ATLAS 数据集的构成、分割策略，以及关键的分布偏差（球状可溶性蛋白 @ 300K）。</p>
+    <div class="role-badge">训练数据</div>
+    <table class="term-table">
+      <tr><th>ATLAS 参数</th><th>值</th></tr>
+      <tr><td>总蛋白质数</td><td>1,390</td></tr>
+      <tr><td>每蛋白质 MD 长度</td><td>100 ns</td></tr>
+      <tr><td>训练集</td><td>1,080 蛋白（&lt;384 残基）</td></tr>
+      <tr><td>测试集</td><td>82 蛋白（时间切分）</td></tr>
+      <tr><td>力场</td><td>CHARMM36m + TIP3P</td></tr>
+      <tr><td>温度</td><td>300 K（标准条件）</td></tr>
+    </table>
+    <div class="warning-box"><strong>TrpB 不在 ATLAS 中！</strong>PfTrpB（来自热超嗜热古菌 Pyrococcus furiosus，最适温度 100°C）在多个维度上偏离 ATLAS 分布：① 高温适应性（350K vs 300K）；② 热超嗜热菌蛋白质的力场与 CHARMM36m 行为可能不同；③ ATLAS 不含双功能酶复合体成员。因此 STAR-MD 对 TrpB 的预测是高度 out-of-distribution 的。</div>
+    <div class="project-box"><strong>与你的项目（关键 OOD 风险）：</strong>在设计 Amin benchmark 时，必须明确标注 TrpB 是 STAR-MD 的 OOD 蛋白质。这不是说 STAR-MD 一定失败，而是说如果失败，OOD 是首要假说。你的 MetaDynamics 没有这个问题——物理增强采样方法不依赖训练分布。</div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="sec-label"><span class="sec-num">§3</span> 实验结果 — ATLAS Benchmark + Long-Horizon</div>
+
+<div id="p7" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P7</span>
+    <p>On the <span class="hl-p">ATLAS benchmark (100 ns generation)</span>, STAR-MD substantially outperforms all prior generative baselines across multiple evaluation dimensions. The primary metric is <span class="hl-r">conformational recall</span>: the fraction of reference MD conformations that are covered by the generated trajectory (measured in a reduced conformational space via tICA or similar).</p>
+    <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;">
+      <tr style="background:#e8e4db;"><th style="padding:6px 8px;text-align:left;">Metric</th><th style="padding:6px 8px;">STAR-MD</th><th style="padding:6px 8px;">ConfRover</th><th style="padding:6px 8px;">MDGen</th><th style="padding:6px 8px;">AlphaFold</th></tr>
+      <tr><td style="padding:5px 8px;">Conformational recall</td><td style="padding:5px 8px;"><span class="hl-b">0.54</span></td><td style="padding:5px 8px;">0.36</td><td style="padding:5px 8px;">0.28</td><td style="padding:5px 8px;">—</td></tr>
+      <tr style="background:#f7f5ef;"><td style="padding:5px 8px;">Combined structural validity</td><td style="padding:5px 8px;"><span class="hl-b">86.81%</span></td><td style="padding:5px 8px;">52.06%</td><td style="padding:5px 8px;">—</td><td style="padding:5px 8px;"><span class="hl-g">0.47%</span></td></tr>
+      <tr><td style="padding:5px 8px;">tICA correlation</td><td style="padding:5px 8px;"><span class="hl-b">0.17</span></td><td style="padding:5px 8px;">—</td><td style="padding:5px 8px;">—</td><td style="padding:5px 8px;">—</td></tr>
+      <tr style="background:#f7f5ef;"><td style="padding:5px 8px;">RMSD deviation</td><td style="padding:5px 8px;"><span class="hl-b">0.07 ± 0.02</span></td><td style="padding:5px 8px;">0.20</td><td style="padding:5px 8px;">—</td><td style="padding:5px 8px;">—</td></tr>
+      <tr><td style="padding:5px 8px;">Autocorrelation error</td><td style="padding:5px 8px;"><span class="hl-b">0.02 ± 0.00</span></td><td style="padding:5px 8px;">0.08</td><td style="padding:5px 8px;">—</td><td style="padding:5px 8px;">—</td></tr>
+    </table>
+    <p>The tICA correlation of 0.17 matches the MD oracle (ground truth reference MD achieves 0.17), suggesting that <span class="hl-y">STAR-MD captures the slow collective motions of proteins with fidelity comparable to the reference simulations themselves</span>. The autocorrelation error of 0.02 ± 0.00 (vs ConfRover's 0.08) indicates that STAR-MD trajectories preserve the correct temporal dynamics, not just the correct structural ensemble.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P7</div>
+    <p><strong>段落功能：</strong>展示 STAR-MD 在 100ns ATLAS benchmark 上的全面优势——多指标对比，并特别指出 tICA 相关性与 MD oracle 匹配是最重要的科学发现。</p>
+    <div class="role-badge">基准测试结果</div>
+    <table class="term-table">
+      <tr><th>指标</th><th>解释</th></tr>
+      <tr><td>Conformational recall</td><td>覆盖率：生成的轨迹在多大程度上探索了参考 MD 访问的构象空间</td></tr>
+      <tr><td>tICA correlation</td><td>Time-lagged Independent Component Analysis；识别蛋白质的慢运动模式；0.17 = MD oracle</td></tr>
+      <tr><td>RMSD deviation</td><td>生成轨迹与参考 MD 轨迹的逐帧 RMSD 差异（不是结构 RMSD，而是统计偏差）</td></tr>
+      <tr><td>Autocorrelation error</td><td>轨迹时间自相关函数与参考 MD 的偏差；反映动力学时间尺度是否正确</td></tr>
+    </table>
+    <div class="notable-box"><strong>tICA oracle 等价的深层含义：</strong>STAR-MD 的 tICA=0.17 与 MD 参考的 tICA=0.17 一致，说明模型学到了蛋白质动力学的"正确慢自由度"——这是最难的科学挑战，不是简单的结构匹配。这个结果如果是真实的，意义非常重大。</div>
+    <div class="warning-box"><strong>注意 recall=0.54 的含义：</strong>46% 的参考 MD 构象 STAR-MD 没有访问到。对于 TrpB 来说，如果关键的 C-state 构象在这 46% 里，比较实验就会失败。这是最大的不确定性来源。</div>
+  </div>
+</div>
+
+<div id="p8" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P8</span>
+    <p>The most compelling results come from <span class="hl-p">long-horizon extrapolation</span> well beyond the training horizon (100 ns). STAR-MD was evaluated at 240 ns and 1 μs using extended MD simulations as ground truth:</p>
+    <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;">
+      <tr style="background:#e8e4db;"><th style="padding:6px 8px;">Timescale</th><th style="padding:6px 8px;">STAR-MD recall</th><th style="padding:6px 8px;">ConfRover-W recall</th><th style="padding:6px 8px;">STAR-MD validity</th><th style="padding:6px 8px;">ConfRover-W validity</th></tr>
+      <tr><td style="padding:5px 8px;">100 ns (in-distribution)</td><td style="padding:5px 8px;"><span class="hl-b">0.54</span></td><td style="padding:5px 8px;">0.36</td><td style="padding:5px 8px;"><span class="hl-b">86.81%</span></td><td style="padding:5px 8px;">52.06%</td></tr>
+      <tr style="background:#f7f5ef;"><td style="padding:5px 8px;">240 ns (2.4×)</td><td style="padding:5px 8px;"><span class="hl-b">0.59</span></td><td style="padding:5px 8px;">0.42</td><td style="padding:5px 8px;"><span class="hl-b">83.15%</span></td><td style="padding:5px 8px;">36.51%</td></tr>
+      <tr><td style="padding:5px 8px;">1 μs (10×)</td><td style="padding:5px 8px;"><span class="hl-b">0.61</span></td><td style="padding:5px 8px;">0.45</td><td style="padding:5px 8px;"><span class="hl-b">79.93%</span></td><td style="padding:5px 8px;">36.91%</td></tr>
+    </table>
+    <p>Two observations are particularly striking: (1) <span class="hl-y">STAR-MD's recall increases from 0.54 to 0.61 as timescale increases from 100 ns to 1 μs</span>. This is counterintuitive — rather than degrading with extrapolation, STAR-MD explores more conformational space with longer generation, approaching the ground truth. (2) <span class="hl-y">ConfRover-W's validity collapses from 52.06% to 36.91% at 1 μs</span>, confirming that Pairformer-based architectures fail catastrophically at long timescales. STAR-MD maintains 79.93% validity even at 1 μs.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P8</div>
+    <p><strong>段落功能：</strong>展示本文最重要的实验结果——长时程外推时 recall 提升（0.54→0.61）以及 ConfRover 的有效性崩塌。这是 STAR-MD 的决定性优势。</p>
+    <div class="role-badge">核心实验结果</div>
+    <div class="notable-box"><strong>recall 随时间增加的直觉：</strong>类比于用更多步骤的随机游走探索更大的空间——更长的生成轨迹允许 STAR-MD 访问更多的构象空间，接近参考 MD 构象集合的覆盖率上限。这说明 STAR-MD 的生成过程在时间维度上是"正确的随机游走"，而不是在固定空间内漫游。</div>
+    <div class="notable-box"><strong>ConfRover-W 在 1μs 的崩塌：</strong>有效性从 52% 降到 37%，但 recall 从 0.36 升到 0.45——这说明 ConfRover-W 在生成越来越多无效构象的同时，碰巧访问了更多参考 MD 构象。"高 recall + 低 validity" 意味着生成轨迹中混杂大量无效构象，不能直接用于科学分析。</div>
+    <div class="project-box"><strong>对 Amin benchmark 的启示：</strong>如果 STAR-MD 在 TrpB 上运行 1μs，recall 可能接近 0.61（如果 TrpB 类似 ATLAS 分布中的蛋白质）。关键问题：TrpB 的 O→C 转变是否在 STAR-MD 的 1μs 生成中自发出现？这正是 benchmark 要测试的。</div>
+  </div>
+</div>
+
+<div id="p9" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P9</span>
+    <p>The paper includes several ablation experiments that validate individual design choices. Key findings from these ablation studies:</p>
+    <ul style="margin:10px 0 10px 20px;">
+      <li><span class="hl-b">SE(3) equivariance is essential:</span> A version without SE(3) equivariance shows substantially degraded structural validity, confirming that respecting rotational/translational symmetry is not a cosmetic constraint but a functional necessity for physically valid generation.</li>
+      <li><span class="hl-b">Causal masking enables extrapolation:</span> Without causal masking (i.e., non-autoregressive generation), the model cannot extrapolate beyond its training horizon. This directly confirms that the temporal causality is what enables long-horizon generation.</li>
+      <li><span class="hl-b">Contextual noise injection improves extrapolation validity:</span> Removing contextual noise during training causes validity to degrade faster during autoregressive rollout — from 86.81% at 100 ns to below 60% at 1 μs vs. STAR-MD's 79.93%. The regularization effect is most important at long timescales.</li>
+      <li><span class="hl-b">IGSO₃ vs. Euclidean rotation noise:</span> Using standard Gaussian noise for rotations (ignoring SO(3) geometry) leads to ~10% lower structural validity, confirming that proper geometric treatment of rotations matters.</li>
+    </ul>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P9</div>
+    <p><strong>段落功能：</strong>消融实验系统验证每个设计决策的必要性。每项消融都能单独支持一个架构选择的合理性。</p>
+    <div class="role-badge">消融实验 / 设计验证</div>
+    <table class="term-table">
+      <tr><th>消融</th><th>结论</th></tr>
+      <tr><td>去掉 SE(3) 等变性</td><td>结构有效性大幅下降 → 等变性不可省</td></tr>
+      <tr><td>去掉因果掩码</td><td>无法外推到训练区间以外 → 因果性是外推能力的来源</td></tr>
+      <tr><td>去掉上下文噪声注入</td><td>长时程有效性从 79.93% 降到 &lt;60% → 噪声正则化在长时程最重要</td></tr>
+      <tr><td>用欧氏噪声替代 IGSO₃</td><td>有效性降低 ~10% → 旋转几何的正确处理有实质影响</td></tr>
+    </table>
+    <div class="notable-box"><strong>消融实验的重要性：</strong>消融实验是验证复杂模型各组件必要性的标准做法。STAR-MD 的四个消融都显示每个组件有独立贡献，说明论文的架构设计是系统性的，不是偶然拼凑的。这是高质量会议论文的标志。</div>
+  </div>
+</div>
+
+<!-- LIMITATIONS -->
+<div class="sec-label"><span class="sec-num">§4</span> 局限性 — Known Boundaries</div>
+
+<div id="p10" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P10</span>
+    <p>STAR-MD, despite its significant advances, has several fundamental limitations that must be understood before applying it to any specific scientific problem:</p>
+    <ol style="margin:10px 0 10px 20px;">
+      <li><span class="hl-g"><strong>No free energy output:</strong></span> STAR-MD generates kinetically plausible trajectories but cannot output free energy values (ΔG, ΔF). Conformational recall measures which states are visited, not their thermodynamic probability. Without free energy information, you cannot determine whether the O state is more stable than the C state, or compute the activation barrier for the conformational transition.</li>
+      <li><span class="hl-g"><strong>Training distribution bias:</strong></span> ATLAS covers ~1,390 globular soluble proteins, predominantly from mesophilic organisms at 300 K. Membrane proteins, intrinsically disordered regions, multimeric enzymes, and thermophilic proteins (like TrpB from P. furiosus, optimal at 100°C) are likely out-of-distribution. The model inherits the CHARMM36m force field biases of ATLAS simulations.</li>
+      <li><span class="hl-g"><strong>No explicit rare event biasing:</strong></span> Unlike MetaDynamics (which adds a bias potential to push the system over free energy barriers), STAR-MD explores stochastically. There is no guarantee that a rare conformational event (e.g., the O→C transition for TrpB) will be sampled even in a 1 μs generation, if the true barrier crossing probability is very low.</li>
+      <li><span class="hl-g"><strong>Sequence length limit:</strong></span> Training excluded proteins with N &gt; 384 residues. Performance on longer proteins is untested and potentially poor.</li>
+    </ol>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P10</div>
+    <p><strong>段落功能：</strong>明确列出 STAR-MD 的四大根本局限，这是理性使用该方法的前提。</p>
+    <div class="role-badge">局限性 / 边界条件</div>
+    <table class="term-table">
+      <tr><th>局限</th><th>对 TrpB 项目的影响</th></tr>
+      <tr><td>无自由能输出</td><td>无法与 MetaDynamics FEL 直接比较 ΔG；只能比较构象覆盖率</td></tr>
+      <tr><td>训练分布偏差</td><td>TrpB 是 OOD（热超嗜热菌，350K，ATLAS 不含）；预测可信度存疑</td></tr>
+      <tr><td>无稀有事件偏置</td><td>O→C 转变能否被自发采样未知；可能需要更长生成时间</td></tr>
+      <tr><td>序列长度限制</td><td>TrpB ~300 残基，在限制内；但多聚体状态（TrpA+TrpB）超出限制</td></tr>
+    </table>
+    <div class="warning-box"><strong>最重要的局限：无自由能。</strong>你的 MetaDynamics 的核心输出就是自由能面 F(s,z)（kcal/mol）。STAR-MD 永远无法给出这个量——这是物理上根本性的差异，不是工程问题。因此两种方法的比较必须在"构象采样覆盖率"这个中间层面进行，而非在自由能这个层面。</div>
+    <div class="project-box"><strong>对 benchmark 设计的直接影响：</strong>比较 STAR-MD 和 MetaDynamics 时，<strong>不要</strong>期望用 STAR-MD 验证 MetaDynamics 的自由能数值——它们测量的是不同的物理量。正确的比较框架是：① 把两者的轨迹投影到同一构象空间（路径 CV 的 s-z 坐标）；② 比较各区域的访问频率（不是自由能）；③ 如果 STAR-MD 高频访问 MetaDynamics 认为低能的区域，两者互相支持。</div>
+  </div>
+</div>
+
+<!-- SYNTHESIS SECTION A -->
+<div id="skeleton" class="sec-label"><span class="sec-num">§A</span> 论证骨架 — Argument Architecture</div>
+<div class="synth-section">
+  <h2>§A · 论证骨架：STAR-MD 的推理链</h2>
+
+  <h3>Step 1 — 问题定义</h3>
+  <div class="logic-chain">
+    <div class="lc-node">生物过程：μs–ms<br>标准 MD：ns–μs</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">时间尺度鸿沟<br>无法直接模拟</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">先前生成模型<br>在长时程崩塌</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">需要新的<br>长时程生成方法</div>
+  </div>
+
+  <h3>Step 2 — 两个独立技术挑战</h3>
+  <div class="logic-chain">
+    <div class="lc-node">挑战 1：物理正确性<br>平移+旋转等变性<br>→ SE(3) diffusion</div>
+    <div class="lc-arrow">+</div>
+    <div class="lc-node">挑战 2：计算效率<br>ConfRover: O(N³L)<br>→ Causal DiT: O(N²L²)</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">STAR-MD 同时<br>解决两个挑战</div>
+  </div>
+
+  <h3>Step 3 — 方法设计对应关系</h3>
+  <table class="proj-table">
+    <tr><th>挑战</th><th>设计选择</th><th>消融验证</th></tr>
+    <tr><td>旋转等变性</td><td>IGSO₃ 扩散（非欧氏噪声）</td><td>去掉后有效性降低 ~10%</td></tr>
+    <tr><td>平移等变性</td><td>标准高斯扩散（中心化坐标）</td><td>基础设计，无需额外验证</td></tr>
+    <tr><td>O(N³) 内存瓶颈</td><td>Causal DiT 替代 Pairformer</td><td>196× 内存减少（实测）</td></tr>
+    <tr><td>训练-推理分布偏移</td><td>上下文噪声注入</td><td>去掉后 1μs 有效性从 79.93% 降到 &lt;60%</td></tr>
+    <tr><td>长时程外推</td><td>因果掩码 + 自回归展开</td><td>去掉后无法外推</td></tr>
+  </table>
+
+  <h3>Step 4 — 实验验证逻辑</h3>
+  <div class="logic-chain">
+    <div class="lc-node">ATLAS 100ns<br>基准：recall=0.54<br>validity=86.81%</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">240ns 外推<br>recall=0.59<br>validity=83.15%</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">1μs 外推<br>recall=0.61<br>validity=79.93%</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">结论：外推时<br>recall 提升<br>validity 温和下降</div>
+  </div>
+
+  <h3>Step 5 — 核心命题层级</h3>
+  <table class="proj-table">
+    <tr><th>层级</th><th>命题</th><th>证据</th></tr>
+    <tr><td>主命题</td><td>SE(3)-equivariant Causal DiT 可生成长时程物理合理蛋白质轨迹</td><td>ATLAS recall+validity；1μs 外推保持 79.93% validity</td></tr>
+    <tr><td>子命题 1</td><td>O(N²L²) 复杂度比 O(N³L) 更高效且不牺牲质量</td><td>196× 内存减少；recall 0.54 vs ConfRover 0.36</td></tr>
+    <tr><td>子命题 2</td><td>因果自回归是长时程外推的关键机制</td><td>消融：无因果掩码无法外推</td></tr>
+    <tr><td>子命题 3</td><td>tICA 相关性 = MD oracle 说明模型学到慢动力学</td><td>tICA 相关系数 0.17 = 参考 MD 值</td></tr>
+    <tr><td>子命题 4</td><td>上下文噪声注入是防止长时程误差累积的必要正则化</td><td>消融：去掉后长时程有效性大幅下降</td></tr>
+  </table>
+</div>
+
+<!-- SECTION B: PROJECT CONNECTION -->
+<div id="projconn" class="sec-label"><span class="sec-num">§B</span> 项目关联表 — TrpB Project Connection</div>
+<div class="synth-section">
+  <h2>§B · STAR-MD vs MetaDynamics — 与 TrpB 项目的直接对照</h2>
+  <p style="font-size:13px;color:var(--gray);margin-bottom:16px;">
+    你的项目：跑 TrpB MetaDynamics（产出 FEL），同时了解 STAR-MD 作为 Amin benchmark 对比方。这两个方法测量不同的物理量，需要在正确的层面比较。
+  </p>
+
+  <h3>能力对比表</h3>
+  <table class="proj-table">
+    <tr><th>能力维度</th><th>STAR-MD (SE3 Diffusion)</th><th>MetaDynamics (你的 TrpB pipeline)</th></tr>
+    <tr><td><strong>主要输出</strong></td><td>坐标轨迹（帧集合）</td><td>自由能面 F(s,z)，kcal/mol</td></tr>
+    <tr><td><strong>热力学信息</strong></td><td>无 — 不能计算 ΔG 或 ΔF</td><td>是 — 主要输出就是定量 FEL</td></tr>
+    <tr><td><strong>动力学信息</strong></td><td>定性 — 哪些状态被访问，大致时间顺序</td><td>定性 — 相对壁垒高度（绝对速率需额外分析）</td></tr>
+    <tr><td><strong>稀有事件采样</strong></td><td>随机 — 无法保证越过高自由能壁垒</td><td>显式 — 偏置势驱动系统越过壁垒</td></tr>
+    <tr><td><strong>先验知识需求</strong></td><td>无 — 从 ATLAS 数据学习，不需要提供 CV</td><td>需要 — CV 设计需要知道端点构象（O/C 晶体结构）</td></tr>
+    <tr><td><strong>对新蛋白质的适用性</strong></td><td>有限 — 受训练分布约束（ATLAS 球状蛋白, 300K）</td><td>总是适用 — 物理方法，不依赖训练数据分布</td></tr>
+    <tr><td><strong>计算成本</strong></td><td>分钟级（GPU 推理）</td><td>天至周级（HPC，正在运行中）</td></tr>
+    <tr><td><strong>物理准确性基础</strong></td><td>取决于训练数据和力场（CHARMM36m）</td><td>力场限制（ff14SB），但物理上有充分理论依据</td></tr>
+  </table>
+
+  <h3>正确的比较框架</h3>
+  <div class="notable-box">
+    <strong>不要这样比较（错误）：</strong>用 STAR-MD 轨迹的访问频率来"验证"MetaDynamics 的自由能数值。访问频率不是自由能，在非平衡生成模型中尤其不能直接转化。<br><br>
+    <strong>正确的比较框架（Amin benchmark 设计推荐）：</strong>
+    <ol style="margin:8px 0 0 18px;">
+      <li>运行 STAR-MD 推理，从 5DVZ（TrpB O-state）起始，生成 1μs 等效轨迹</li>
+      <li>过滤无效帧（clash check、键长检查）</li>
+      <li>将 STAR-MD 轨迹和 MetaDynamics 轨迹都投影到路径 CV（s, z 坐标）</li>
+      <li>比较各区域的访问密度：STAR-MD 高密度区域 vs MetaDynamics 低能区域</li>
+      <li>关键 check：STAR-MD 是否自发访问 C-state 区域（s ≈ 1）？PC 区域（s ≈ 0.5）？</li>
+      <li>如果两者在 s-z 空间中的高密度区域重叠，互相支持；如果不重叠，需要分析原因（OOD？稀有事件未采样？）</li>
+    </ol>
+  </div>
+
+  <h3>四种可能的比较结果及其解读</h3>
+  <table class="proj-table">
+    <tr><th>STAR-MD 结果</th><th>MetaDynamics 结果</th><th>联合解读</th><th>科学意义</th></tr>
+    <tr>
+      <td>自发访问 C-state（s≈1）</td>
+      <td>FEL 显示 C-state 低能</td>
+      <td>两者互相支持</td>
+      <td>最理想结果：AI 生成与物理增强采样一致，TrpB C-state 确实热力学有利</td>
+    </tr>
+    <tr>
+      <td>未访问 C-state</td>
+      <td>FEL 显示 C-state 低能</td>
+      <td>STAR-MD 漏采 rare event</td>
+      <td>说明 O→C 是高壁垒稀有事件，STAR-MD 的随机探索不够，需要 MetaDynamics 的偏置</td>
+    </tr>
+    <tr>
+      <td>自发访问 C-state</td>
+      <td>FEL 显示 C-state 高能</td>
+      <td>结果冲突，需要分析</td>
+      <td>可能 STAR-MD 对 TrpB 是 OOD（力场偏差）；或 MetaDynamics CV 设计有问题</td>
+    </tr>
+    <tr>
+      <td>未访问 C-state</td>
+      <td>FEL 显示 C-state 高能</td>
+      <td>两者一致：C-state 不易访问</td>
+      <td>说明你研究的 TrpB 状态（Q2 中间体？）可能需要 TrpA 激活才能有效进入 C-state</td>
+    </tr>
+  </table>
+
+  <h3>你现在的行动优先级（关于 STAR-MD）</h3>
+  <table class="proj-table">
+    <tr><th>#</th><th>任务</th><th>时间点</th></tr>
+    <tr><td>1</td><td>完成你的 MetaDynamics（Job 41514529），得到 FEL——这是你的主要贡献</td><td>现在正在进行</td></tr>
+    <tr><td>2</td><td>了解 STAR-MD 论文架构（本文），能在 benchmark 设计讨论中解释 STAR-MD 的能力边界</td><td>本周完成阅读</td></tr>
+    <tr><td>3</td><td>与 Amin 联系，明确 benchmark 设计框架——特别是如何在 s-z 构象空间中对比两种方法</td><td>有 MetaDynamics 初步结果后</td></tr>
+    <tr><td>4</td><td>可选：在本地（或 Longleaf）运行 STAR-MD 推理，从 5DVZ 生成 TrpB 轨迹</td><td>MetaDynamics 收敛后的扩展工作</td></tr>
+    <tr><td>5</td><td>如果运行 STAR-MD，设计过滤+投影管线：过滤无效帧 → PLUMED 计算路径 CV → 对比 FEL</td><td>与 #4 同步</td></tr>
+  </table>
+</div>
+
+<!-- SECTION C: GLOSSARY -->
+<div id="glossary" class="sec-label"><span class="sec-num">§C</span> 术语总表 — Glossary</div>
+<div class="synth-section">
+  <h2>§C · STAR-MD 关键术语速查表（28 项）</h2>
+  <table class="gloss-table">
+    <tr><th style="width:28%">术语（英文）</th><th style="width:15%">中文</th><th>一句话定义</th><th style="width:22%">在 STAR-MD 中的作用</th></tr>
+    <tr><td>SE(3)</td><td>三维特殊欧氏群</td><td>描述刚体运动的对称群 = 平移（R³）× 旋转（SO(3)）；SE = Special Euclidean</td><td>整个模型的数学框架基础</td></tr>
+    <tr><td>SO(3)</td><td>三维旋转群</td><td>所有三维旋转矩阵（det=+1）构成的群；旋转扩散发生在此空间</td><td>旋转自由度的数学空间</td></tr>
+    <tr><td>SE(3) Equivariance</td><td>SE(3) 等变性</td><td>对蛋白质做任意刚体变换后，模型输出以相同方式变换；是物理正确性的数学保证</td><td>STAR-MD 的核心物理约束</td></tr>
+    <tr><td>IGSO₃</td><td>SO(3) 各向同性高斯</td><td>旋转群上的各向同性高斯分布；是旋转扩散噪声的概率模型，保证噪声旋转在 SO(3) 内</td><td>旋转扩散噪声分布</td></tr>
+    <tr><td>Diffusion Model</td><td>扩散模型</td><td>生成模型：前向过程逐渐加噪，逆向过程学习去噪；DDPM、Score-matching 等都属于此类</td><td>STAR-MD 的生成框架</td></tr>
+    <tr><td>Causal Diffusion Transformer (Causal DiT)</td><td>因果扩散 Transformer</td><td>带时间因果掩码的 Transformer 扩散模型；每个时间帧只能 attend 到之前的帧</td><td>STAR-MD 的核心神经网络架构</td></tr>
+    <tr><td>Causal Masking</td><td>因果掩码</td><td>时间维度上的下三角注意力掩码；防止模型"看到未来"，使自回归生成成为可能</td><td>实现长时程自回归展开的机制</td></tr>
+    <tr><td>Autoregressive Rollout</td><td>自回归展开</td><td>推理时逐块（L 帧）生成轨迹，每块条件依赖所有前序帧；理论上可生成任意长度轨迹</td><td>STAR-MD 推理算法</td></tr>
+    <tr><td>Contextual Noise Injection</td><td>上下文噪声注入</td><td>训练时对历史上下文帧添加小量噪声 τ~U[0,0.1]；防止分布偏移，改善长时程外推有效性</td><td>防止自回归误差累积的训练技巧</td></tr>
+    <tr><td>Joint Spatio-Temporal Attention</td><td>时空联合注意力</td><td>同时在空间维度（N 残基）和时间维度（L 帧）做 attention；实现时空联合建模</td><td>Causal DiT 的注意力机制</td></tr>
+    <tr><td>O(N²L²) complexity</td><td>N²L² 复杂度</td><td>STAR-MD 的 KV-cache 内存复杂度；N=蛋白质长度，L=轨迹帧数；vs ConfRover O(N³L + N²L²)</td><td>高效性的数学保证</td></tr>
+    <tr><td>KV-cache Memory</td><td>KV 缓存内存</td><td>Transformer attention 中 key-value 对的存储量；是 Transformer 扩展到长序列的主要瓶颈</td><td>架构效率的核心指标</td></tr>
+    <tr><td>ATLAS Dataset</td><td>ATLAS 数据集</td><td>1,390 个蛋白质 × 100ns all-atom MD；CHARMM36m + TIP3P；专为蛋白质动力学生成模型基准设计</td><td>STAR-MD 的唯一训练数据来源</td></tr>
+    <tr><td>Conformational Recall</td><td>构象召回率</td><td>生成轨迹覆盖参考 MD 构象空间的比例；STAR-MD @ 100ns = 0.54；@ 1μs = 0.61</td><td>STAR-MD 质量的主要评估指标</td></tr>
+    <tr><td>Combined Structural Validity</td><td>综合结构有效性</td><td>生成轨迹中维持合理蛋白质结构（键长/角度/无 clash）的帧比例；STAR-MD @ 100ns = 86.81%</td><td>轨迹物理合理性的评估指标</td></tr>
+    <tr><td>tICA</td><td>时滞独立成分分析</td><td>Time-lagged ICA：识别蛋白质轨迹中的慢集体运动模式；tICA 相关 = 0.17 匹配 MD oracle</td><td>STAR-MD 捕捉慢动力学的能力验证</td></tr>
+    <tr><td>ConfRover</td><td>ConfRover（对比方法）</td><td>STAR-MD 的主要竞争基线；Pairformer 架构，O(N³L) 内存；100ns 后结构有效性崩塌</td><td>消融对比基准</td></tr>
+    <tr><td>Pairformer</td><td>对式 Transformer</td><td>显式建模所有残基对的 Transformer 架构（AlphaFold 2 使用）；引入 O(N²) 对数据 → N³ 复杂度</td><td>ConfRover 的核心瓶颈架构</td></tr>
+    <tr><td>MDGen</td><td>MDGen（基线模型）</td><td>先前的 MD 轨迹生成扩散模型；长时程结构有效性差（接近 0%）</td><td>STAR-MD 的另一基线对比方法</td></tr>
+    <tr><td>FrameDiff</td><td>FrameDiff（基线模型）</td><td>SE(3) 等变扩散用于静态蛋白质结构生成（非轨迹）；是 STAR-MD SE(3) 设计的先驱</td><td>SE(3) 扩散的历史前驱方法</td></tr>
+    <tr><td>Out-of-distribution (OOD)</td><td>分布外</td><td>测试蛋白质与训练分布（ATLAS）显著不同；TrpB（热超嗜热菌，350K）是典型 OOD 案例</td><td>评估 STAR-MD 对 TrpB 适用性的关键概念</td></tr>
+    <tr><td>Long-horizon extrapolation</td><td>长时程外推</td><td>生成超过训练时间尺度（100ns）的轨迹；STAR-MD 在 1μs 时 recall 提升到 0.61</td><td>STAR-MD 的核心技术贡献之一</td></tr>
+    <tr><td>Rigid body frame Tᵢ ∈ SE(3)</td><td>刚体帧</td><td>每个残基的空间状态 = 位置（3 个坐标）+ 取向（旋转矩阵）；SE(3) 的一个元素</td><td>STAR-MD 的蛋白质表示方式</td></tr>
+    <tr><td>Forward diffusion</td><td>前向扩散</td><td>扩散模型的加噪过程：逐步将干净数据转化为噪声；STAR-MD 对平移用高斯，对旋转用 IGSO₃</td><td>训练时的数据处理框架</td></tr>
+    <tr><td>Reverse diffusion</td><td>逆向扩散（去噪）</td><td>扩散模型的生成过程：从纯噪声逐步去噪还原数据；Causal DiT 学习这个过程</td><td>STAR-MD 的实际生成机制</td></tr>
+    <tr><td>Path CV (s, z)</td><td>路径集体变量</td><td>MetaDynamics 的坐标：s=沿 O→C 参考路径的进展（0=O, 1=C），z=偏离参考路径的 MSD；STAR-MD 不使用此 CV</td><td>用于投影 STAR-MD 轨迹进行 benchmark 比较</td></tr>
+    <tr><td>Free Energy Surface (FES/FEL)</td><td>自由能面</td><td>蛋白质构象空间中相对自由能的 2D 分布图；MetaDynamics 的主要输出；STAR-MD 无法提供</td><td>STAR-MD 与 MetaDynamics 的根本区别所在</td></tr>
+    <tr><td>CHARMM36m</td><td>CHARMM36m 力场</td><td>ATLAS 训练数据使用的蛋白质力场；与你的 MetaDynamics 使用的 ff14SB 不同，可能引入系统性差异</td><td>训练-推理力场不一致性的潜在来源</td></tr>
+  </table>
+
+  <h3 style="margin-top:24px;">附：STAR-MD vs MetaDynamics — 方法论定位总结</h3>
+  <p style="font-size:13px;margin-bottom:12px;color:var(--gray);">
+    这两种方法是互补的，不是竞争关系。正确的定位是：STAR-MD 问"TrpB 在 1μs 内访问了哪些构象"，MetaDynamics 问"这些构象之间的自由能壁垒是多少"。两者回答不同的科学问题，共同构成对 TrpB 动力学的完整理解。
+  </p>
+  <div class="logic-chain">
+    <div class="lc-node">STAR-MD<br>生成构象轨迹<br>（哪些态被访问？）</div>
+    <div class="lc-arrow">+</div>
+    <div class="lc-node">MetaDynamics<br>FEL F(s,z)<br>（各态的 ΔG 是多少？）</div>
+    <div class="lc-arrow">+</div>
+    <div class="lc-node">Deep-TDA（后续）<br>学习更好的 CV<br>（从轨迹数据提取）</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">完整的<br>TrpB 动力学图像<br>（构象 + 热力学 + CV）</div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+// Intersection observer for active nav links
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, {rootMargin: '-10% 0px -80% 0px'});
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

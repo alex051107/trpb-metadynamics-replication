@@ -81,8 +81,8 @@
         "paths": [
           "replication/parameters/mol2/Ain_gaff.mol2",
           "replication/parameters/frcmod/Ain.frcmod",
-          "replication/structures/path_frames/path.pdb",
-          "replication/structures/path_frames/summary.txt"
+          "replication/metadynamics/path_cv/path.pdb",
+          "replication/metadynamics/path_cv/summary.txt"
         ]
       },
       "started_at": "2026-03-31",
@@ -126,5 +126,5 @@
       "re:\\bfes_analysis\\b"
     ]
   },
-  "last_updated": "2026-03-31T23:38:34.925155+00:00"
+  "last_updated": "2026-04-05T04:00:00+00:00"
 }

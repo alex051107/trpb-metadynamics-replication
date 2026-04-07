@@ -1,0 +1,31 @@
+# PLUMED 2.9 single-walker WT-MetaD template for PfTrpS(Ain) TrpB benchmark
+#
+# This is the pre-production validation input:
+#   1. confirm PATHMSD wiring
+#   2. confirm converted GROMACS atom indices
+#   3. generate initial biased exploration before 10-walker launch
+#
+# Paper-aligned parameters:
+#   - HEIGHT = 0.628 kJ/mol
+#   - PACE = 1000
+#   - BIASFACTOR = 10
+#   - TEMP = 350 K
+#   - adaptive Gaussian widths
+#
+# FP-004 guard:
+#   Every atom index here must be extracted after AMBER->GROMACS conversion from
+#   the final .gro/.tpr, not inferred from the source PDB or AMBER ordering.
+#
+# SIGMA=0.05 is the initial seed for ADAPTIVE=GEOM.
+# PLUMED automatically adjusts Gaussian widths based on local CV fluctuations.
+# This matches the SI protocol (adaptive Gaussian widths).
+
+path: PATHMSD REFERENCE=PLACEHOLDER_PENDING_CONVERSION_PATH_REFERENCE_PDB LAMBDA=3.3910  # Å⁻² × 100 = nm⁻² (FP-018)
+
+k82_q2: DISTANCE ATOMS=PLACEHOLDER_PENDING_CONVERSION_K82_NZ_Q2_C
+e104_q2: DISTANCE ATOMS=PLACEHOLDER_PENDING_CONVERSION_E104_OE_Q2_C
+
+# FP-019: all METAD parameters on one line (no backslash continuation for GROMACS 2026 compatibility)
+metad: METAD ARG=path.sss,path.zzz SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
+
+PRINT ARG=path.sss,path.zzz,k82_q2,e104_q2,metad.bias FILE=COLVAR STRIDE=500

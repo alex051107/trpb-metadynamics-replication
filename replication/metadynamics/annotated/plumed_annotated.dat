@@ -1,0 +1,192 @@
+# ===========================================================================
+# PLUMED 2.9 输入文件：PfTrpS(Ain) COMM domain 的 well-tempered MetaD 模拟
+# 复刻来源：Romero-Rivera et al., JACS 2019, SI p.S3
+# ===========================================================================
+#
+# 概述
+# ----
+# 本文件做三件事：
+#   1. 计算当前构象与 15 个参考帧的 RMSD（均方根偏差）
+#   2. 用这 15 个 RMSD 值计算 Path CV（路径集合变量），得到两个标量：
+#      s(R) = 沿路径的"进度"（在 Open 和 Closed 之间走到哪了）
+#      z(R) = 偏离路径的"距离"（离最近的参考帧有多远）
+#   3. 在 s 和 z 两个方向上施加 well-tempered metadynamics 偏置势，
+#      让蛋白质能跨越自由能垒，从 Open 状态采样到 Closed 状态
+#
+# 输入文件：
+#   frames/frame_01.pdb ... frame_15.pdb
+#     - 15 个参考结构，定义了从 Open（开放态）到 Closed（关闭态）的路径
+#     - 每个 PDB 包含 112 个 Cα 原子（COMM domain 残基 97-184 共 88 个
+#       + base 残基 282-305 共 24 个 = 112 个）
+#     - 坐标单位是 nm（GROMACS 约定，不是 Å；1 nm = 10 Å）
+#     - frame_01 = Open 端点（来自 PDB 1WDW），frame_15 = Closed 端点（来自 PDB 3CEP）
+#     - 中间帧（02-14）通过 Cα 坐标线性插值生成
+#
+# 输出文件：
+#   COLVAR  - 每 500 步输出一行（在 dt=0.002 ps 时 = 每 1 ps 一行）
+#             包含三列：path.s（路径进度）、path.z（路径偏离）、metad.bias（当前偏置势）
+#             典型大小：50 ns 产生约 50000 行，约 50 MB
+#   HILLS   - 每 1000 步记录一个沉积的高斯山丘（每 2 ps 一个）
+#             包含：时间、s 值、z 值、sigma_s、sigma_z、高度、biasfactor
+#             典型大小：50 ns 产生约 25000 行，约 5 MB
+#             后续用 plumed sum_hills 命令可以从这个文件重建自由能面（FES）
+#
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# 第 1 步：计算当前构象与 15 个参考帧的 RMSD
+# ---------------------------------------------------------------------------
+# 每个 r_i = RMSD(当前结构, frame_i)，计算前会做最优叠合（去除平动和转动）
+#
+# TYPE=OPTIMAL 表示使用 Kearsley 四元数算法做最优旋转叠合
+#   - 为什么选 OPTIMAL？因为它是数值最稳定的 RMSD 叠合方法
+#   - 如果改成 SIMPLE（不叠合），RMSD 会因为刚体运动而虚高，完全没有物理意义
+#
+# RMSD 只在参考 PDB 中出现的原子上计算（即 112 个 Cα 原子）
+# 为什么只用 Cα？因为 COMM domain 的构象变化主要是骨架运动，
+# 侧链的热涨落太大会淹没信号。用 Cα 捕捉 backbone 的集体运动。
+
+r1: RMSD REFERENCE=frames/frame_01.pdb TYPE=OPTIMAL   # 第 1 帧：Open 端点（来自 1WDW 晶体结构）
+r2: RMSD REFERENCE=frames/frame_02.pdb TYPE=OPTIMAL   # 第 2 帧：插值结构（1→15 之间的第 2 个点）
+r3: RMSD REFERENCE=frames/frame_03.pdb TYPE=OPTIMAL   # 第 3 帧：插值结构
+r4: RMSD REFERENCE=frames/frame_04.pdb TYPE=OPTIMAL   # 第 4 帧：插值结构
+r5: RMSD REFERENCE=frames/frame_05.pdb TYPE=OPTIMAL   # 第 5 帧：插值结构
+r6: RMSD REFERENCE=frames/frame_06.pdb TYPE=OPTIMAL   # 第 6 帧：插值结构
+r7: RMSD REFERENCE=frames/frame_07.pdb TYPE=OPTIMAL   # 第 7 帧：插值结构
+r8: RMSD REFERENCE=frames/frame_08.pdb TYPE=OPTIMAL   # 第 8 帧：插值结构（大约是路径中点）
+r9: RMSD REFERENCE=frames/frame_09.pdb TYPE=OPTIMAL   # 第 9 帧：插值结构
+r10: RMSD REFERENCE=frames/frame_10.pdb TYPE=OPTIMAL  # 第 10 帧：插值结构
+r11: RMSD REFERENCE=frames/frame_11.pdb TYPE=OPTIMAL  # 第 11 帧：插值结构
+r12: RMSD REFERENCE=frames/frame_12.pdb TYPE=OPTIMAL  # 第 12 帧：插值结构
+r13: RMSD REFERENCE=frames/frame_13.pdb TYPE=OPTIMAL  # 第 13 帧：插值结构
+r14: RMSD REFERENCE=frames/frame_14.pdb TYPE=OPTIMAL  # 第 14 帧：插值结构
+r15: RMSD REFERENCE=frames/frame_15.pdb TYPE=OPTIMAL  # 第 15 帧：Closed 端点（来自 3CEP 晶体结构）
+
+# ---------------------------------------------------------------------------
+# 第 2 步：用 FUNCPATHMSD 计算路径集合变量（Path CV）
+# ---------------------------------------------------------------------------
+#
+# 关于 FUNCPATHMSD 和 PATHMSD 的关系：
+#   - PATHMSD 是早期 PLUMED（1.x 和 2.x 早期版本）的"一体式"关键字：
+#     它同时读取参考帧、计算 RMSD、计算路径函数，全在一个 action 里
+#   - FUNCPATHMSD 是 PLUMED 2.x 推荐的"分步式"写法：
+#     先用 RMSD 单独计算每帧的 RMSD（第 1 步），
+#     再用 FUNCPATHMSD 把这些 RMSD 值组合成 s 和 z
+#   - 两者在数学上完全等价，公式一模一样，只是代码组织方式不同
+#   - FUNCPATHMSD 更灵活（可以换 RMSD 类型、加权等），也更容易调试
+#   - 原文 SI 用的是 PATHMSD（因为用的 PLUMED 2.3），我们用 FUNCPATHMSD
+#     是因为 PLUMED 2.9 推荐这种写法，结果完全一样
+#
+# 路径函数的数学定义：
+#   s(R) = 路径进度 = (1/(N-1)) * Σ_i [(i-1) * exp(-λ * r_i²)]
+#                                     / Σ_i [exp(-λ * r_i²)]
+#     范围：约 1（Open）到约 15（Closed）
+#     物理含义：当前构象最接近哪一帧？s=1 表示接近 Open，s=15 表示接近 Closed
+#
+#   z(R) = 路径偏离 = -(1/λ) * ln(Σ_i [exp(-λ * r_i²)])
+#     物理含义：当前构象离最近的参考帧有多远？z 越小说明越贴近已知路径，
+#     z 很大说明跑到了路径外面（可能探索到了新的构象）
+#
+# LAMBDA 的推导过程（单位转换是关键！）：
+#   原文 SI（Romero-Rivera 2019）给出公式：λ = 2.3 / <d²>
+#   其中 <d²> 是相邻帧之间 MSD（均方位移）的平均值
+#
+#   原文用 80 帧：λ_SI = 2.3/80 = 0.02875 Å⁻²（注意这里 SI 的单位是 Å）
+#   我们用 15 帧，计算得到 <d²> = 67.8 Å²
+#   所以 λ_ours = 2.3 / 67.8 = 0.033910 Å⁻²
+#
+#   单位转换到 GROMACS 的 nm：
+#     因为 1 nm = 10 Å，所以 1 nm² = 100 Å²
+#     λ 的单位是 [长度]⁻²，从 Å⁻² 转到 nm⁻² 要乘以 100
+#     0.033910 Å⁻² × 100 = 3.3910 nm⁻²
+#
+#   如果 LAMBDA 调大：帧之间的区分度更高，s 和 z 更"尖锐"，
+#     但太大会导致只"看到"最近的帧，丢失路径的连续性
+#   如果 LAMBDA 调小：帧之间的区分度降低，s 和 z 更平滑，
+#     但太小会导致多帧贡献混在一起，s 失去方向性
+#   经验法则：λ × <d²> ≈ 2.3 是最优选择（Branduardi et al. 2007 的建议）
+
+path: FUNCPATHMSD ARG=r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15 LAMBDA=3.3910
+
+# ---------------------------------------------------------------------------
+# 第 3 步：在 s(R) 和 z(R) 上施加 well-tempered MetaD 偏置
+# ---------------------------------------------------------------------------
+#
+# ARG=path.s,path.z  - 同时在进度（s）和偏离（z）两个方向上加偏置 [SI p.S3]
+#   为什么要偏置 z？如果只偏置 s，系统只能沿已知路径走。加上 z 的偏置，
+#   系统还可以探索路径"旁边"的构象空间，发现可能的替代路径
+#
+# SIGMA=0.05          - 初始种子值（nm），仅在最初几步使用
+#   ADAPTIVE=GEOM 模式下，此值很快被自适应算法覆盖。
+#   自适应算法根据局部 CV 波动自动调整高斯宽度：
+#   采样密集处用窄山丘（精细分辨率），稀疏处用宽山丘（快速覆盖新区域）。
+#   [SI p.S3: "adaptive Gaussian width scheme"]
+#
+# ADAPTIVE=GEOM       - 几何自适应高斯宽度 [SI p.S3]
+#   山丘的 sigma 不再固定，而是根据当前位置的 CV 局部波动自动调节。
+#   这避免了需要预先跑经典 MD 来校准 SIGMA 的步骤。
+#   如果 SIGMA 调大：山丘更宽，填充自由能面更快，但分辨率降低，
+#     细小的能量阱可能被抹平
+#   如果 SIGMA 调小：分辨率更高，但收敛慢得多，可能需要几倍的模拟时间
+#
+# HEIGHT=0.628        - 初始高斯山丘高度，单位 kJ/mol [SI p.S3]
+#   来源：SI 报告 0.15 kcal/mol，转换为 GROMACS 单位：
+#   0.15 kcal/mol × 4.184 kJ/kcal = 0.6276 kJ/mol，四舍五入为 0.628 kJ/mol
+#   这是一个比较保守的高度（约 0.25 kT 在 350 K），确保不会过度偏置
+#
+#   如果 HEIGHT 调大：偏置势积累更快，能更快翻越能垒，
+#     但可能导致自由能面不准确（"过度推动"）
+#   如果 HEIGHT 调小：更精确但收敛更慢，可能在合理时间内无法翻越高能垒
+#
+# PACE=1000           - 每 1000 个 MD 步沉积一个高斯山丘 [SI p.S3]
+#   在 dt=0.002 ps 时，PACE=1000 意味着每 2 ps 加一个山丘
+#   这个频率足够让系统在两次沉积之间"感受"到新山丘并做出响应
+#
+#   如果 PACE 调大（如 5000）：山丘密度降低，偏置势更平滑，但收敛更慢
+#   如果 PACE 调小（如 200）：山丘密度增大，可能导致"堆积"效应，
+#     系统还没来得及响应就被推走了
+#
+# BIASFACTOR=10       - well-tempering 因子 γ (gamma) [SI p.S3]
+#   有效温度 = T × γ = 350 K × 10 = 3500 K
+#   物理含义：随着某个位置被反复访问，山丘高度会衰减：
+#   h(t) = h₀ × exp(-V(s,t) / (kT × (γ-1)))
+#   γ=10 意味着当偏置势 V 达到 kT×9 ≈ 26 kJ/mol 时，新山丘只有初始高度的 1/e ≈ 37%
+#   这就是"well-tempered"的含义：不会无限堆积，最终收敛到真实自由能面
+#
+#   如果 BIASFACTOR 调大（如 50）：衰减更慢，相当于更"暴力"的采样，
+#     可以翻越更高的能垒，但收敛更慢
+#   如果 BIASFACTOR 调小（如 5）：衰减更快，更快收敛但可能被困在局部最小值
+#   经验法则：BIASFACTOR = 5-20 适合大多数生物分子体系
+#
+# TEMP=350            - 模拟温度，单位 K [SI p.S3]
+#   来源：PfTrpS 是来自 Pyrococcus furiosus（一种超嗜热古菌）的酶
+#   最适活性温度约 75-80°C（348-353 K），SI 选择 350 K
+#   这个参数必须与 .mdp 文件中的 ref_t 完全一致！不一致会导致 well-tempering 公式出错
+#
+# FILE=HILLS          - 沉积的高斯山丘记录文件
+#   后续分析用：plumed sum_hills --hills HILLS --outfile fes.dat --mintozero
+
+metad: METAD ARG=path.s,path.z SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
+
+# ---------------------------------------------------------------------------
+# 第 4 步：输出 COLVAR 文件
+# ---------------------------------------------------------------------------
+# 每 500 步输出一行数据到 COLVAR 文件
+# 在 dt=0.002 ps 时，STRIDE=500 表示每 1 ps 输出一次
+#
+# 输出内容：
+#   path.s     - 路径进度（~1 到 ~15），用于判断蛋白在 O/PC/C 哪个状态
+#   path.z     - 路径偏离（越小越好，>2 nm 说明可能跑偏了）
+#   metad.bias - 当前累积偏置势（kJ/mol），用于 reweighting 和 FES 重建
+#
+# COLVAR 文件是后续所有分析的基础：
+#   - 画 s vs time 看构象转变轨迹
+#   - 画 s vs z 看采样覆盖的构象空间
+#   - 用 bias 列做 reweighting 计算无偏自由能
+#
+# 为什么 STRIDE=500 而不是每步都输出？
+#   每步输出会产生巨大的文件（50 ns = 25,000,000 行 ≈ 几 GB），
+#   而且相邻步的 CV 值几乎相同，没有额外信息。
+#   每 1 ps 输出一次在分辨率和文件大小之间取得平衡。
+
+PRINT ARG=path.s,path.z,metad.bias FILE=COLVAR STRIDE=500

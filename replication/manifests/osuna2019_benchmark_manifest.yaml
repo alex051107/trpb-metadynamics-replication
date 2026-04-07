@@ -130,6 +130,20 @@ metadynamics:
     total_per_system_ns: "500-1000"
     starting_configs: "10 snapshots from initial MetaD run covering all conformational space"
   convergence: "monitor energy differences between O and C minima over time (Figures S4, S5)"
+  actual_run:
+    cv_method: "FUNCPATHMSD (equivalent to PATHMSD)"
+    lambda_nm2: 3.3910
+    height_kj_mol: 0.628
+    sigma: "0.05 (initial seed for ADAPTIVE=GEOM)"
+    pace: 1000
+    bias_factor: 10
+    temperature_k: 350
+    plumed_build: "source-compiled 2.9.2 (--enable-rpath)"
+  deviations_from_si:
+    - "FUNCPATHMSD instead of PATHMSD: conda-forge libplumedKernel.so missing mapping module (FP-020)"
+    - "LAMBDA converted from 0.033910 Å⁻² to 3.3910 nm⁻² for GROMACS nm convention (FP-018)"
+    - "No backslash continuation in PLUMED input: GROMACS 2026 mdrun interface truncates at \\ (FP-019)"
+    - "PLUMED source-compiled instead of conda-forge: .so module completeness issue (FP-020)"
 
 validation:
   operational_checks:

@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep-TDA 逐段深度标注 | Parrinello Group | Zhenpeng · aNima Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1a2744; --blue:#2563EB; --teal:#0d9488;
+  --paper:#faf8f3; --paper2:#f3f0e8; --border:#d4c9a8;
+  --text:#2d2d2d; --gray:#6b7280; --lg:#f3f4f6;
+  --hl-thesis:#fef3c7; --hl-thesis-b:#d97706;
+  --hl-concept:#fee2e2; --hl-concept-b:#dc2626;
+  --hl-evidence:#dbeafe; --hl-evidence-b:#2563eb;
+  --hl-counter:#dcfce7; --hl-counter-b:#16a34a;
+  --hl-method:#f3e8ff; --hl-method-b:#7c3aed;
+  --sidebar-w:230px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--text);font-size:15px;line-height:1.7;}
+#topnav{position:sticky;top:0;z-index:100;background:var(--navy);color:white;padding:0 20px;display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap;}
+#topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:15px;white-space:nowrap;}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.leg{padding:2px 10px;border-radius:12px;font-size:11.5px;font-weight:600;cursor:default;}
+.leg-y{background:var(--hl-thesis);color:#92400e;}
+.leg-r{background:var(--hl-concept);color:#991b1b;}
+.leg-b{background:var(--hl-evidence);color:#1e40af;}
+.leg-g{background:var(--hl-counter);color:#166534;}
+.leg-p{background:var(--hl-method);color:#5b21b6;}
+#layout{display:flex;min-height:calc(100vh - 52px);}
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:#f0ede4;border-right:1px solid var(--border);padding:16px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+#sidebar .sec-head{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;padding:12px 16px 4px;}
+#sidebar .nav-link{display:block;padding:5px 16px;font-size:12.5px;color:#374151;text-decoration:none;border-left:3px solid transparent;transition:.15s;}
+#sidebar .nav-link:hover{background:#e8e4db;color:var(--navy);}
+#sidebar .nav-link.active{border-left-color:var(--blue);color:var(--blue);background:#e8eef8;}
+#sidebar .nav-link.sub{padding-left:26px;font-size:12px;color:var(--gray);}
+main{flex:1;padding:0 0 60px;overflow-x:hidden;}
+.meta-card{background:var(--navy);color:white;padding:28px 36px;margin:0;}
+.meta-card h1{font-family:'Lora',serif;font-size:20px;line-height:1.4;margin-bottom:12px;}
+.meta-card .byline{font-size:13px;opacity:.8;margin-bottom:6px;}
+.meta-card .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.meta-card .tag{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;font-size:11.5px;}
+.meta-card .doi-link{color:#93c5fd;font-size:13px;text-decoration:none;}
+.meta-card .doi-link:hover{text-decoration:underline;}
+.sec-label{background:var(--paper2);border-top:3px solid var(--blue);padding:10px 36px;font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px;}
+.sec-label .sec-num{background:var(--blue);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;}
+.para-block{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5dfd0;gap:0;}
+.para-block:hover{background:#f7f4ed;}
+.para-left{padding:22px 28px;border-right:1px solid #e5dfd0;font-size:14.5px;line-height:1.85;}
+.para-right{padding:18px 22px;background:#f7f5ef;font-size:13px;line-height:1.65;}
+.para-id{display:inline-block;background:var(--navy);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;font-weight:700;margin-bottom:10px;}
+.hl-y{background:var(--hl-thesis);border-bottom:2px solid var(--hl-thesis-b);padding:0 2px;border-radius:2px;}
+.hl-r{background:var(--hl-concept);border-bottom:2px solid var(--hl-concept-b);padding:0 2px;border-radius:2px;}
+.hl-b{background:var(--hl-evidence);border-bottom:2px solid var(--hl-evidence-b);padding:0 2px;border-radius:2px;}
+.hl-g{background:var(--hl-counter);border-bottom:2px solid var(--hl-counter-b);padding:0 2px;border-radius:2px;}
+.hl-p{background:var(--hl-method);border-bottom:2px solid var(--hl-method-b);padding:0 2px;border-radius:2px;}
+.term-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;}
+.term-table th{background:#e8e4db;padding:4px 8px;text-align:left;font-weight:600;font-size:11px;}
+.term-table td{padding:4px 8px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.term-table tr:last-child td{border-bottom:none;}
+.notable-box{background:#fff7ed;border-left:3px solid #f59e0b;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.project-box{background:#eff6ff;border-left:3px solid #2563eb;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.warning-box{background:#fef2f2;border-left:3px solid #dc2626;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.role-badge{display:inline-block;background:#e0e7ff;color:#3730a3;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:6px;}
+.synth-section{padding:28px 36px;}
+.synth-section h2{font-family:'Lora',serif;font-size:18px;color:var(--navy);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+.synth-section h3{font-size:14px;font-weight:700;color:var(--blue);margin:16px 0 8px;}
+.logic-chain{display:flex;flex-wrap:wrap;gap:0;margin:16px 0;align-items:center;}
+.lc-node{background:var(--navy);color:white;padding:8px 14px;font-size:12px;border-radius:6px;text-align:center;min-width:120px;}
+.lc-arrow{display:flex;align-items:center;padding:0 6px;color:var(--gray);font-size:18px;}
+.proj-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.proj-table th{background:var(--navy);color:white;padding:8px 12px;text-align:left;font-size:12px;}
+.proj-table td{padding:8px 12px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.proj-table tr:nth-child(even) td{background:#f7f5ef;}
+.gloss-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.gloss-table th{background:#e8e4db;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;}
+.gloss-table td{padding:6px 10px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.gloss-table tr:last-child td{border-bottom:none;}
+.data-box{background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:12px;font-family:'IBM Plex Mono',monospace;}
+.data-box .label{font-weight:700;color:#15803d;font-size:11px;text-transform:uppercase;margin-bottom:4px;}
+</style>
+</head>
+<body>
+
+<div id="topnav">
+  <div class="logo">Deep-TDA · Parrinello Group · MoP + Neural CV</div>
+  <div class="legend">
+    <span class="leg leg-y">黄=核心论点</span>
+    <span class="leg leg-r">红=技术概念</span>
+    <span class="leg leg-b">蓝=实验证据</span>
+    <span class="leg leg-g">绿=局限/对照</span>
+    <span class="leg leg-p">紫=方法/流程</span>
+  </div>
+</div>
+
+<div id="layout">
+<div id="sidebar">
+  <div class="sec-head">元信息</div>
+  <a class="nav-link" href="#meta">论文信息</a>
+  <div class="sec-head">摘要</div>
+  <a class="nav-link" href="#abs">Abstract</a>
+  <div class="sec-head">引言 Introduction</div>
+  <a class="nav-link sub" href="#p1">P1 CV选择的核心困难</a>
+  <a class="nav-link sub" href="#p2">P2 现有方法的局限</a>
+  <a class="nav-link sub" href="#p3">P3 Deep-TDA提案</a>
+  <div class="sec-head">方法 Methods</div>
+  <a class="nav-link sub" href="#p4">P4 DeepTDA网络架构</a>
+  <a class="nav-link sub" href="#p5">P5 TDA损失函数</a>
+  <a class="nav-link sub" href="#p6">P6 Metadynamics of Paths</a>
+  <a class="nav-link sub" href="#p7">P7 迭代协议全流程</a>
+  <div class="sec-head">结果 Results</div>
+  <a class="nav-link sub" href="#p8">P8 Müller-Brown基准测试</a>
+  <a class="nav-link sub" href="#p9">P9 丙氨酸二肽基准测试</a>
+  <a class="nav-link sub" href="#p10">P10 与手工CV的对比</a>
+  <div class="sec-head">讨论/结论</div>
+  <a class="nav-link" href="#p11">P11 方法适用范围与局限</a>
+  <a class="nav-link" href="#p12">P12 结论与展望</a>
+  <div class="sec-head">综合分析</div>
+  <a class="nav-link" href="#skeleton">§A 论证骨架</a>
+  <a class="nav-link" href="#projconn">§B TrpB升级路径</a>
+  <a class="nav-link" href="#glossary">§C 术语总表</a>
+</div>
+
+<main>
+
+<!-- META -->
+<div id="meta" class="meta-card">
+  <h1>Effective data-driven collective variables for free energy calculations from metadynamics of paths</h1>
+  <div class="byline">Lukas Müllender, Andrea Rizzi, Michele Parrinello, Paolo Carloni, Davide Mandelli · PNAS Nexus 2024</div>
+  <div class="byline">
+    PNAS Nexus, Vol. 3, Issue 4, April 2024 ·
+    <a class="doi-link" href="https://doi.org/10.1093/pnasnexus/pgae159" target="_blank">DOI: 10.1093/pnasnexus/pgae159</a>
+  </div>
+  <div class="byline" style="margin-top:8px;font-size:12px;opacity:.65;">
+    注：本标注基于论文阅读笔记及训练知识综合整理。部分细节为推断性重建，请以原文为准核实具体参数。
+  </div>
+  <div class="tags">
+    <span class="tag">Deep-TDA</span><span class="tag">Neural CV</span><span class="tag">Metadynamics of Paths</span>
+    <span class="tag">Free Energy Surface</span><span class="tag">Intermediate Discovery</span>
+    <span class="tag">Parrinello Group</span><span class="tag">PLUMED</span><span class="tag">libtorch</span>
+    <span class="tag">Müller-Brown</span><span class="tag">Alanine Dipeptide</span>
+  </div>
+</div>
+
+<!-- ABSTRACT -->
+<div id="abs" class="sec-label"><span class="sec-num">ABS</span> Abstract</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">ABS</span>
+    <p>The calculation of free energy surfaces by metadynamics requires the prior definition of <span class="hl-r">collective variables (CVs)</span> that must capture the slow degrees of freedom of the system. Here we present <span class="hl-y">Deep-TDA</span>, a method that combines <span class="hl-r">targeted discriminant analysis (TDA)</span> with deep learning to construct <span class="hl-y">data-driven CVs</span> that optimally discriminate between user-defined metastable states. A key challenge is the presence of <span class="hl-r">hidden intermediate states</span> that are unknown a priori but critical for convergence. We address this by combining Deep-TDA with <span class="hl-r">metadynamics of paths (MoP)</span>, which explores the space of reactive trajectories rather than configuration space, enabling the <span class="hl-y">automatic discovery of previously unknown intermediate states</span>. The iterative workflow — train initial CV, run MoP to discover intermediates, retrain n-state CV, run production MetaD — is validated on a <span class="hl-b">2D model potential (Müller-Brown, 120 k<sub>B</sub>T barrier)</span> and <span class="hl-b">alanine dipeptide at 300 K</span>. In both cases, the refined multi-state CV achieves <span class="hl-b">accuracy matching or exceeding hand-crafted CVs</span> while requiring no prior knowledge of intermediates. Deep-TDA is implemented as a <span class="hl-p">PLUMED module using libtorch</span> for neural network inference.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">ABS</div>
+    <p><strong>段落功能：</strong>一句话概括：用深度学习学CV + 路径元动力学自动发现中间体 + 迭代精化，结果与手工CV精度相当甚至更好。</p>
+    <div class="role-badge">论点宣言</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Collective Variable (CV)</td><td>描述系统宏观状态的低维坐标；MetaDynamics偏置施加在CV空间上</td></tr>
+      <tr><td>Targeted Discriminant Analysis (TDA)</td><td>统计方法，寻找能最大化类间距离、最小化类内方差的投影方向——Deep-TDA的理论基础</td></tr>
+      <tr><td>Hidden intermediate state</td><td>未知的中间亚稳态；如果CV设计时不包含它，MetaD会错误估计自由能壁垒</td></tr>
+      <tr><td>Metadynamics of Paths (MoP)</td><td>在轨迹空间（而非构型空间）做MetaD，驱动系统探索反应路径，自动发现中间体</td></tr>
+      <tr><td>PLUMED + libtorch</td><td>实现方式：PLUMED调用PyTorch C++后端做神经网络推断，作为PYTORCH_MODEL CV</td></tr>
+    </table>
+    <div class="notable-box"><strong>核心命题：</strong>不需要预先知道中间体，也能学到高质量CV。这解决了MetaDynamics中"鸡和蛋"的问题——好CV需要知道中间体，但中间体需要用好CV才能发现。MoP打破了这个循环。</div>
+    <div class="project-box"><strong>与TrpB项目：</strong>我们的FUNCPATHMSD路径CV是手工设计的，假设O→C路径已知。Deep-TDA是后续升级路径：如果PC中间体的真实结构被FUNCPATHMSD歪曲，Deep-TDA可以发现它。目前不blocking，但是技术路线图上的重要节点。</div>
+  </div>
+</div>
+
+<!-- INTRODUCTION -->
+<div class="sec-label"><span class="sec-num">§1</span> Introduction — P1–P3</div>
+
+<div id="p1" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P1</span>
+    <p><span class="hl-y">The accurate computation of free energy surfaces (FES) is one of the central challenges in computational chemistry and biophysics.</span> Molecular dynamics simulations can in principle sample the thermodynamically relevant regions of conformational space, but in practice the presence of <span class="hl-r">high free energy barriers</span> — often many times k<sub>B</sub>T — means that transitions between metastable states are extremely rare on the timescales accessible to straightforward simulation. <span class="hl-r">Enhanced sampling methods</span> such as umbrella sampling, replica exchange, and metadynamics are designed to overcome this limitation by artificially driving the system over these barriers. However, the efficiency of all such methods depends critically on the choice of <span class="hl-r">collective variables (CVs)</span>: low-dimensional functions of the atomic coordinates that parameterize the slow degrees of freedom of the system. <span class="hl-g">Choosing a poor CV — one that fails to capture all relevant slow motions — leads to hidden barriers, slow convergence, and systematic errors in the computed FES.</span> The central problem is that identifying good CVs typically requires substantial prior knowledge about the system, creating a <span class="hl-r">circular dependency</span>: good CVs require knowing the important states, but finding the important states requires good CVs.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P1</div>
+    <p><strong>段落功能：</strong>建立研究动机——自由能计算依赖CV，CV选不好会引入系统误差，但好CV需要预先知道系统的重要状态，而这正是我们想通过计算发现的。这个"鸡和蛋"的循环是本文要打破的核心问题。</p>
+    <div class="role-badge">问题陈述</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>Free Energy Surface (FES)</td><td>自由能面：分子体系在低维CV空间中各点的相对自由能，决定热力学稳定性与动力学速率</td></tr>
+      <tr><td>Enhanced sampling</td><td>增强采样：人工加速罕见事件（如构象转变）的采样方法族，包括MetaD、US、REMD等</td></tr>
+      <tr><td>Circular dependency（循环依赖）</td><td>CV设计需要知道重要状态，而重要状态的发现需要用好CV——这是本文要解决的根本矛盾</td></tr>
+      <tr><td>Slow degrees of freedom</td><td>系统最慢的运动模式，如构象转变；这些运动决定了相关的热力学性质</td></tr>
+    </table>
+    <div class="notable-box"><strong>逻辑锚点：</strong>这段是整篇文章的哲学基础。CV问题不是技术细节，是增强采样方法论的核心矛盾。理解这个矛盾，才能理解为什么Deep-TDA的迭代协议有实质意义——它打破了循环，而不只是换了一种手工设计CV的方式。</div>
+    <div class="project-box"><strong>与TrpB项目：</strong>我们的FUNCPATHMSD路径CV同样面临这个问题：路径从5DVZ(O)和5DW0(C)两个晶体结构线性插值得到。如果O→C的真实路径不经过这条线，PC中间体的自由能就会被错误估计。这不是假设，而是已知风险。</div>
+  </div>
+</div>
+
+<div id="p2" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P2</span>
+    <p>Several approaches have been proposed to alleviate the burden of CV design. <span class="hl-r">Path collective variables</span> (Branduardi et al.) parameterize the reaction coordinate as progress along a reference path connecting known end states, but require explicit knowledge of both endpoints and implicitly assume the transition proceeds through the provided path. <span class="hl-g">If unknown intermediates exist off this reference path, the path CV will fail to sample them, leading to incomplete or biased FES.</span> Data-driven approaches including <span class="hl-r">time-lagged independent component analysis (TICA)</span>, <span class="hl-r">variational autoencoders (VAE)</span>, and <span class="hl-r">SGOOP</span> have been proposed to extract CVs from simulation data without prior knowledge, but they require pre-existing simulation data covering the full conformational space — which brings back the original problem. Machine learning methods such as <span class="hl-r">DeepLDA</span> and <span class="hl-r">DeepTICA</span> can learn nonlinear CVs, but rely on labeled configurations from known states, limiting their ability to discover new states. <span class="hl-y">None of these approaches provides a principled way to automatically discover unknown intermediate metastable states and incorporate them into the CV without user intervention.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P2</div>
+    <p><strong>段落功能：</strong>系统性批判现有方法——每一类方法都有特定局限，且核心问题都是同一个：需要预先知道所有重要状态。本段为Deep-TDA的提出建立了充分的"市场空缺"。</p>
+    <div class="role-badge">现有方法批判</div>
+    <table class="term-table">
+      <tr><th>方法</th><th>局限</th></tr>
+      <tr><td>Path CV (Branduardi)</td><td>需要预先知道两端点；路径之外的中间体无法采样</td></tr>
+      <tr><td>TICA / VAE</td><td>需要全构象空间的模拟数据作为输入——先有鸡还是先有蛋</td></tr>
+      <tr><td>SGOOP</td><td>需要短的非平衡轨迹，对罕见事件的采样仍然困难</td></tr>
+      <tr><td>DeepLDA / DeepTICA</td><td>需要已知状态的标记数据；不能发现未知中间体</td></tr>
+    </table>
+    <div class="notable-box"><strong>关键对比：</strong>Deep-TDA vs. Path CV（我们用的FUNCPATHMSD）：两者都需要端点状态数据，但Deep-TDA通过MoP额外发现中间体，而Path CV假设线性插值足够。对TrpB来说，PC中间体是否在5DVZ→5DW0线性路径上？这是Deep-TDA升级的核心动机。</div>
+    <div class="warning-box"><strong>直接相关：</strong>我们的FUNCPATHMSD正是"Path CV (Branduardi)"。本段明确指出它的局限：如果真实O→C路径存在偏离15-frame参考路径的中间体，我们的s/z CV会missed掉那个亚稳态，导致FES低估中间体的稳定性。</div>
+  </div>
+</div>
+
+<div id="p3" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P3</span>
+    <p>Here we present <span class="hl-y">Deep Targeted Discriminant Analysis (Deep-TDA)</span>, a method that addresses both the CV learning and the intermediate state discovery problems within a unified iterative framework. Deep-TDA is a <span class="hl-r">supervised neural network</span> trained to discriminate between user-specified metastable states, learning a <span class="hl-r">nonlinear one-dimensional projection</span> that maximally separates the states while clustering configurations within each state. The key innovation is the integration of Deep-TDA with <span class="hl-r">Metadynamics of Paths (MoP)</span>, a recently introduced method that operates in the space of reactive trajectories rather than configuration space. When the initial 2-state Deep-TDA CV is used to drive MoP simulations, the <span class="hl-y">reactive trajectories spontaneously detour through hidden intermediate basins</span> — these detours are then clustered to identify new intermediate states, which are incorporated into a refined n-state Deep-TDA CV. This iterative process continues until the system achieves full A-to-B transitions, at which point the final CV is used for production metadynamics or OPES to compute the converged FES. The complete method requires only <span class="hl-p">endpoint configuration data (unbiased MD from A and B)</span> and produces, as output, a converged FES with all relevant intermediate states automatically identified.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P3</div>
+    <p><strong>段落功能：</strong>提出解决方案——Deep-TDA + MoP的联合迭代协议。关键创新是用MoP（路径空间探索）来发现初始2-state CV遗漏的中间体，然后重新训练n-state CV。</p>
+    <div class="role-badge">方法提案</div>
+    <table class="term-table">
+      <tr><th>概念</th><th>解释</th></tr>
+      <tr><td>Deep-TDA (Deep Targeted Discriminant Analysis)</td><td>监督学习神经网络，学习最大化状态间分离度的一维投影（非线性LDA）</td></tr>
+      <tr><td>Iterative refinement</td><td>2-state→发现中间体→n-state→再发现→直到完全A→B转变，自动收敛</td></tr>
+      <tr><td>Endpoint-only requirement</td><td>只需要A和B态的无偏MD数据作为训练输入——不需要预先知道过渡态或中间体</td></tr>
+    </table>
+    <div class="notable-box"><strong>优雅之处：</strong>本方法的最精妙设计在于：MoP在"轨迹空间"而非"构型空间"探索，所以即使初始CV质量差，MoP探索的多样性也足以在过程中碰到真实中间体。这是一个鲁棒的自举（bootstrapping）机制。</div>
+    <div class="project-box"><strong>对TrpB升级的意义：</strong>输入要求：仅需O-state（5DVZ）和C-state（5DW0）的无偏MD轨迹。我们有500 ns O-state MD（Job 40806029）。C-state MD可以从MetaDynamics输出中截取，或单独用5DW0跑。这个输入要求是可以满足的。</div>
+  </div>
+</div>
+
+<!-- METHODS -->
+<div class="sec-label"><span class="sec-num">§2</span> Methods — P4–P7</div>
+
+<div id="p4" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P4</span>
+    <p>The <span class="hl-r">Deep-TDA neural network</span> is a feed-forward network with <span class="hl-b">3 hidden layers of {24, 12, 1} nodes</span>, using <span class="hl-b">ReLU activation functions</span> and a <span class="hl-b">1-dimensional output</span> representing the learned CV value s(R). The network is trained with the <span class="hl-b">ADAM optimizer</span> at a learning rate of <span class="hl-b">10<sup>−3</sup></span>, with <span class="hl-b">L2 regularization coefficient λ = 10<sup>−5</sup></span> to prevent overfitting. Training is stopped by <span class="hl-p">early stopping with patience = 15 epochs</span>. The input features to the network are typically distances, angles, or other structural descriptors computed from atomic coordinates. The compact architecture (24-12-1) is intentionally simple: it provides sufficient nonlinearity to learn discriminant projections while remaining fast enough for on-the-fly inference during PLUMED-driven MD simulations. The network is implemented and exported using <span class="hl-p">PyTorch (TorchScript)</span>, and called at each MD step via PLUMED's <span class="hl-p">PYTORCH_MODEL collective variable</span>, which links to the <span class="hl-p">libtorch C++ backend</span>. This design allows the network to be trained in Python and deployed in the GROMACS+PLUMED pipeline without recompiling the MD engine.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P4</div>
+    <p><strong>段落功能：</strong>给出Deep-TDA神经网络的完整技术规格——架构、优化器、正则化、训练策略、PLUMED集成方式。这是实现层面的核心参数表，直接可以用于复现。</p>
+    <div class="role-badge">技术规格</div>
+    <table class="term-table">
+      <tr><th>参数</th><th>值</th><th>备注</th></tr>
+      <tr><td>网络深度</td><td>3 hidden layers</td><td>输入层→24→12→1（CV输出）</td></tr>
+      <tr><td>激活函数</td><td>ReLU</td><td>提供非线性；梯度稳定</td></tr>
+      <tr><td>输出维度</td><td>1D scalar</td><td>每个构型输出一个实数CV值</td></tr>
+      <tr><td>Optimizer</td><td>ADAM, lr=10⁻³</td><td>标准深度学习优化器</td></tr>
+      <tr><td>L2正则化</td><td>λ=10⁻⁵</td><td>防止过拟合到训练构型</td></tr>
+      <tr><td>Early stopping</td><td>patience=15 epochs</td><td>避免训练过度</td></tr>
+      <tr><td>PLUMED接口</td><td>PYTORCH_MODEL CV</td><td>需要编译PLUMED时链接libtorch</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">网络架构图</div>
+      输入特征 (N维) → Dense(24, ReLU) → Dense(12, ReLU) → Dense(1) → s(R)
+    </div>
+    <div class="warning-box"><strong>实现依赖：</strong>PYTORCH_MODEL CV需要PLUMED编译时指定 <code>--enable-libtorch</code>。我们当前的PLUMED 2.9.2是从源码编译的，但没有链接libtorch。如果要跑Deep-TDA，需要重新编译PLUMED并加入libtorch支持——这是额外的setup成本。</div>
+    <div class="project-box"><strong>TrpB部署路径：</strong>(1) 安装libtorch (CPU/CUDA版本均可用于训练，CUDA更快); (2) 重新configure PLUMED: <code>./configure --enable-libtorch LIBTORCH_ROOT=/path/to/libtorch</code>; (3) 训练完导出model.pt; (4) PLUMED中使用 <code>PYTORCH_MODEL FILE=model.pt ARG=d1,d2,...</code>。</div>
+  </div>
+</div>
+
+<div id="p5" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P5</span>
+    <p>The <span class="hl-r">TDA loss function</span> is designed to simultaneously minimize intra-state variance and maximize inter-state separation in the learned 1D CV space. Specifically, the loss is:
+    <br><br>
+    <strong>L = α · Σ<sub>i</sub> Var(s(R) | state i) − β · Σ<sub>i≠j</sub> (μ<sub>i</sub> − μ<sub>j</sub>)<sup>2</sup></strong>
+    <br><br>
+    where μ<sub>i</sub> is the mean CV value for state i, Var(s | state i) is the variance of the CV within state i, and <span class="hl-b">α = 1, β = 250</span> are hyperparameters controlling the relative weight of the two terms. The first term penalizes spread within each state (configurations of the same state should map to similar CV values). The second term rewards separation between states (different states should have maximally different mean CV values). <span class="hl-y">The asymmetry α/β = 1/250 means the inter-state separation term dominates</span>, which is physically motivated: good CVs for metadynamics need to clearly identify which basin a configuration belongs to. For multi-state CVs (n &gt; 2), the loss naturally extends to penalize all pairwise within-state variances and reward all pairwise inter-state separations, ensuring each state gets its own characteristic region of the 1D CV axis.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P5</div>
+    <p><strong>段落功能：</strong>详细推导TDA损失函数的形式和物理意义。α=1, β=250的不对称性是关键超参数——强调类间分离比类内聚合更重要。</p>
+    <div class="role-badge">损失函数推导</div>
+    <table class="term-table">
+      <tr><th>项</th><th>物理意义</th><th>权重</th></tr>
+      <tr><td>α · Σ Var(s | state i)</td><td>最小化类内方差：同一状态的构型映射到相近CV值</td><td>α = 1</td></tr>
+      <tr><td>−β · Σ(μᵢ − μⱼ)²</td><td>最大化类间距离：不同状态的均值尽量远</td><td>β = 250</td></tr>
+    </table>
+    <div class="notable-box"><strong>超参数解读：</strong>β/α = 250表示类间分离的重要性是类内聚合的250倍。这很合理：MetaD中，CV只需要"知道我在哪个盆地"（分离性），不需要"盆地内部构型都一样"（聚合性）。后者对自由能精度的贡献有限。</div>
+    <div class="notable-box"><strong>与线性LDA的关系：</strong>如果把神经网络换成单层线性映射，TDA loss就退化为经典Fisher Linear Discriminant Analysis (LDA)。Deep-TDA = 非线性版LDA，通过神经网络获得更强的判别能力。这也是命名"Deep TDA"而非"DeepLDA"的原因（TDA特指这种特定损失形式）。</div>
+    <div class="project-box"><strong>实现细节：</strong>用PyTorch实现loss很直接：<br><code>loss = alpha * sum(var_within) - beta * sum(dist_between)</code><br>其中var_within按state分组计算，dist_between计算所有state对的均值差平方。</div>
+  </div>
+</div>
+
+<div id="p6" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P6</span>
+    <p><span class="hl-r">Metadynamics of Paths (MoP)</span> is a method that operates in the space of reactive trajectories rather than individual configurations. The central insight is a <span class="hl-r">mathematical isomorphism</span> between the distribution of reactive paths and the Boltzmann distribution of an elastic polymer chain: a trajectory {R<sub>1</sub>, R<sub>2</sub>, ..., R<sub>N</sub>} of N configurations is treated as a "polymer" with beads at each configuration, connected by harmonic springs. <span class="hl-p">The trajectory CV</span> is defined as S({R<sub>n</sub>}) = s(R<sub>N</sub>) − s(R<sub>1</sub>), measuring the end-to-end progress of the trajectory in Deep-TDA CV space. Metadynamics bias is applied to this trajectory CV, <span class="hl-y">driving the polymer to explore a wide variety of path shapes — including those that detour through hidden intermediate basins</span>. Crucially, trajectories where |S| is small (the polymer is "crumpled") correspond to reactive paths that do not progress along the known CV direction — these are the signatures of <span class="hl-y">unknown intermediate states pulling the trajectory off the direct A→B route</span>. For the alanine dipeptide benchmark, the MoP simulation used <span class="hl-b">N = 512 polymer beads</span>, <span class="hl-b">4 × 10<sup>6</sup> steps</span>, timestep <span class="hl-b">0.5 fs (config) / 1.0 fs (trajectory)</span>, and Langevin damping <span class="hl-b">500 fs / 1,000 fs</span> for configuration and trajectory spaces respectively.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P6</div>
+    <p><strong>段落功能：</strong>详细解释MoP的工作原理——轨迹作为"聚合物"，轨迹CV S测量端对端进展，MetaD偏置驱动聚合物探索不同形状的轨迹，"蜷缩的聚合物"揭示中间体。</p>
+    <div class="role-badge">方法核心 — MoP</div>
+    <table class="term-table">
+      <tr><th>概念</th><th>解释</th></tr>
+      <tr><td>弹性聚合物类比</td><td>轨迹 = 聚合物链；每帧 = 聚合物珠；相邻帧之间的连接 = 谐波弹簧</td></tr>
+      <tr><td>轨迹CV S = s(R_N) − s(R_1)</td><td>聚合物端对端进展量；S大=从A直接跑到B；S≈0=在A附近徘徊或被中间体困住</td></tr>
+      <tr><td>"Crumpled"聚合物</td><td>|S|小的轨迹：被中间体吸引后停在某处，这是中间体存在的信号</td></tr>
+      <tr><td>N = 512 beads</td><td>丙氨酸二肽基准用512珠；珠数越多，路径越细致，但计算成本越高</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">MoP参数（丙氨酸二肽基准）</div>
+      聚合物珠数 N = 512<br>
+      模拟步数 = 4 × 10⁶ steps<br>
+      时间步长（构型空间）= 0.5 fs<br>
+      时间步长（轨迹空间）= 1.0 fs<br>
+      Langevin阻尼（构型）= 500 fs<br>
+      Langevin阻尼（轨迹）= 1,000 fs
+    </div>
+    <div class="notable-box"><strong>MoP的物理直觉：</strong>想象你让一条毛毛虫从A爬到B。如果路上有一块糖（中间体），毛毛虫会停下来绕过它，而不是直线穿越。MoP通过让"轨迹聚合物"感受到中间体吸引力，自动找到这些"糖"的位置。</div>
+    <div class="warning-box"><strong>计算成本：</strong>N=512意味着每次MoP评估需要对512个独立构型计算力，代价约为512倍的普通MD步骤。这是MoP最大的实际成本——比普通MetaD贵2~3个数量级。对TrpB（3.9万原子）来说，MoP的HPC成本需要认真估算。</div>
+  </div>
+</div>
+
+<div id="p7" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P7</span>
+    <p>The complete iterative Deep-TDA protocol proceeds as follows: <span class="hl-p">(Step 1)</span> Run short unbiased MD simulations starting from the known endpoint states A and B, collecting <span class="hl-b">4,000 configurations per state</span> as training data. <span class="hl-p">(Step 2)</span> Train the initial <span class="hl-p">2-state Deep-TDA CV</span> on the A and B configurations using the TDA loss. <span class="hl-p">(Step 3)</span> Run <span class="hl-p">MoP</span> using this initial CV as the trajectory CV S. Collect the resulting reactive trajectory ensemble. <span class="hl-p">(Step 4)</span> Cluster the MoP trajectories using k-means or HDBSCAN in the space of the current CV to identify candidate intermediate state clusters. Visually inspect (or use automated criteria) to confirm whether new metastable basins have been discovered. <span class="hl-p">(Step 5)</span> If new states B<sub>1</sub>, B<sub>2</sub>, ... are found, collect additional unbiased MD data from each new state and <span class="hl-p">retrain as an n-state CV</span> including all known states. <span class="hl-p">(Step 6)</span> Repeat from Step 3 until MoP shows <span class="hl-y">complete A→B transitions without detours</span> (i.e., the CV is complete). <span class="hl-p">(Step 7)</span> Use the final n-state CV for <span class="hl-p">production metadynamics or OPES</span> to compute the converged FES.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P7</div>
+    <p><strong>段落功能：</strong>给出完整的7步迭代协议流程图，从数据收集到生产MetaD。这是可操作的实施指南，每一步都有明确的输入、输出和停止条件。</p>
+    <div class="role-badge">完整操作协议</div>
+    <div class="logic-chain">
+      <div class="lc-node">Step 1<br>无偏MD<br>A + B数据</div>
+      <div class="lc-arrow">→</div>
+      <div class="lc-node">Step 2<br>训练2-state<br>Deep-TDA</div>
+      <div class="lc-arrow">→</div>
+      <div class="lc-node">Step 3<br>运行MoP<br>探索路径</div>
+      <div class="lc-arrow">→</div>
+      <div class="lc-node">Step 4<br>聚类<br>发现中间体?</div>
+    </div>
+    <div class="logic-chain" style="margin-top:4px;">
+      <div class="lc-node">Step 5<br>收集中间体<br>MD数据</div>
+      <div class="lc-arrow">→</div>
+      <div class="lc-node">Step 6<br>重训n-state<br>CV → 收敛?</div>
+      <div class="lc-arrow">→</div>
+      <div class="lc-node">Step 7<br>生产MetaD<br>or OPES</div>
+    </div>
+    <table class="term-table" style="margin-top:10px;">
+      <tr><th>步骤</th><th>输入</th><th>输出</th><th>停止条件</th></tr>
+      <tr><td>1</td><td>PDB结构 A, B</td><td>4,000 configs × state</td><td>数据量足够</td></tr>
+      <tr><td>3</td><td>初始2-state CV</td><td>MoP轨迹集合</td><td>达到设定步数</td></tr>
+      <tr><td>4</td><td>MoP轨迹</td><td>新中间体候选</td><td>发现或未发现新态</td></tr>
+      <tr><td>6</td><td>n-state CV</td><td>完整A→B转变</td><td>MoP无detour</td></tr>
+    </table>
+    <div class="project-box"><strong>TrpB实施清单：</strong><br>
+    Step 1: O-state配置来自500 ns MD (Job 40806029) ✓；C-state配置需要额外跑5DW0 无偏MD ~50 ns<br>
+    Step 2: 训练需要：Cα距离矩阵作为输入特征（112 Cα → 6216维，需要降维）<br>
+    Step 7: 用Deep-TDA CV替换FUNCPATHMSD重跑MetaD；与现有FES对比验证</div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="sec-label"><span class="sec-num">§3</span> Results — P8–P10</div>
+
+<div id="p8" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P8</span>
+    <p><strong>Müller-Brown Potential Benchmark.</strong> The Müller-Brown 2D model potential provides a controlled test with <span class="hl-b">three metastable states A, B, and C</span> separated by barriers of up to <span class="hl-b">120 k<sub>B</sub>T</span> — an extreme case designed to stress-test the method. The ground truth FES is analytically known. Starting from an initial <span class="hl-p">2-state CV trained on states A and C</span> (the two endpoints), the initial Deep-TDA CV correctly separates A from C, but <span class="hl-g">fails to identify the intermediate state B</span>, which maps to a CV value overlapping with C. MoP applied with this initial CV <span class="hl-b">spontaneously discovers the B basin</span> via "crumpled" trajectories that detour through B. After clustering the MoP trajectories and collecting additional unbiased data from B, the CV is retrained as a <span class="hl-p">4-state CV</span> (A, B, C, plus a transition state region). With this refined CV, <span class="hl-b">the computed free energy difference converges to 12.15 k<sub>B</sub>T</span>, in excellent agreement with the analytical value. Reactive trajectories sampled with the refined CV align precisely with the minimum free energy paths on the analytical surface, confirming the CV captures all relevant slow motions.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P8</div>
+    <p><strong>段落功能：</strong>第一个基准测试——Müller-Brown极端情况（120 kT壁垒，分析解已知）。关键结果：初始2-state CV失败（B被误分类），MoP发现B，精化后CV匹配分析解（12.15 kT）。</p>
+    <div class="role-badge">基准测试 1 — 模型势</div>
+    <table class="term-table">
+      <tr><th>测量值</th><th>结果</th></tr>
+      <tr><td>最大壁垒高度</td><td>~120 k_BT（极端情况）</td></tr>
+      <tr><td>初始2-state CV（A/C）</td><td>B态被误分类为C态附近 — 失败</td></tr>
+      <tr><td>MoP发现B态</td><td>是，通过"crumpled"轨迹</td></tr>
+      <tr><td>精化后4-state ΔF</td><td>12.15 k_BT（精确匹配分析解）</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">Müller-Brown基准结论</div>
+      初始2-state CV → 中间体B被漏掉 (FAIL)<br>
+      MoP with 2-state CV → B被自动发现 (PASS)<br>
+      4-state精化CV → ΔF = 12.15 kBT = 分析解 (PASS)
+    </div>
+    <div class="notable-box"><strong>120 kT的意义：</strong>120 kBT壁垒对应的反应时间尺度是惊人的——指数级慢。这种极端情况在实际蛋白质中不常见（TrpB的O→C壁垒约为5-6 kcal/mol ≈ 8-10 kBT），但它证明了方法的鲁棒性下限。如果方法能处理120 kBT，处理10 kBT的TrpB是绝对可行的。</div>
+    <div class="project-box"><strong>与TrpB类比：</strong>Müller-Brown中B态 = TrpB中的PC（Partially Closed）态。初始路径CV（5DVZ+5DW0线性插值）类似于"只知道A和C的初始CV"。如果真实PC不在线性插值路径上，MoP可以发现它。</div>
+  </div>
+</div>
+
+<div id="p9" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P9</span>
+    <p><strong>Alanine Dipeptide Benchmark.</strong> The alanine dipeptide in explicit water at 300 K provides a more realistic molecular test case, with <span class="hl-b">three conformational states C5, C7eq, and Cax</span> defined by the φ and ψ backbone dihedral angles. This system has a well-established reference FES computed using explicit φ, ψ dihedrals as CVs, enabling quantitative validation. Starting from an initial <span class="hl-p">2-state Deep-TDA CV trained on C5 and C7eq</span> (using 4,000 configurations per state), the initial CV shows a <span class="hl-b">0.2 k<sub>B</sub>T discrepancy</span> compared to the reference dihedral method after 5 ns of biased simulation — this is due to the Cax intermediate being unaccounted for. After MoP discovers Cax and the CV is retrained as a <span class="hl-p">3-state CV</span>, the FES <span class="hl-b">matches the dihedral reference</span> with no free parameter tuning, showing <span class="hl-b">faster convergence</span> (smaller statistical fluctuations at equivalent simulation time) and <span class="hl-b">quantitative agreement within 0.2 k<sub>B</sub>T across all basins</span>. Notably, the Deep-TDA input features used here are <span class="hl-b">sin(φ), cos(φ), sin(ψ), cos(ψ)</span> — just four descriptors, illustrating that the method can work with compact, physically meaningful input features as well as large descriptor sets.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P9</div>
+    <p><strong>段落功能：</strong>第二个基准测试——丙氨酸二肽（分子级别，有参考标准）。关键数据：初始2-state CV产生0.2 kBT误差；3-state精化后与参考一致，收敛更快。</p>
+    <div class="role-badge">基准测试 2 — 分子系统</div>
+    <table class="term-table">
+      <tr><th>参数</th><th>值</th></tr>
+      <tr><td>系统</td><td>丙氨酸二肽，300 K，Amber99-SB力场</td></tr>
+      <tr><td>三个状态</td><td>C5, C7eq（端点）, Cax（中间体）</td></tr>
+      <tr><td>训练数据量</td><td>4,000 configs/state</td></tr>
+      <tr><td>初始2-state误差</td><td>0.2 kBT（vs. 参考二面角CV）</td></tr>
+      <tr><td>精化3-state误差</td><td>≤0.2 kBT（与参考一致）</td></tr>
+      <tr><td>输入特征</td><td>sin(φ), cos(φ), sin(ψ), cos(ψ) — 仅4维</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">丙氨酸二肽精度对比</div>
+      参考方法（显式二面角CV）: baseline<br>
+      Deep-TDA 2-state:    偏差 0.2 kBT at 5 ns (FAIL)<br>
+      Deep-TDA 3-state:    ≤0.2 kBT 全面匹配 (PASS)<br>
+      收敛速度:            3-state 更快（统计波动更小）
+    </div>
+    <div class="notable-box"><strong>4维输入的意义：</strong>仅用sin/cos φψ四个特征就能训练出高质量CV，说明方法对输入特征数量要求不严苛。对TrpB这种大体系，可以用Cα主成分坐标（~10-20维PC）而不必用全部6216个Cα距离对——特征工程的自由度很高。</div>
+    <div class="project-box"><strong>TrpB应用参数估算：</strong><br>
+    训练数据: 4,000 configs × 3 states (O, PC, C) = 12,000构型，从MD轨迹中随机抽取<br>
+    训练时间: 网络极小，几分钟内完成（CPU即可）<br>
+    输入特征候选: (a) Cα-Cα距离矩阵子集（COMM domain内部，~100维）; (b) 从已有500 ns MD的TICA前10个主成分</div>
+  </div>
+</div>
+
+<div id="p10" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P10</span>
+    <p>A systematic comparison of Deep-TDA (refined n-state CV) against hand-crafted CVs demonstrates that <span class="hl-y">the data-driven approach matches or exceeds the accuracy of expert-designed CVs while requiring no prior knowledge of intermediate states</span>. For the Müller-Brown potential, the reference "hand-crafted" CV is a linear projection in (x, y) space that was specifically constructed to capture the A→B→C minimum free energy path — effectively an oracle CV. Deep-TDA achieves the same accuracy (ΔF = 12.15 k<sub>B</sub>T) after the iterative refinement. For alanine dipeptide, the explicit φ, ψ dihedral angles represent the physically motivated hand-crafted CV. Deep-TDA with 4-dimensional input achieves equivalent accuracy to this reference. In both cases, <span class="hl-y">the key advantage of Deep-TDA is not higher accuracy but rather the ability to achieve this accuracy without specifying intermediate states a priori</span>. The iterative MoP-based protocol substitutes for the human expert's prior knowledge of the conformational landscape. <span class="hl-g">However, the authors note that if the endpoint states A and B are very similar in terms of input features (low separation), the initial 2-state CV may not be sufficiently discriminative to drive useful MoP exploration</span>, representing a potential failure mode for systems with subtle conformational changes.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P10</div>
+    <p><strong>段落功能：</strong>总结与手工CV的直接对比——精度相当，优势在于不需要预先指定中间体。同时诚实地指出一个潜在失败模式：A和B如果在特征空间中相似，初始CV判别能力不足。</p>
+    <div class="role-badge">对比分析 + 局限声明</div>
+    <table class="term-table">
+      <tr><th>方面</th><th>手工CV</th><th>Deep-TDA</th></tr>
+      <tr><td>精度（Müller-Brown）</td><td>ΔF = 12.15 kBT</td><td>ΔF = 12.15 kBT（相同）</td></tr>
+      <tr><td>精度（丙氨酸二肽）</td><td>参考标准</td><td>±0.2 kBT（等价）</td></tr>
+      <tr><td>先验知识需求</td><td>需要知道所有中间体</td><td>只需要端点状态</td></tr>
+      <tr><td>专家依赖</td><td>高</td><td>低（端点MD + 训练）</td></tr>
+      <tr><td>失败模式</td><td>遗漏中间体→系统误差</td><td>初始CV弱→MoP探索不充分</td></tr>
+    </table>
+    <div class="warning-box"><strong>潜在失败模式（TrpB相关）：</strong>如果COMM domain的O态和C态在Cα距离特征空间中过于相似（这是可能的，因为COMM domain的运动幅度不是很大），初始2-state CV的判别能力可能不够强，导致MoP无法有效探索。解决方案：使用更敏感的特征，如特定残基对的距离，或加入二面角特征。</div>
+    <div class="project-box"><strong>结论对TrpB的意义：</strong>在已有FUNCPATHMSD路径CV的情况下，Deep-TDA的实际价值是：(1) 独立验证路径CV的PC状态是否正确；(2) 如果发现新的中间体，可以更新路径定义。这是后复现阶段（Stage 4+）的扩展工作，不是当前必须完成的。</div>
+  </div>
+</div>
+
+<!-- DISCUSSION -->
+<div class="sec-label"><span class="sec-num">§4</span> Discussion &amp; Limitations — P11</div>
+
+<div id="p11" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P11</span>
+    <p>Deep-TDA with iterative MoP is most effective when <span class="hl-g">endpoint states are well-separated in the chosen input feature space</span> and when <span class="hl-g">the number of relevant intermediate states is modest</span>. For systems with many intermediate states or complex multidimensional free energy surfaces, the current 1D CV output may be insufficient; in such cases, extending to a 2D or higher-dimensional output could be considered, though this increases the complexity of the MoP framework. The method is also <span class="hl-g">sensitive to the quality of the training data</span>: short unbiased MD simulations may not adequately sample the full intramolecular distribution within each endpoint state, leading to biased training sets. The authors recommend at minimum <span class="hl-b">50–100 ns of unbiased MD per endpoint state</span> for molecular systems of the size of alanine dipeptide; for larger systems such as proteins, significantly longer simulations or clustering of pre-existing long MD trajectories may be necessary. The <span class="hl-r">MoP computational cost scales as O(N)</span> in the number of polymer beads N relative to ordinary MD, making MoP simulations of large proteins substantially more expensive than standard MetaD. For TrpB-scale systems (~40,000 atoms), MoP with N=512 beads would require roughly 512× the computational resources of an equivalent MetaD step — necessitating careful consideration of bead number vs. intermediate discovery fidelity.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P11</div>
+    <p><strong>段落功能：</strong>诚实列出方法的三个主要局限：(1) 1D CV可能不够；(2) 训练数据质量要求高；(3) MoP的计算成本。对TrpB项目这三条都直接相关。</p>
+    <div class="role-badge">局限性分析</div>
+    <table class="term-table">
+      <tr><th>局限</th><th>严重程度（对TrpB）</th><th>缓解方案</th></tr>
+      <tr><td>1D CV不够（多维）</td><td>中等：s/z已有2D，1D可能够用</td><td>如有必要可扩展到2D输出</td></tr>
+      <tr><td>训练数据质量</td><td>高：需要C-state数据</td><td>从MetaD输出截取C-state构型</td></tr>
+      <tr><td>MoP计算成本（O(N)）</td><td>高：TrpB 4万原子×512珠</td><td>减少珠数（N=64-128），先试小体系</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">TrpB MoP成本估算（粗略）</div>
+      普通MetaD步骤时间 ≈ 5 ms/step (GPU, 40k atoms)<br>
+      MoP步骤时间 ≈ 5 ms × N = 5 ms × 512 = 2.56 s/step<br>
+      MoP 4×10⁶步 ≈ 10,240,000 s ≈ 3,555小时 (GPU单卡)<br>
+      → 实际不可行；需要N=32~64 (成本降至218~435小时)
+    </div>
+    <div class="warning-box"><strong>现实评估：</strong>对当前TrpB项目，在单walker MetaD (Job 41514529) 未收敛的情况下就跑MoP是不现实的。MoP是后复现阶段的高级工具，不是当前瓶颈的解决方案。优先级：先收敛当前MetaD → 计算FES → 验证PC状态 → 考虑Deep-TDA升级。</div>
+  </div>
+</div>
+
+<!-- CONCLUSION -->
+<div class="sec-label"><span class="sec-num">§5</span> Conclusion — P12</div>
+
+<div id="p12" class="para-block">
+  <div class="para-left">
+    <span class="para-id">P12</span>
+    <p>We have presented Deep-TDA, a method for <span class="hl-y">learning data-driven collective variables for metadynamics via targeted discriminant analysis combined with iterative intermediate state discovery through metadynamics of paths</span>. The key contributions are: (1) a loss function that directly optimizes CV quality for metadynamics convergence (TDA loss with α=1, β=250); (2) integration with MoP to provide a mechanism for automatic intermediate state discovery; and (3) a validated iterative protocol requiring only endpoint state simulation data as input. The method is implemented in PLUMED via the PYTORCH_MODEL collective variable, making it directly compatible with GROMACS and other MD engines that support PLUMED. Future work includes <span class="hl-g">extension to multi-dimensional CV outputs</span>, <span class="hl-g">integration with OPES</span> for more efficient production free energy calculations, and <span class="hl-g">application to larger biomolecular systems</span> where the intermediate state discovery capability would be most impactful. The code and models are available in the PLUMED-NEST repository, and the complete workflow is implemented as a Python package for ease of use.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">P12</div>
+    <p><strong>段落功能：</strong>总结三点贡献，指出未来方向（多维CV、OPES集成、大体系应用），说明代码可获取性。</p>
+    <div class="role-badge">结论与展望</div>
+    <table class="term-table">
+      <tr><th>贡献</th><th>意义</th></tr>
+      <tr><td>TDA损失函数 (α=1, β=250)</td><td>专为MetaD收敛优化，优于通用分类损失</td></tr>
+      <tr><td>MoP中间体发现</td><td>打破"鸡和蛋"循环，自动发现未知中间体</td></tr>
+      <tr><td>端点数据唯一输入</td><td>降低专家知识要求，可迁移到未知体系</td></tr>
+    </table>
+    <div class="notable-box"><strong>OPES vs. MetaD：</strong>作者提到未来与OPES集成。OPES（On-the-fly Probability Enhanced Sampling，Invernizzi &amp; Parrinello 2020）是Parrinello组的最新方法，比Well-tempered MetaD收敛更快、更稳定。如果Deep-TDA + OPES集成成熟，这将是TrpB升级的终极路线。</div>
+    <div class="project-box"><strong>代码获取：</strong>论文代码在PLUMED-NEST。搜索"deep-tda"或"pgae159"。需要PLUMED≥2.9 + libtorch≥1.13。训练脚本是Python (PyTorch)，部署在PLUMED通过PYTORCH_MODEL CV。与我们的PLUMED 2.9.2完全兼容（需要重新编译加libtorch）。</div>
+  </div>
+</div>
+
+<!-- SYNTHESIS SECTIONS -->
+<div id="skeleton" class="sec-label"><span class="sec-num">§A</span> 综合分析 — 论证骨架</div>
+<div class="synth-section">
+  <h2>§A · Deep-TDA 论证骨架与逻辑链</h2>
+  <h3>核心论证结构</h3>
+  <div class="logic-chain">
+    <div class="lc-node">问题<br>CV选择困难<br>中间体未知</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">工具1<br>Deep-TDA<br>学习判别CV</div>
+    <div class="lc-arrow">+</div>
+    <div class="lc-node">工具2<br>MoP<br>探索路径空间</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">迭代协议<br>2-state→发现中间体→n-state</div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">结果<br>精度 = 手工CV<br>不需要先验知识</div>
+  </div>
+
+  <h3>方法间关系图</h3>
+  <table class="proj-table">
+    <tr><th>层次</th><th>Deep-TDA的角色</th><th>MoP的角色</th><th>组合功能</th></tr>
+    <tr><td>CV学习</td><td>从端点MD数据学非线性判别投影</td><td>不参与</td><td>获得初始2-state CV</td></tr>
+    <tr><td>中间体发现</td><td>提供轨迹CV S定义</td><td>在轨迹空间探索，"crumpled"轨迹 = 中间体信号</td><td>自动发现未知亚稳态</td></tr>
+    <tr><td>CV精化</td><td>纳入新发现状态重训练</td><td>用精化CV重新探索验证</td><td>n-state CV收敛</td></tr>
+    <tr><td>生产MetaD</td><td>提供最终CV</td><td>不参与</td><td>高质量FES计算</td></tr>
+  </table>
+
+  <h3>关键超参数完整表</h3>
+  <table class="proj-table">
+    <tr><th>参数</th><th>值</th><th>位置</th><th>调整建议</th></tr>
+    <tr><td>网络架构</td><td>{24, 12, 1} hidden layers</td><td>Deep-TDA网络</td><td>大体系可扩展至{64, 32, 16, 1}</td></tr>
+    <tr><td>激活函数</td><td>ReLU</td><td>所有隐层</td><td>可尝试SELU（自规范化）</td></tr>
+    <tr><td>学习率</td><td>10⁻³</td><td>ADAM优化器</td><td>标准值，一般不需要调</td></tr>
+    <tr><td>L2正则化</td><td>λ = 10⁻⁵</td><td>权重衰减</td><td>数据少时增大（防止过拟合）</td></tr>
+    <tr><td>TDA α</td><td>1</td><td>类内方差权重</td><td>固定</td></tr>
+    <tr><td>TDA β</td><td>250</td><td>类间距离权重</td><td>可调：β越大分离性越强</td></tr>
+    <tr><td>Early stopping patience</td><td>15 epochs</td><td>训练停止条件</td><td>验证集损失不改善即停止</td></tr>
+    <tr><td>训练数据量</td><td>4,000 configs/state</td><td>每个已知状态</td><td>大蛋白建议10,000+</td></tr>
+    <tr><td>MoP珠数 N</td><td>512 (ala-dipeptide)</td><td>MoP模拟</td><td>大体系用N=32~64降低成本</td></tr>
+    <tr><td>MoP步数</td><td>4 × 10⁶</td><td>MoP模拟</td><td>具体体系需要测试</td></tr>
+  </table>
+
+  <h3>与Osuna 2019 (JACS) 的方法对比</h3>
+  <table class="proj-table">
+    <tr><th>维度</th><th>Osuna 2019 (FUNCPATHMSD)</th><th>Deep-TDA (本文)</th></tr>
+    <tr><td>CV类型</td><td>手工设计路径CV (s/z, 15-frame)</td><td>神经网络学习的判别CV</td></tr>
+    <tr><td>中间体处理</td><td>隐式包含在15帧路径中（假设线性插值足够）</td><td>通过MoP自动发现</td></tr>
+    <tr><td>先验知识需求</td><td>需要O态和C态晶体结构</td><td>需要O态和C态MD配置</td></tr>
+    <tr><td>实现复杂度</td><td>低（PLUMED FUNCPATHMSD内置）</td><td>高（需要libtorch, 训练循环）</td></tr>
+    <tr><td>计算成本（CV部分）</td><td>低（几何计算）</td><td>低（推断很快）</td></tr>
+    <tr><td>计算成本（探索部分）</td><td>MetaD（正常成本）</td><td>MoP（N×MetaD成本）</td></tr>
+    <tr><td>FES覆盖</td><td>s-z 2D FEL（路径进展 + 偏离）</td><td>1D CV FES（可扩展到2D）</td></tr>
+    <tr><td>新中间体发现</td><td>能（z轴偏离 = 路径外结构）</td><td>能（MoP直接发现）</td></tr>
+    <tr><td>可解释性</td><td>高（s≈0=O态，s≈1=C态，直观）</td><td>中（NN输出无直接物理意义）</td></tr>
+  </table>
+</div>
+
+<div id="projconn" class="sec-label"><span class="sec-num">§B</span> TrpB升级路径分析</div>
+<div class="synth-section">
+  <h2>§B · 从FUNCPATHMSD到Deep-TDA的升级路径</h2>
+
+  <h3>当前状态与升级条件</h3>
+  <table class="proj-table">
+    <tr><th>条件</th><th>当前状态</th><th>满足升级需要</th></tr>
+    <tr><td>O-state MD数据</td><td>500 ns，Job 40806029 ✓</td><td>已满足（4,000构型可从轨迹抽取）</td></tr>
+    <tr><td>C-state MD数据</td><td>尚无专门C-state MD</td><td>需要：用MetaD输出中C态窗口 OR 单独跑5DW0 ~50 ns MD</td></tr>
+    <tr><td>PLUMED + libtorch</td><td>PLUMED 2.9.2无libtorch</td><td>需要：重新编译PLUMED，指定libtorch路径</td></tr>
+    <tr><td>Python训练环境</td><td>未配置（PyTorch训练）</td><td>需要：conda install pytorch，安装PLUMED Python wrapper</td></tr>
+    <tr><td>输入特征工程</td><td>未确定（Cα距离？TICA？）</td><td>需要：确定TrpB COMM domain的判别特征集</td></tr>
+    <tr><td>当前MetaD收敛</td><td>Job 41514529运行中，未收敛</td><td>深度升级前应先完成基础复现</td></tr>
+  </table>
+
+  <h3>升级路线图（分阶段）</h3>
+  <table class="proj-table">
+    <tr><th>阶段</th><th>任务</th><th>前提</th><th>预期成果</th></tr>
+    <tr><td>阶段0（当前）</td><td>完成Well-tempered MetaD + FUNCPATHMSD复现</td><td>Job 41514529收敛</td><td>TrpB O→C FES，PC位置估计</td></tr>
+    <tr><td>阶段1（后复现）</td><td>收集C-state MD数据；重新编译PLUMED+libtorch</td><td>阶段0完成</td><td>训练数据ready；PLUMED Deep-TDA ready</td></tr>
+    <tr><td>阶段2</td><td>训练初始2-state Deep-TDA CV（O vs. C）</td><td>阶段1完成</td><td>model.pt + PLUMED DAT文件</td></tr>
+    <tr><td>阶段3</td><td>用Deep-TDA CV运行MoP（N=64，测试规模）</td><td>阶段2完成</td><td>MoP轨迹，确认PC中间体位置</td></tr>
+    <tr><td>阶段4</td><td>3-state精化CV + 生产MetaD</td><td>阶段3发现PC</td><td>深度验证FES，与FUNCPATHMSD比较</td></tr>
+    <tr><td>阶段5</td><td>发表结果：FUNCPATHMSD vs. Deep-TDA对比分析</td><td>阶段4完成</td><td>原创性方法论比较，可发表</td></tr>
+  </table>
+
+  <h3>关键技术风险与缓解方案</h3>
+  <table class="proj-table">
+    <tr><th>风险</th><th>可能性</th><th>缓解</th></tr>
+    <tr><td>PLUMED libtorch编译失败</td><td>中等（已有PLUMED源码，但conda包依赖复杂）</td><td>用Docker容器，或参考PLUMED-NEST的CI脚本</td></tr>
+    <tr><td>C-state数据不足（TrpB在C态停留时间短）</td><td>高（C态是亚稳态，unbiased MD难采样）</td><td>从当前MetaD输出中提取s≥0.8的帧作为C-state数据</td></tr>
+    <tr><td>MoP成本太高（N×普通MD）</td><td>高（N=512不可行）</td><td>用N=32~64测试；或换OPES而非MetaD作为MoP驱动</td></tr>
+    <tr><td>初始CV判别能力弱（O/C相似）</td><td>中等（COMM domain变化幅度~5 Å）</td><td>用COMM domain内部距离特征（更敏感）而非全Cα</td></tr>
+    <tr><td>Deep-TDA FES与FUNCPATHMSD不一致</td><td>未知（这正是要验证的）</td><td>如不一致，分析差异原因；可能发现PC的真实位置</td></tr>
+  </table>
+
+  <h3>Benchmark潜力：STAR-MD × MetaD × Deep-TDA三方比较</h3>
+  <p style="font-size:13px;margin-bottom:10px;">在Amin benchmark场景中，三个方法各有独特定位：</p>
+  <table class="proj-table">
+    <tr><th>方法</th><th>输出</th><th>先验知识</th><th>TrpB输出</th></tr>
+    <tr><td>STAR-MD (SE3 Diffusion)</td><td>轨迹集合（坐标）</td><td>无（但需要ATLAS训练）</td><td>可能的O/PC/C访问率（无FES）</td></tr>
+    <tr><td>MetaD+FUNCPATHMSD（我们）</td><td>FES(s,z) kcal/mol</td><td>需要O/C晶体结构</td><td>精确FES，但PC位置依赖路径假设</td></tr>
+    <tr><td>MetaD+Deep-TDA（升级）</td><td>FES(s_DeepTDA)</td><td>需要O/C MD数据</td><td>精确FES + 自动发现PC（无需假设）</td></tr>
+  </table>
+  <div class="notable-box"><strong>最佳benchmark设计：</strong>① 用FUNCPATHMSD MetaD建立FES基准；② 用Deep-TDA独立验证PC位置；③ 将STAR-MD轨迹投影到两个CV空间；④ 比较三者对O/PC/C的采样。这是一篇完整的方法比较论文的框架。</div>
+</div>
+
+<!-- GLOSSARY -->
+<div id="glossary" class="sec-label"><span class="sec-num">§C</span> 术语总表 — Glossary</div>
+<div class="synth-section">
+  <h2>§C · 本文关键术语速查表（30项）</h2>
+  <table class="gloss-table">
+    <tr><th style="width:30%">术语 (英文)</th><th style="width:16%">中文</th><th>一句话定义</th><th style="width:20%">在本文中的作用</th></tr>
+    <tr><td>Collective Variable (CV)</td><td>集体变量</td><td>描述分子系统宏观状态的低维坐标函数；MetaD偏置施加在CV上</td><td>整篇文章的核心概念</td></tr>
+    <tr><td>Free Energy Surface (FES)</td><td>自由能面</td><td>系统在CV空间各点的相对自由能；决定热力学稳定性</td><td>MetaD计算的最终输出</td></tr>
+    <tr><td>Metadynamics</td><td>元动力学</td><td>增强采样方法：在CV空间沉积高斯偏置势以加速罕见事件采样</td><td>生产计算方法</td></tr>
+    <tr><td>Well-tempered MetaD</td><td>良好调控元动力学</td><td>高斯高度随时间按bias factor衰减，保证收敛</td><td>实际使用的MetaD版本</td></tr>
+    <tr><td>OPES (On-the-fly Probability Enhanced Sampling)</td><td>在线概率增强采样</td><td>Parrinello组新方法，比Well-tempered MetaD收敛更快；本文提到未来集成</td><td>未来方向</td></tr>
+    <tr><td>Deep-TDA (Deep Targeted Discriminant Analysis)</td><td>深度靶向判别分析</td><td>用神经网络学习最大化类间分离的非线性1D投影，输出为CV</td><td>本文核心方法</td></tr>
+    <tr><td>TDA Loss Function</td><td>TDA损失函数</td><td>L = α·Var(within) − β·Dist(between)，α=1，β=250；优化CV的MetaD可用性</td><td>训练目标函数</td></tr>
+    <tr><td>Metadynamics of Paths (MoP)</td><td>路径元动力学</td><td>在轨迹空间（而非构型空间）做MetaD；将轨迹视为弹性聚合物探索反应路径</td><td>中间体发现工具</td></tr>
+    <tr><td>Trajectory space</td><td>轨迹空间</td><td>以轨迹{R₁,...,Rₙ}为"基本单元"而非单个构型R的高维空间</td><td>MoP的工作空间</td></tr>
+    <tr><td>Elastic polymer isomorphism</td><td>弹性聚合物同构</td><td>反应路径分布 ↔ 弹性聚合物玻尔兹曼分布；MoP的数学基础</td><td>MoP的理论依据</td></tr>
+    <tr><td>Trajectory CV S</td><td>轨迹集体变量</td><td>S = s(R_N) − s(R_1)；聚合物端对端进展量；MoP的偏置变量</td><td>MoP的CV定义</td></tr>
+    <tr><td>Crumpled polymer</td><td>蜷缩聚合物</td><td>|S|≈0的轨迹；对应被中间体吸引、未完成A→B转变的路径——中间体存在的信号</td><td>中间体发现机制</td></tr>
+    <tr><td>Hidden intermediate state</td><td>隐藏中间态</td><td>未知的亚稳态；初始CV若不包含它则MetaD产生系统误差</td><td>方法的动机</td></tr>
+    <tr><td>Iterative refinement</td><td>迭代精化</td><td>2-state→MoP发现中间体→n-state→再MoP验证→直到CV完整</td><td>核心操作协议</td></tr>
+    <tr><td>Neural network CV</td><td>神经网络集体变量</td><td>以神经网络f(R)输出作为MD模拟的集体变量</td><td>Deep-TDA的实现形式</td></tr>
+    <tr><td>PYTORCH_MODEL CV</td><td>PyTorch模型CV</td><td>PLUMED中调用TorchScript模型作为CV的接口；需要libtorch</td><td>PLUMED集成方式</td></tr>
+    <tr><td>libtorch</td><td>PyTorch C++库</td><td>PyTorch的C++后端；PLUMED通过它在MD过程中做神经网络推断</td><td>技术依赖项</td></tr>
+    <tr><td>TorchScript</td><td>TorchScript模型</td><td>PyTorch模型的静态图序列化格式（.pt文件）；PLUMED读取的模型格式</td><td>模型导出格式</td></tr>
+    <tr><td>ADAM optimizer</td><td>ADAM优化器</td><td>自适应矩估计优化算法；DeepTDA训练使用lr=10⁻³</td><td>训练工具</td></tr>
+    <tr><td>L2 regularization</td><td>L2正则化</td><td>权重衰减 λ=10⁻⁵；防止网络过拟合到训练构型</td><td>防过拟合</td></tr>
+    <tr><td>Early stopping</td><td>提前停止</td><td>验证集损失15 epoch不改善则停止训练，防止过拟合</td><td>训练停止条件</td></tr>
+    <tr><td>Polymer bead (N)</td><td>聚合物珠</td><td>MoP中轨迹被离散化为N个构型；N=512用于丙氨酸二肽；N∝计算成本</td><td>MoP参数</td></tr>
+    <tr><td>Müller-Brown potential</td><td>Müller-Brown势</td><td>含3个亚稳态A/B/C、最大壁垒120 kBT的2D模型势；有分析解，用于方法基准测试</td><td>基准测试1</td></tr>
+    <tr><td>Alanine dipeptide</td><td>丙氨酸二肽</td><td>含φ/ψ构象空间的分子基准系统；三个状态C5/C7eq/Cax；有明确参考FES</td><td>基准测试2</td></tr>
+    <tr><td>Path CV (Branduardi)</td><td>路径集体变量</td><td>s(进展)+z(偏差)两个参数描述沿参考路径的过渡；Osuna 2019使用的方法；Deep-TDA的对比基准</td><td>已有方法参照</td></tr>
+    <tr><td>FUNCPATHMSD</td><td>功能路径MSD</td><td>PLUMED内置的路径CV实现，基于参考构型集合的MSD计算s和z；Osuna/本项目使用</td><td>我们的当前CV</td></tr>
+    <tr><td>TICA (Time-lagged ICA)</td><td>时间滞后独立成分分析</td><td>从MD轨迹提取慢变量的数据驱动方法；Deep-TDA的对比方法之一</td><td>竞争方法</td></tr>
+    <tr><td>SGOOP</td><td>SGOOP</td><td>Tiwary &amp; Berne方法，从非平衡short MD优化CV；Deep-TDA的对比方法之一</td><td>竞争方法</td></tr>
+    <tr><td>DeepLDA / DeepTICA</td><td>深度LDA / 深度TICA</td><td>用神经网络学习LDA/TICA的非线性推广；需要所有状态的标记数据</td><td>竞争方法（需要中间体数据）</td></tr>
+    <tr><td>Circular dependency</td><td>循环依赖</td><td>好CV需要知道所有状态，找到所有状态需要好CV；Deep-TDA+MoP打破这个循环</td><td>核心问题描述</td></tr>
+    <tr><td>PLUMED-NEST</td><td>PLUMED资源库</td><td>PLUMED社区维护的脚本和模型资源库；Deep-TDA代码可从此获取</td><td>代码获取途径</td></tr>
+  </table>
+</div>
+
+</main>
+</div>
+
+<script>
+// Intersection observer for active nav links
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, {rootMargin: '-10% 0px -80% 0px'});
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

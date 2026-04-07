@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RFDiffusion · RFD3 · LigandMPNN 逐段深度标注 | Zhenpeng · aNima Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1a2744; --blue:#2563EB; --teal:#0d9488;
+  --paper:#faf8f3; --paper2:#f3f0e8; --border:#d4c9a8;
+  --text:#2d2d2d; --gray:#6b7280; --lg:#f3f4f6;
+  --hl-thesis:#fef3c7; --hl-thesis-b:#d97706;
+  --hl-concept:#fee2e2; --hl-concept-b:#dc2626;
+  --hl-evidence:#dbeafe; --hl-evidence-b:#2563eb;
+  --hl-counter:#dcfce7; --hl-counter-b:#16a34a;
+  --hl-method:#f3e8ff; --hl-method-b:#7c3aed;
+  --sidebar-w:230px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--text);font-size:15px;line-height:1.7;}
+#topnav{position:sticky;top:0;z-index:100;background:var(--navy);color:white;padding:0 20px;display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap;}
+#topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:15px;white-space:nowrap;}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.leg{padding:2px 10px;border-radius:12px;font-size:11.5px;font-weight:600;cursor:default;}
+.leg-y{background:var(--hl-thesis);color:#92400e;}
+.leg-r{background:var(--hl-concept);color:#991b1b;}
+.leg-b{background:var(--hl-evidence);color:#1e40af;}
+.leg-g{background:var(--hl-counter);color:#166534;}
+.leg-p{background:var(--hl-method);color:#5b21b6;}
+#layout{display:flex;min-height:calc(100vh - 52px);}
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:#f0ede4;border-right:1px solid var(--border);padding:16px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+#sidebar .sec-head{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;padding:12px 16px 4px;}
+#sidebar .nav-link{display:block;padding:5px 16px;font-size:12.5px;color:#374151;text-decoration:none;border-left:3px solid transparent;transition:.15s;}
+#sidebar .nav-link:hover{background:#e8e4db;color:var(--navy);}
+#sidebar .nav-link.active{border-left-color:var(--blue);color:var(--blue);background:#e8eef8;}
+#sidebar .nav-link.sub{padding-left:26px;font-size:12px;color:var(--gray);}
+main{flex:1;padding:0 0 60px;overflow-x:hidden;}
+.meta-card{background:var(--navy);color:white;padding:28px 36px;margin:0;}
+.meta-card h1{font-family:'Lora',serif;font-size:20px;line-height:1.4;margin-bottom:12px;}
+.meta-card .byline{font-size:13px;opacity:.8;margin-bottom:6px;}
+.meta-card .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.meta-card .tag{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;font-size:11.5px;}
+.meta-card .doi-link{color:#93c5fd;font-size:13px;text-decoration:none;}
+.meta-card .doi-link:hover{text-decoration:underline;}
+.paper-divider{background:linear-gradient(135deg,#1a2744 0%,#1e3a5f 100%);color:white;padding:18px 36px;border-top:4px solid var(--teal);}
+.paper-divider h2{font-family:'Lora',serif;font-size:17px;opacity:.95;}
+.paper-divider .paper-num{display:inline-block;background:var(--teal);padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;margin-right:10px;vertical-align:middle;}
+.sec-label{background:var(--paper2);border-top:3px solid var(--blue);padding:10px 36px;font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px;}
+.sec-label .sec-num{background:var(--blue);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;}
+.para-block{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5dfd0;gap:0;}
+.para-block:hover{background:#f7f4ed;}
+.para-left{padding:22px 28px;border-right:1px solid #e5dfd0;font-size:14.5px;line-height:1.85;}
+.para-right{padding:18px 22px;background:#f7f5ef;font-size:13px;line-height:1.65;}
+.para-id{display:inline-block;background:var(--navy);color:white;padding:1px 8px;border-radius:10px;font-size:10.5px;font-weight:700;margin-bottom:10px;}
+.hl-y{background:var(--hl-thesis);border-bottom:2px solid var(--hl-thesis-b);padding:0 2px;border-radius:2px;}
+.hl-r{background:var(--hl-concept);border-bottom:2px solid var(--hl-concept-b);padding:0 2px;border-radius:2px;}
+.hl-b{background:var(--hl-evidence);border-bottom:2px solid var(--hl-evidence-b);padding:0 2px;border-radius:2px;}
+.hl-g{background:var(--hl-counter);border-bottom:2px solid var(--hl-counter-b);padding:0 2px;border-radius:2px;}
+.hl-p{background:var(--hl-method);border-bottom:2px solid var(--hl-method-b);padding:0 2px;border-radius:2px;}
+.term-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;}
+.term-table th{background:#e8e4db;padding:4px 8px;text-align:left;font-weight:600;font-size:11px;}
+.term-table td{padding:4px 8px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.term-table tr:last-child td{border-bottom:none;}
+.notable-box{background:#fff7ed;border-left:3px solid #f59e0b;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.project-box{background:#eff6ff;border-left:3px solid #2563eb;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.warning-box{background:#fef2f2;border-left:3px solid #dc2626;padding:10px 12px;margin:10px 0;border-radius:0 6px 6px 0;font-size:12.5px;}
+.role-badge{display:inline-block;background:#e0e7ff;color:#3730a3;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:6px;}
+.synth-section{padding:28px 36px;}
+.synth-section h2{font-family:'Lora',serif;font-size:18px;color:var(--navy);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+.synth-section h3{font-size:14px;font-weight:700;color:var(--blue);margin:16px 0 8px;}
+.logic-chain{display:flex;flex-wrap:wrap;gap:0;margin:16px 0;align-items:center;}
+.lc-node{background:var(--navy);color:white;padding:8px 14px;font-size:12px;border-radius:6px;text-align:center;min-width:120px;}
+.lc-arrow{display:flex;align-items:center;padding:0 6px;color:var(--gray);font-size:18px;}
+.proj-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.proj-table th{background:var(--navy);color:white;padding:8px 12px;text-align:left;font-size:12px;}
+.proj-table td{padding:8px 12px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.proj-table tr:nth-child(even) td{background:#f7f5ef;}
+.gloss-table{width:100%;border-collapse:collapse;margin:12px 0;}
+.gloss-table th{background:#e8e4db;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;}
+.gloss-table td{padding:6px 10px;border-bottom:1px solid #e5dfd0;font-size:12.5px;vertical-align:top;}
+.gloss-table tr:last-child td{border-bottom:none;}
+.data-box{background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:12px;font-family:'IBM Plex Mono',monospace;}
+.data-box .label{font-weight:700;color:#15803d;font-size:11px;text-transform:uppercase;margin-bottom:4px;}
+.compare-table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12px;}
+.compare-table th{background:#1a2744;color:white;padding:5px 8px;text-align:left;font-size:11px;}
+.compare-table td{padding:5px 8px;border-bottom:1px solid #e5dfd0;vertical-align:top;}
+.compare-table tr:nth-child(even) td{background:#f0ede4;}
+</style>
+</head>
+<body>
+
+<div id="topnav">
+  <div class="logo">RFDiffusion · RFD3 · LigandMPNN · 结构生成三论文深度标注</div>
+  <div class="legend">
+    <span class="leg leg-y">黄=核心论点</span>
+    <span class="leg leg-r">红=技术概念</span>
+    <span class="leg leg-b">蓝=实验证据</span>
+    <span class="leg leg-g">绿=局限/对照</span>
+    <span class="leg leg-p">紫=方法/流程</span>
+  </div>
+</div>
+
+<div id="layout">
+<div id="sidebar">
+  <div class="sec-head">元信息</div>
+  <a class="nav-link" href="#overview">三论文概览</a>
+
+  <div class="sec-head">Paper 1 · RFDiffusion</div>
+  <a class="nav-link" href="#rfd1-meta">论文信息</a>
+  <a class="nav-link sub" href="#rfd1-problem">问题背景</a>
+  <a class="nav-link sub" href="#rfd1-method">SE(3)扩散方法</a>
+  <a class="nav-link sub" href="#rfd1-conditioning">条件化机制</a>
+  <a class="nav-link sub" href="#rfd1-results">关键结果</a>
+  <a class="nav-link sub" href="#rfd1-limits">局限性</a>
+
+  <div class="sec-head">Paper 2 · RFD3</div>
+  <a class="nav-link" href="#rfd3-meta">论文信息</a>
+  <a class="nav-link sub" href="#rfd3-problem">问题背景</a>
+  <a class="nav-link sub" href="#rfd3-method">全原子扩散</a>
+  <a class="nav-link sub" href="#rfd3-results">关键结果</a>
+  <a class="nav-link sub" href="#rfd3-enzyme">酶活性位点设计</a>
+  <a class="nav-link sub" href="#rfd3-limits">局限性</a>
+
+  <div class="sec-head">Paper 3 · LigandMPNN</div>
+  <a class="nav-link" href="#lmpnn-meta">论文信息</a>
+  <a class="nav-link sub" href="#lmpnn-problem">问题背景</a>
+  <a class="nav-link sub" href="#lmpnn-method">异构图方法</a>
+  <a class="nav-link sub" href="#lmpnn-results">序列回收率</a>
+  <a class="nav-link sub" href="#lmpnn-plp">PLP场景</a>
+  <a class="nav-link sub" href="#lmpnn-limits">局限性</a>
+
+  <div class="sec-head">综合分析</div>
+  <a class="nav-link" href="#synth-pipeline">§A 设计流程图</a>
+  <a class="nav-link" href="#synth-design-routes">§B 结构优先vs序列优先</a>
+  <a class="nav-link" href="#synth-plp">§C RFD3+LigandMPNN处理PLP</a>
+  <a class="nav-link" href="#synth-metad">§D 为什么需要MetaDynamics验证</a>
+  <a class="nav-link" href="#synth-glossary">§E 术语总表</a>
+</div>
+
+<main>
+
+<!-- OVERVIEW -->
+<div id="overview" class="meta-card">
+  <h1>结构生成论文三论文深度标注</h1>
+  <div class="byline">RFDiffusion (Nature 2023) · RFdiffusion3/RFD3 (bioRxiv 2025) · LigandMPNN (Nature Methods 2025)</div>
+  <div class="byline">
+    标注者：Zhenpeng Liu · TrpB MetaDynamics 复现项目 · aNima Lab (Ramanathan Lab pipeline)
+  </div>
+  <div class="byline" style="margin-top:8px;font-size:12px;opacity:.65;">
+    本标注基于阅读笔记综合整理。涵盖三篇论文的核心方法、结果、与TrpB项目的关联，以及方法局限性分析。请以原文为准核实具体数据。
+  </div>
+  <div class="tags">
+    <span class="tag">Diffusion Models</span><span class="tag">SE(3)</span><span class="tag">Protein Design</span>
+    <span class="tag">RFDiffusion</span><span class="tag">RFD3</span><span class="tag">LigandMPNN</span>
+    <span class="tag">Enzyme Design</span><span class="tag">PLP Cofactor</span>
+    <span class="tag">Baker Lab</span><span class="tag">TrpB Pipeline</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAPER 1: RFDiffusion -->
+<!-- ============================================================ -->
+<div id="rfd1-meta" class="paper-divider">
+  <span class="paper-num">Paper 1</span>
+  <h2>RFdiffusion — De novo Design of Protein Structure and Function</h2>
+  <div style="font-size:13px;opacity:.8;margin-top:6px;">Watson et al. · Nature 2023 · DOI: 10.1038/s41586-023-06415-8 · Baker Lab, University of Washington</div>
+</div>
+
+<div class="sec-label"><span class="sec-num">META</span> 论文信息卡</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">RFD1-META</span>
+    <p><strong>Title:</strong> De novo design of protein structure and function with RFdiffusion</p>
+    <p style="margin-top:8px;"><strong>Authors:</strong> Joseph L. Watson, David Juergens, Nathaniel R. Bennett, Brian L. Trippe, Jason Yim, Helen E. Eisenach, Woody Ahern, Andrew J. Borst, Robert J. Ragotte, Lukas F. Milles, Basile I.M. Wicky, Nikita Hanikel, Samuel J. Pellock, Alexis Courbet, William Sheffler, Jue Wang, Preetham Venkatesh, Isaac Sappington, Susana Vázquez Torres, Anna Lauko, Valentin De Bortoli, Emile Mathieu, Sergey Ovchinnikov, Regina Barzilay, Tommi S. Jaakkola, Frank DiMaio, Minkyung Baek, <strong>David Baker</strong></p>
+    <p style="margin-top:8px;"><strong>Venue:</strong> <em>Nature</em>, 2023 | <strong>PMID:</strong> 37433327</p>
+    <p style="margin-top:4px;"><strong>DOI:</strong> <a href="https://doi.org/10.1038/s41586-023-06415-8" style="color:var(--blue);">10.1038/s41586-023-06415-8</a></p>
+    <p style="margin-top:4px;"><strong>Code:</strong> <a href="https://github.com/RosettaCommons/RFdiffusion" style="color:var(--blue);">github.com/RosettaCommons/RFdiffusion</a></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">RFD1-META</div>
+    <p><strong>论文地位：</strong>Baker Lab 2023年的里程碑论文，将扩散生成模型引入蛋白质骨架设计。这是继AlphaFold2之后蛋白质计算领域最重要的方法论突破之一。</p>
+    <div class="role-badge">方法突破型论文</div>
+    <div class="notable-box"><strong>一句话定位：</strong>把图像生成领域的去噪扩散模型（DDPM）思路移植到蛋白质SE(3)空间，训练一个"从噪声中雕刻蛋白质骨架"的生成模型，成功率比之前所有方法高出数量级。</div>
+    <div class="project-box"><strong>与你的项目：</strong>在Ramanathan Lab的pipeline中，Yu Zhang用RFDiffusion生成TrpB的新骨架变体。你的MetaDynamics验证工作的输入——就是从这里来的设计骨架。</div>
+  </div>
+</div>
+
+<!-- Problem -->
+<div class="sec-label"><span class="sec-num">§1.1</span> 问题背景 — 为什么现有方法不够用</div>
+
+<div id="rfd1-problem" class="para-block">
+  <div class="para-left">
+    <span class="para-id">RFD1-P1</span>
+    <p>Prior to RFdiffusion, the dominant computational approach for <em>de novo</em> protein design relied on <span class="hl-g">Rosetta-based hallucination or fragment assembly</span>: searching through conformational space using energy-based scoring functions to find low-energy structures. These methods suffered from critical limitations:</p>
+    <ul style="margin:10px 0 0 20px;font-size:14px;line-height:2;">
+      <li><span class="hl-g">Low success rates</span>: Typically required experimental screening of 10,000–100,000 designs to find one functional protein</li>
+      <li><span class="hl-g">Expert guidance dependency</span>: Required careful hand-crafting of design constraints and extensive computational tuning</li>
+      <li><span class="hl-g">Limited generalization</span>: Separate tools for binders, symmetric assemblies, scaffolding — no unified generative framework</li>
+      <li><span class="hl-g">No principled sampling</span>: Gradient-based hallucination finds local energy minima, not globally diverse, designable structures</li>
+    </ul>
+    <p style="margin-top:12px;"><span class="hl-y">The central challenge: design a generative model that samples diverse, high-quality protein backbone conformations while respecting the geometric symmetries of protein structure (SE(3) invariance) and supporting flexible conditioning on structural constraints.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">RFD1-P1</div>
+    <p><strong>段落功能：</strong>建立旧方法的局限性，为RFDiffusion的出现提供强动机。</p>
+    <div class="role-badge">问题陈述</div>
+    <table class="term-table">
+      <tr><th>旧方法</th><th>主要问题</th></tr>
+      <tr><td>Rosetta hallucination</td><td>梯度下降找局部最小值，缺乏多样性；成功率极低</td></tr>
+      <tr><td>Fragment assembly</td><td>依赖已知蛋白质片段数据库，无法真正"从零"设计</td></tr>
+      <tr><td>专门化工具</td><td>binder设计、对称组装、活性位点脚手架各需不同软件，无统一框架</td></tr>
+    </table>
+    <div class="notable-box"><strong>量化挑战的严重性：</strong>"tens of thousands of experimental tests"不是夸张——Arnold实验室定向进化TrpB也筛了大量变体。计算设计能把这个数字降到个位数级别，是颠覆性进步。</div>
+    <div class="warning-box"><strong>局限对照：</strong>注意这里对比的是"蛋白质-蛋白质相互作用设计"和"对称组装"等任务。酶活性位点设计一直是最难的，因为对精度要求达到埃级别——后续RFD3才真正解决这个问题。</div>
+  </div>
+</div>
+
+<!-- Method -->
+<div class="sec-label"><span class="sec-num">§1.2</span> 核心方法 — SE(3)去噪扩散</div>
+
+<div id="rfd1-method" class="para-block">
+  <div class="para-left">
+    <span class="para-id">RFD1-P2</span>
+    <p>RFdiffusion adapts the <span class="hl-r">denoising diffusion probabilistic model (DDPM)</span> framework to the domain of protein backbones, which are naturally described as rigid-body frames in <span class="hl-r">SE(3)</span> — the special Euclidean group combining 3D translations and rotations.</p>
+    <p style="margin-top:10px;"><strong>Forward diffusion process:</strong> Starting from a real protein backbone, <span class="hl-p">Gaussian noise is progressively added to Cα positions (translation) and IGSO₃ noise is applied to residue orientation frames (rotation)</span> over T timesteps, eventually converting any protein structure into isotropic noise.</p>
+    <p style="margin-top:10px;"><strong>Reverse denoising process:</strong> A neural network — specifically a fine-tuned <span class="hl-r">RoseTTAFold (RF)</span> — learns to predict the clean structure from any noisy intermediate, enabling sampling by starting from pure noise and iteratively denoising.</p>
+    <p style="margin-top:10px;"><span class="hl-y">The key architectural insight: rather than training a new network from scratch, the authors fine-tuned a pretrained RoseTTAFold checkpoint. RF had already been trained on the entire PDB and encoded rich geometric and evolutionary knowledge — the diffusion fine-tuning redirected this existing knowledge toward generative sampling.</span></p>
+    <p style="margin-top:10px;"><strong>Representation:</strong> Each residue is a <span class="hl-r">SE(3) frame</span> — a 3D translation (Cα position) plus a rotation matrix encoding backbone orientation (N, Cα, C atom directions). This is identical to AlphaFold2's frame representation.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">RFD1-P2</div>
+    <p><strong>段落功能：</strong>解释SE(3)扩散的数学直觉和实现方式——为什么用IGSO₃，为什么微调RF而不从头训练。</p>
+    <div class="role-badge">核心方法</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>SE(3)</td><td>3D刚体运动群 = 平移R³ + 旋转SO(3)。蛋白质残基的坐标系天然生活在这个空间里</td></tr>
+      <tr><td>IGSO₃</td><td>Isotropic Gaussian on SO(3)，旋转群上的各向同性高斯噪声，保证旋转的均匀扩散</td></tr>
+      <tr><td>DDPM</td><td>Denoising Diffusion Probabilistic Model：先加噪→训练网络预测去噪→反向去噪采样新样本</td></tr>
+      <tr><td>RoseTTAFold (RF)</td><td>Seattle Baker Lab的蛋白质结构预测网络，在整个PDB上预训练，RFDiffusion基于此微调</td></tr>
+      <tr><td>Frame representation</td><td>每个残基 = (Cα位置, 骨架方向矩阵)，与AlphaFold2相同。是SE(3)扩散的自然输入格式</td></tr>
+    </table>
+    <div class="notable-box"><strong>为什么微调RF而不从零训练？</strong>RF已经编码了整个PDB的几何和进化信息。从零训练一个扩散模型需要数亿参数和海量计算。微调利用了这个"先验知识库"，大幅降低了训练成本，同时保留了RF对蛋白质几何的深刻理解。这是一个工程上的关键决策。</div>
+    <div class="project-box"><strong>与你的项目：</strong>了解"每个残基是SE(3)帧"有助于理解为什么RFDiffusion生成的骨架在物理上是合理的——它从根本上尊重蛋白质的旋转平移不变性。这也是为什么它的输出可以直接用于后续MD模拟而不需要大量几何修复。</div>
+  </div>
+</div>
+
+<!-- Conditioning -->
+<div class="sec-label"><span class="sec-num">§1.3</span> 条件化机制 — 怎么告诉模型你想要什么</div>
+
+<div id="rfd1-conditioning" class="para-block">
+  <div class="para-left">
+    <span class="para-id">RFD1-P3</span>
+    <p>RFdiffusion supports several conditioning strategies that enable goal-directed protein design:</p>
+    <p style="margin-top:10px;"><strong>1. Motif scaffolding:</strong> <span class="hl-p">A set of "fixed" residues (e.g., an enzyme active site or binding interface) are held constant during denoising — the model generates the surrounding scaffold while maintaining the fixed motif geometry.</span> This is how one would scaffold a catalytic triad or a metal-binding site.</p>
+    <p style="margin-top:10px;"><strong>2. Symmetric assembly design:</strong> <span class="hl-p">Conditioned on point group symmetry (C₂, C₃, D₂, tetrahedral, etc.), the model generates symmetric oligomers where all subunits are identical by construction.</span></p>
+    <p style="margin-top:10px;"><strong>3. Binder design:</strong> <span class="hl-p">Given a target protein structure (the "bait"), the model generates a binder protein whose surface is complementary to the target.</span> This was the headline application — producing picomolar-affinity binders in a single computational round.</p>
+    <p style="margin-top:10px;"><strong>4. Partial diffusion (structural diversification):</strong> <span class="hl-p">Apply noise only partially (less than the full T timesteps) to an existing structure, then denoise. This produces structural variants that are similar to, but different from, the input — useful for generating a family of related designs around a known structure.</span></p>
+    <p style="margin-top:10px;"><span class="hl-y">The power of the framework lies in composability: these conditioning modes can be combined. For example, motif scaffolding + partial diffusion = generate variants of an existing enzyme that preserve the active site while diversifying the surrounding scaffold.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">RFD1-P3</div>
+    <p><strong>段落功能：</strong>解释RFDiffusion的四种条件化模式，这是用户实际使用时需要选择的"设计模式"。</p>
+    <div class="role-badge">应用接口</div>
+    <table class="term-table">
+      <tr><th>条件化模式</th><th>输入</th><th>用途</th></tr>
+      <tr><td>Motif scaffolding</td><td>固定残基坐标</td><td>给定活性位点，设计骨架</td></tr>
+      <tr><td>Symmetric assembly</td><td>对称群类型</td><td>设计同聚体/寡聚体</td></tr>
+      <tr><td>Binder design</td><td>靶蛋白结构</td><td>设计结合配体</td></tr>
+      <tr><td>Partial diffusion</td><td>已知结构 + 噪声强度σ</td><td>生成结构变体家族</td></tr>
+    </table>
+    <div class="project-box"><strong>与TrpB项目（两种用法）：</strong>
+      <br><strong>方法A（Motif scaffolding）：</strong>固定TrpB活性位点残基（Lys87, Lys100, Asp300等），让RFDiffusion生成全新COMM domain骨架。风险：可能破坏COMM domain的内在柔性。
+      <br><strong>方法B（Partial diffusion）：</strong>从5DVZ出发，施加适量噪声再去噪，生成结构相近但序列多样的TrpB变体。风险较低，是更保守但更安全的起点。
+      <br>Yu Zhang很可能在用其中一种或两种的组合。
+    </div>
+    <div class="warning-box"><strong>关键注意：</strong>Motif scaffolding模式在RFD1中<em>不包含配体/辅因子信息</em>。固定的"motif"仅指蛋白质原子坐标，PLP不在RFD1的建模范围内。这是RFD3要解决的问题。</div>
+  </div>
+</div>
+
+<!-- Results -->
+<div class="sec-label"><span class="sec-num">§1.4</span> 关键结果</div>
+
+<div id="rfd1-results" class="para-block">
+  <div class="para-left">
+    <span class="para-id">RFD1-P4</span>
+    <p>RFdiffusion was benchmarked across multiple design tasks:</p>
+    <p style="margin-top:8px;"><strong>Unconditional monomer design:</strong> <span class="hl-b">AF2-reprediction TM-score > 0.8 for designs up to ~400 residues</span>, indicating high structural self-consistency. Structures with TM-score > 0.5 to any PDB entry are considered novel folds.</p>
+    <p style="margin-top:8px;"><strong>Protein binder design:</strong> <span class="hl-b">Picomolar-affinity binders obtained by pure computation, without experimental iteration.</span> Previous state-of-the-art required testing ~10,000 designs before finding a functional binder.</p>
+    <p style="margin-top:8px;"><strong>Symmetric assemblies:</strong> <span class="hl-b">Hundreds of symmetric oligomers confirmed by negative-stain electron microscopy (EM).</span> Including tetrahedral cage assemblies — previously intractable by other design methods.</p>
+    <p style="margin-top:8px;"><strong>Enzyme active site scaffolding:</strong> <span class="hl-b">Successful scaffolding of metal-binding and catalytic triad motifs</span>, validated by experimental expression and functional assay. The model correctly places surrounding backbone elements to support the fixed active site geometry.</p>
+    <p style="margin-top:8px;"><strong>Design efficiency:</strong> <span class="hl-y">As few as one experimental test per design challenge</span> — a >10,000× improvement over previous methods for some tasks.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">RFD1-P4</div>
+    <p><strong>段落功能：</strong>用具体数字展示RFDiffusion的性能突破。最重要的数字：picomolar binder + 单轮实验成功。</p>
+    <div class="role-badge">实验证据</div>
+    <table class="term-table">
+      <tr><th>任务</th><th>RFDiffusion表现</th><th>对比基准</th></tr>
+      <tr><td>单体设计</td><td>TM &gt; 0.8 (≤400 aa)</td><td>Hallucination: ~0.6</td></tr>
+      <tr><td>Binder设计</td><td>pM亲和力，单轮成功</td><td>旧方法需~10,000次筛选</td></tr>
+      <tr><td>对称组装</td><td>数百个EM验证</td><td>之前几乎不可行</td></tr>
+      <tr><td>酶活性位点</td><td>金属结合+催化三联体成功</td><td>Rosetta: 成功率极低</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">效率提升估计</div>
+      Binder设计: ~10,000× 减少实验筛选<br>
+      "As few as 1 test per challenge" (Watson et al.)
+    </div>
+    <div class="notable-box"><strong>为什么TM-score > 0.8是重要指标？</strong>RFDiffusion生成的骨架用AlphaFold2重新预测，如果AF2预测出来的结构与RFD输出高度相似（TM>0.8），说明这个骨架在序列层面是可实现的——结构自洽性是设计成功的必要条件。</div>
+  </div>
+</div>
+
+<!-- Limitations -->
+<div class="sec-label"><span class="sec-num">§1.5</span> 局限性分析</div>
+
+<div id="rfd1-limits" class="para-block">
+  <div class="para-left">
+    <span class="para-id">RFD1-P5</span>
+    <p>Despite the impressive results, RFdiffusion (v1) has important limitations that directly affect its applicability to enzyme design:</p>
+    <p style="margin-top:10px;"><span class="hl-g">1. Backbone-only generation: RFdiffusion generates protein backbone frames (Cα + orientation) but does NOT model sidechains, ligands, cofactors, or non-protein atoms during diffusion. The pocket geometry is designed "in expectation" of a ligand, not around its explicit atomic structure.</span></p>
+    <p style="margin-top:10px;"><span class="hl-g">2. COMM domain flexibility: RFdiffusion tends to generate low-energy, well-folded backbones. There is no guarantee that the designed backbone retains the intrinsic conformational flexibility of dynamically important regions like the TrpB COMM domain (residues 97–184). A well-folded but rigid COMM domain would not undergo the O→PC→C transition required for catalysis.</span></p>
+    <p style="margin-top:10px;"><span class="hl-g">3. Catalytic geometry precision: For enzyme active sites, sub-ångström precision of catalytic residue positioning is required. RFdiffusion's motif scaffolding holds the fixed residues in place, but the surrounding scaffold may not be optimal for precisely pre-organizing all catalytic interactions, especially those mediated by a cofactor (PLP) not represented in the model.</span></p>
+    <p style="margin-top:10px;"><span class="hl-g">4. No sequence: RFdiffusion outputs a backbone PDB only. Sequence design requires a separate tool (ProteinMPNN or LigandMPNN). The quality of the final design depends critically on this downstream step.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">RFD1-P5</div>
+    <p><strong>段落功能：</strong>批判性分析RFD1的局限性，这些局限性直接动机了RFD3和LigandMPNN的开发，以及我们MetaDynamics验证工作的必要性。</p>
+    <div class="role-badge">局限性分析</div>
+    <table class="term-table">
+      <tr><th>局限性</th><th>对TrpB设计的影响</th></tr>
+      <tr><td>无辅因子建模</td><td>PLP不在扩散过程中，活性位点几何可能不兼容PLP</td></tr>
+      <tr><td>无柔性保障</td><td>COMM domain可能被设计成刚性，无法做O→C转变</td></tr>
+      <tr><td>精度不足</td><td>Schiff碱反应需要埃级精度，RFD1可能不够</td></tr>
+      <tr><td>无序列输出</td><td>骨架→序列需要额外工具（LigandMPNN）</td></tr>
+    </table>
+    <div class="warning-box"><strong>最关键的局限：</strong>"不建模PLP"意味着RFD1设计的TrpB骨架可能产生立体冲突（PLP与骨架碰撞）或缺少关键的磷酸盐氢键网络。这就是为什么要用RFD3或在motif中显式包含PLP周围的关键残基。</div>
+    <div class="project-box"><strong>为什么你的MetaDynamics验证是必要的：</strong>即使RFD1生成了结构自洽的骨架（TM>0.8），这个骨架的<em>动力学性质</em>——COMM domain能否做O→C转变——是RFD1根本无法预测的。这正是你的工作要回答的问题。</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAPER 2: RFD3 -->
+<!-- ============================================================ -->
+<div id="rfd3-meta" class="paper-divider">
+  <span class="paper-num">Paper 2</span>
+  <h2>RFdiffusion3 (RFD3) — De novo Design of All-atom Biomolecular Interactions</h2>
+  <div style="font-size:13px;opacity:.8;margin-top:6px;">Baker Lab · bioRxiv 2025 · DOI: 10.1101/2025.09.18.676967 · PubMed: 41000976 · Open-sourced December 2025</div>
+</div>
+
+<div class="sec-label"><span class="sec-num">META</span> 论文信息卡</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">RFD3-META</span>
+    <p><strong>Title:</strong> De novo Design of All-atom Biomolecular Interactions with RFdiffusion3</p>
+    <p style="margin-top:8px;"><strong>Authors:</strong> Baker Lab team (David Baker senior author)</p>
+    <p style="margin-top:8px;"><strong>Venue:</strong> <em>bioRxiv</em>, preprint posted September 2025</p>
+    <p style="margin-top:4px;"><strong>DOI:</strong> <a href="https://doi.org/10.1101/2025.09.18.676967" style="color:var(--blue);">10.1101/2025.09.18.676967</a></p>
+    <p style="margin-top:4px;"><strong>PubMed:</strong> 41000976 · <strong>PMC:</strong> PMC12458353</p>
+    <p style="margin-top:4px;"><strong>Status:</strong> Preprint (未经同行评审) | Open-sourced via IPD, December 2025</p>
+    <p style="margin-top:4px;"><strong>Code:</strong> Available via Institute for Protein Design (IPD), University of Washington</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">RFD3-META</div>
+    <p><strong>论文地位：</strong>RFD3是RFD1的全原子升级版，直接解决了"辅因子/配体不在扩散框架内"的根本问题。对于TrpB这种依赖PLP辅因子的酶，RFD3比RFD1更适合。</p>
+    <div class="role-badge">RFD1升级版 · 关键进步</div>
+    <div class="notable-box"><strong>预印本注意事项：</strong>截至2026年4月，RFD3仍是bioRxiv预印本，未经正式同行评审。数据和方法是可信的（Baker Lab），但引用时需注明预印本状态。</div>
+    <div class="project-box"><strong>与你的项目：</strong>如果Yu Zhang正在用RFD3（而不是RFD1）设计TrpB变体，你理解RFD3的"全原子扩散"对于理解你的输入结构的质量至关重要——你拿到的骨架是"PLP感知"设计的。</div>
+  </div>
+</div>
+
+<!-- Problem -->
+<div class="sec-label"><span class="sec-num">§2.1</span> 问题背景 — 为什么需要全原子扩散</div>
+
+<div id="rfd3-problem" class="para-block">
+  <div class="para-left">
+    <span class="para-id">RFD3-P1</span>
+    <p>The core limitation of RFdiffusion (v1) is that it operates exclusively on <span class="hl-r">protein backbone frames</span> — it has no representation of sidechains, cofactors, small molecule ligands, DNA, or RNA during the diffusion process. This creates a fundamental <span class="hl-g">chicken-and-egg problem in enzyme active site design</span>:</p>
+    <ul style="margin:10px 0 0 20px;font-size:14px;line-height:2;">
+      <li>You design the protein backbone around where you think the ligand should sit</li>
+      <li>Then you try to dock the ligand into the designed pocket</li>
+      <li>The pocket geometry was not explicitly optimized for the ligand's atomic contacts</li>
+      <li>Result: steric clashes, missing hydrogen bonds, incorrect bond angles</li>
+    </ul>
+    <p style="margin-top:10px;"><span class="hl-y">For cofactor-dependent enzymes like TrpB (where PLP forms a covalent Schiff base with Lys87/Lys100 and has a precisely coordinated phosphate group), this is not a minor precision issue — it is a fundamental correctness issue. The PLP geometry must be right by construction, not by post-hoc fitting.</span></p>
+    <p style="margin-top:10px;">RFdiffusion3 resolves this by extending the diffusion framework to <span class="hl-r">all heavy atoms simultaneously</span> — protein backbone, sidechains, AND non-protein atoms (cofactors, ligands, metals, nucleic acids) are generated together in a single joint diffusion process.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">RFD3-P1</div>
+    <p><strong>段落功能：</strong>用具体的"鸡蛋悖论"说明为什么骨架优先+后处理的工作流程对酶设计是不够的，并明确RFD3的解决思路。</p>
+    <div class="role-badge">问题陈述 + 解决思路</div>
+    <table class="term-table">
+      <tr><th>问题</th><th>具体后果</th></tr>
+      <tr><td>骨架先于配体设计</td><td>口袋几何不兼容配体 → 立体冲突</td></tr>
+      <tr><td>PLP共价Schiff碱</td><td>需要埃级精度 → 后处理对接无法保证</td></tr>
+      <tr><td>磷酸盐H键网络</td><td>需要特定Ser/Thr残基精确定位 → 骨架设计时需要知道这些</td></tr>
+    </table>
+    <div class="notable-box"><strong>PLP的特殊性：</strong>PLP不是普通的非共价配体——它与活性位点Lys通过共价Schiff碱连接。这意味着：
+      <br>1. 这个键的键角和键长是严格的（非共价对接无法处理）
+      <br>2. 周围残基必须在埃级精度上被定位
+      <br>3. RFD1的骨架可能无法容纳这个共价键几何
+    </div>
+    <div class="project-box"><strong>与你的项目：</strong>这解释了为什么RFD3对TrpB比RFD1更合适。如果你的输入骨架来自RFD3，可以预期PLP与Lys87/Lys100的Schiff碱几何是正确的。如果来自RFD1，需要额外验证PLP对接是否无冲突。</div>
+  </div>
+</div>
+
+<!-- Method -->
+<div class="sec-label"><span class="sec-num">§2.2</span> 核心方法 — 全原子SE(3)扩散</div>
+
+<div id="rfd3-method" class="para-block">
+  <div class="para-left">
+    <span class="para-id">RFD3-P2</span>
+    <p>RFdiffusion3 extends the diffusion framework from backbone frames to explicit atomic coordinates:</p>
+    <p style="margin-top:10px;"><strong>Input representation upgrade:</strong> <span class="hl-p">Not just Cα frames, but all heavy atoms — protein backbone atoms (N, Cα, C, O), sidechain atoms, AND non-protein atoms (ligand carbons, cofactor oxygens, phosphate groups, DNA phosphates, metals) are represented as nodes in the diffusion graph.</span></p>
+    <p style="margin-top:10px;"><strong>Joint diffusion:</strong> <span class="hl-p">All atoms are noised and denoised together in a single diffusion process. The protein pocket and its cofactor/ligand co-evolve during generation — there is no separate "dock the ligand after" step.</span></p>
+    <p style="margin-top:10px;"><strong>Conditioning:</strong> <span class="hl-p">Atom-level constraints can be applied — fix the ligand pose (e.g., PLP from the 5DVZ crystal structure), and RFD3 generates a protein scaffold around it. The scaffold is designed to optimally interact with the fixed ligand at the atomic level.</span></p>
+    <p style="margin-top:10px;"><strong>Architecture:</strong> Built on <span class="hl-r">RoseTTAFold All-Atom (RFAA, Science 2024)</span> — a generalist structure prediction network that handles protein + ligand + nucleic acid systems. RFD3 fine-tunes RFAA as a denoising model, exactly analogous to how RFD1 fine-tuned RF.</p>
+    <p style="margin-top:10px;"><span class="hl-y">The design philosophy: enzyme active site geometry must be precise at the ångström level. Generating everything together avoids the systematic errors introduced by separating backbone design from ligand accommodation.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">RFD3-P2</div>
+    <p><strong>段落功能：</strong>解释RFD3的技术升级——从骨架帧到全原子联合扩散，以及基于RFAA的架构。</p>
+    <div class="role-badge">核心方法</div>
+    <table class="term-table">
+      <tr><th>术语</th><th>解释</th></tr>
+      <tr><td>RFAA (RoseTTAFold All-Atom)</td><td>Science 2024发表的全原子结构预测网络，同时处理蛋白质+配体+核酸，是RFD3的预训练基础</td></tr>
+      <tr><td>全原子联合扩散</td><td>蛋白质与配体所有重原子同时加噪/去噪，避免先后分离的系统误差</td></tr>
+      <tr><td>原子级条件化</td><td>可以固定配体原子位置（如5DVZ中的PLP坐标），让RFD3在其周围生成骨架</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">RFD1 vs RFD3 技术对比</div>
+      RFD1: 骨架帧 (Cα + 方向) → 无配体<br>
+      RFD3: 所有重原子（蛋白+配体+核酸）→ 联合生成<br>
+      基础网络: RF (RFD1) → RFAA (RFD3)
+    </div>
+    <div class="notable-box"><strong>为什么RFAA是合适的基础？</strong>RFAA被设计为能处理异构系统（蛋白质+小分子+核酸），其注意力机制可以建模跨分子的原子间相互作用。这使得它作为"全原子扩散的去噪器"在物理上是有意义的——它已经学会了蛋白质-配体接触的几何。</div>
+  </div>
+</div>
+
+<!-- Results -->
+<div class="sec-label"><span class="sec-num">§2.3</span> 关键结果</div>
+
+<div id="rfd3-results" class="para-block">
+  <div class="para-left">
+    <span class="para-id">RFD3-P3</span>
+    <p>RFD3 was benchmarked against RFD1 and other all-atom design approaches:</p>
+    <p style="margin-top:8px;"><strong>Protein-protein binders:</strong> <span class="hl-b">Outperforms RFD1 in 4/5 design challenges without clustering; all 5/5 with output clustering</span>, indicating more consistent high-quality designs.</p>
+    <p style="margin-top:8px;"><strong>DNA-binding protein design:</strong> <span class="hl-b">Designed functional DNA-binding proteins without providing the DNA structure as input</span> — the model inferred the optimal DNA geometry as part of the joint design. This was previously intractable by any computational method.</p>
+    <p style="margin-top:8px;"><strong>Enzyme active site scaffolding:</strong> <span class="hl-b">90% success rate on a 41-enzyme benchmark</span>, compared to lower success rates with RFD1-based approaches. This is the most directly relevant result for TrpB design.</p>
+    <p style="margin-top:8px;"><strong>Computational efficiency:</strong> <span class="hl-b">10× reduction in computational cost compared to competing all-atom design approaches</span>, making it tractable for high-throughput design campaigns.</p>
+    <p style="margin-top:8px;"><span class="hl-y">The 90% success rate on enzyme active site scaffolding is the headline number for enzyme engineers. It means that if you provide the geometry of an enzyme's active site motif (with cofactor), RFD3 generates a scaffold that accommodates it 9 times out of 10 — compared to perhaps 1–2/10 for RFD1.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">RFD3-P3</div>
+    <p><strong>段落功能：</strong>量化RFD3在不同任务上的性能，最重要的数字是"41酶基准测试90%成功率"。</p>
+    <div class="role-badge">实验证据</div>
+    <table class="term-table">
+      <tr><th>任务</th><th>RFD3表现</th><th>基准对比</th></tr>
+      <tr><td>蛋白质-蛋白质binder</td><td>4-5/5 benchmark赢RFD1</td><td>RFD1: 3-4/5</td></tr>
+      <tr><td>DNA结合蛋白</td><td>无DNA输入也成功</td><td>之前不可行</td></tr>
+      <tr><td>酶活性位点脚手架</td><td><strong>90% (41酶基准)</strong></td><td>RFD1: 估计&lt;50%</td></tr>
+      <tr><td>计算成本</td><td>竞品的1/10</td><td>其他全原子方法</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">最关键数字</div>
+      酶活性位点设计成功率: 90% (41/41 基准测试)<br>
+      这是Yu Zhang在TrpB设计中使用RFD3的核心理由
+    </div>
+    <div class="project-box"><strong>与你的项目：</strong>RFD3的90%成功率是"骨架生成"层面的成功——即AF2重预测TM-score满足标准。它不涉及动力学正确性（COMM domain能否开闭）。这是你MetaDynamics验证层面要回答的问题：那90%的结构成功中，有多少比例的动力学也是正确的？</div>
+  </div>
+</div>
+
+<!-- Enzyme design -->
+<div class="sec-label"><span class="sec-num">§2.4</span> 酶活性位点设计细节</div>
+
+<div id="rfd3-enzyme" class="para-block">
+  <div class="para-left">
+    <span class="para-id">RFD3-P4</span>
+    <p>For enzyme active site scaffolding, the RFD3 workflow is:</p>
+    <ol style="margin:10px 0 0 20px;font-size:14px;line-height:2;">
+      <li><span class="hl-p">Specify the active site motif: provide atomic coordinates of catalytic residues AND the cofactor/substrate (fixed atoms)</span></li>
+      <li><span class="hl-p">RFD3 generates the surrounding scaffold by joint denoising of protein + ligand atoms simultaneously</span></li>
+      <li><span class="hl-p">The generated scaffold is evaluated by AF2/RFAA re-prediction (structural self-consistency)</span></li>
+      <li><span class="hl-p">Successful designs (high TM-score to RFD3 output) are passed to LigandMPNN for sequence design</span></li>
+    </ol>
+    <p style="margin-top:10px;">The key improvement over RFD1-based enzyme design is that <span class="hl-y">the cofactor geometry is correct by construction, not by post-hoc fitting.</span> In RFD3, the PLP phosphate group, the pyridine ring, and the formyl group are all modeled during diffusion — the protein scaffold is explicitly designed to hydrogen-bond the phosphate, coordinate the pyridine nitrogen, and accommodate the formyl group.</p>
+    <p style="margin-top:10px;"><span class="hl-b">For TrpB specifically:</span> RFD3 can be given the PLP pose from the 5DVZ crystal structure plus the coordinates of Lys87/Lys100 (Schiff base forming residue), Asp300 (catalytic acid), and Ser residues (phosphate H-bond donors) as fixed motif atoms. The model then generates TrpB backbone variants where the active site geometry is guaranteed to accommodate PLP.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">RFD3-P4</div>
+    <p><strong>段落功能：</strong>具体描述RFD3酶设计工作流，以及对TrpB+PLP的具体应用方案。</p>
+    <div class="role-badge">方法/流程</div>
+    <table class="term-table">
+      <tr><th>步骤</th><th>输入</th><th>输出</th></tr>
+      <tr><td>1. 定义motif</td><td>催化残基坐标 + PLP坐标</td><td>固定原子集合</td></tr>
+      <tr><td>2. RFD3生成</td><td>固定motif + 噪声</td><td>全原子骨架变体</td></tr>
+      <tr><td>3. 自洽性验证</td><td>RFD3输出骨架</td><td>AF2重预测TM-score</td></tr>
+      <tr><td>4. 序列设计</td><td>通过验证的骨架 + PLP</td><td>LigandMPNN → FASTA</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">TrpB+PLP的RFD3 Motif定义（建议）</div>
+      固定原子: PLP (全原子, 5DVZ坐标)<br>
+      固定残基: Lys87/Lys100 (Schiff碱), Asp300 (催化酸)<br>
+      固定残基: Ser residues (磷酸盐H键供体)<br>
+      可变区域: COMM domain (97-184) → RFD3自由生成
+    </div>
+    <div class="warning-box"><strong>关键未验证点：</strong>COMM domain (97-184) 在RFD3生成中通常会被设计为"稳定折叠"。但催化功能要求COMM domain保持<em>内在柔性</em>以完成O→C转变。RFD3没有针对动力学柔性进行优化——这是一个已知gap，也是MD验证的核心价值所在。</div>
+  </div>
+</div>
+
+<!-- Limitations -->
+<div class="sec-label"><span class="sec-num">§2.5</span> 局限性分析</div>
+
+<div id="rfd3-limits" class="para-block">
+  <div class="para-left">
+    <span class="para-id">RFD3-P5</span>
+    <p>While RFD3 significantly advances enzyme design capabilities, several limitations remain:</p>
+    <p style="margin-top:10px;"><span class="hl-g">1. Preprint status: As of April 2026, RFD3 is a bioRxiv preprint. The 90% success rate on the 41-enzyme benchmark has not been independently replicated by the broader community.</span></p>
+    <p style="margin-top:10px;"><span class="hl-g">2. No dynamic validation: The 90% success rate refers to structural self-consistency (AF2/RFAA re-prediction TM-score). A structurally consistent design may still be catalytically inactive if the protein dynamics are wrong. There is no guarantee that the generated scaffold supports the conformational transitions required for catalysis.</span></p>
+    <p style="margin-top:10px;"><span class="hl-g">3. Sequence design is still separate: RFD3 outputs a backbone + ligand arrangement, not a sequence. LigandMPNN (or another sequence design tool) is still required to convert the backbone into an amino acid sequence.</span></p>
+    <p style="margin-top:10px;"><span class="hl-g">4. Training data bias: RFAA (and therefore RFD3) was trained primarily on known protein-ligand structures in the PDB. For truly novel cofactor geometries or non-natural substrates (e.g., D-amino acids), the model may extrapolate poorly.</span></p>
+    <p style="margin-top:10px;"><span class="hl-g">5. Computational cost: Despite the 10× efficiency improvement, RFD3 is still significantly more expensive than RFD1 for high-throughput generation campaigns.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">RFD3-P5</div>
+    <p><strong>段落功能：</strong>批判性分析RFD3的局限性，尤其是"结构成功≠动力学正确"这个最关键的gap。</p>
+    <div class="role-badge">局限性分析</div>
+    <table class="term-table">
+      <tr><th>局限性</th><th>严重程度</th><th>缓解方法</th></tr>
+      <tr><td>预印本状态</td><td>中</td><td>关注同行评审发表</td></tr>
+      <tr><td>无动力学验证</td><td><strong>高</strong></td><td>MetaDynamics验证（你的工作）</td></tr>
+      <tr><td>序列设计分离</td><td>低</td><td>串联LigandMPNN（标准流程）</td></tr>
+      <tr><td>训练数据偏差</td><td>中</td><td>D-Trp非天然底物可能有影响</td></tr>
+    </table>
+    <div class="project-box"><strong>强调：为什么这个gap是你存在的理由</strong>
+      <br>RFD3声明90%成功率，但"成功"的定义是结构自洽性。一个酶设计要真正有功能，还需要：
+      <br>1. 正确的构象动力学（COMM domain O→C）
+      <br>2. 在催化循环中正确的热力学平衡（FEL形状）
+      <br>3. 在350K（P. furiosus温度）下的稳定性
+      <br>这三点都需要MetaDynamics来评估——这正是你的贡献。
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAPER 3: LigandMPNN -->
+<!-- ============================================================ -->
+<div id="lmpnn-meta" class="paper-divider">
+  <span class="paper-num">Paper 3</span>
+  <h2>LigandMPNN — Atomic Context-conditioned Protein Sequence Design</h2>
+  <div style="font-size:13px;opacity:.8;margin-top:6px;">Dauparas et al. · Nature Methods 2025 · DOI: 10.1038/s41592-025-02626-1 · Baker Lab · GitHub: dauparas/LigandMPNN</div>
+</div>
+
+<div class="sec-label"><span class="sec-num">META</span> 论文信息卡</div>
+<div class="para-block">
+  <div class="para-left">
+    <span class="para-id">LMPNN-META</span>
+    <p><strong>Title:</strong> Atomic context-conditioned protein sequence design using LigandMPNN</p>
+    <p style="margin-top:8px;"><strong>Authors:</strong> Justas Dauparas, Gyu Rie Lee, Robert Pecoraro, et al. (Baker Lab)</p>
+    <p style="margin-top:8px;"><strong>Venue:</strong> <em>Nature Methods</em>, 2025 | Volume 22, Pages 717–723</p>
+    <p style="margin-top:4px;"><strong>PMID:</strong> 40155723 · <strong>PMC:</strong> PMC11978504</p>
+    <p style="margin-top:4px;"><strong>DOI:</strong> <a href="https://doi.org/10.1038/s41592-025-02626-1" style="color:var(--blue);">10.1038/s41592-025-02626-1</a></p>
+    <p style="margin-top:4px;"><strong>Preprint:</strong> bioRxiv 10.1101/2023.12.22.573103 (December 2023)</p>
+    <p style="margin-top:4px;"><strong>Code:</strong> <a href="https://github.com/dauparas/LigandMPNN" style="color:var(--blue);">github.com/dauparas/LigandMPNN</a></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">LMPNN-META</div>
+    <p><strong>论文地位：</strong>LigandMPNN是序列设计领域对应RFD1的一次升级——ProteinMPNN（原标准工具）完全忽略非蛋白原子；LigandMPNN把配体/辅因子的原子信息加入消息传递图，显著提升了结合界面的序列设计质量。已发表于Nature Methods（顶级方法学期刊），经同行评审。</p>
+    <div class="role-badge">序列设计 · 同行评审发表</div>
+    <div class="project-box"><strong>与你的项目：</strong>LigandMPNN是pipeline中骨架→序列转换的核心工具，直接决定了你拿到的氨基酸序列是否能与PLP正确相互作用。理解它的工作原理对于解释你的MD模拟结果至关重要。</div>
+  </div>
+</div>
+
+<!-- Problem -->
+<div class="sec-label"><span class="sec-num">§3.1</span> 问题背景 — 为什么ProteinMPNN不够用</div>
+
+<div id="lmpnn-problem" class="para-block">
+  <div class="para-left">
+    <span class="para-id">LMPNN-P1</span>
+    <p>The standard sequence design tool in the field is <span class="hl-r">ProteinMPNN</span> (Dauparas et al., Science 2022), which designs amino acid sequences for a given protein backbone by treating the protein as a graph of amino acid nodes connected by edges encoding spatial proximity. ProteinMPNN achieves high sequence recovery rates (~52%) on general protein sequences.</p>
+    <p style="margin-top:10px;">However, <span class="hl-g">ProteinMPNN has a critical blind spot: it has no representation of non-protein atoms. When designing an enzyme active site or cofactor-binding pocket, ProteinMPNN "sees" only the protein backbone — the ligand, cofactor, metal ions are all invisible.</span></p>
+    <p style="margin-top:10px;">This creates predictable failure modes for enzyme design:</p>
+    <ul style="margin:10px 0 0 20px;font-size:14px;line-height:2;">
+      <li><span class="hl-g">Steric clashes: ProteinMPNN may place large sidechains (e.g., Phe, Trp) exactly where the cofactor sits</span></li>
+      <li><span class="hl-g">Missing binding interactions: An Arg that should H-bond a phosphate, a His that should coordinate a metal — ProteinMPNN has no basis for preferring these over alternatives</span></li>
+      <li><span class="hl-g">Low interface sequence recovery: On cofactor/ligand interface positions, ProteinMPNN recovery drops to ~50%, essentially random</span></li>
+    </ul>
+    <p style="margin-top:10px;"><span class="hl-y">LigandMPNN solves this by adding an explicit representation of all non-protein atoms — element type, 3D position, chemical environment — into the message-passing graph. Residue identity at the binding interface can then be rationally chosen based on actual atomic contacts.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">LMPNN-P1</div>
+    <p><strong>段落功能：</strong>通过对比ProteinMPNN的盲点和LigandMPNN的解决思路，建立后者的必要性。</p>
+    <div class="role-badge">问题陈述 + 动机</div>
+    <table class="term-table">
+      <tr><th>ProteinMPNN盲点</th><th>对TrpB+PLP设计的影响</th></tr>
+      <tr><td>看不见PLP原子</td><td>可能设计出与PLP冲突的侧链</td></tr>
+      <tr><td>看不见磷酸盐</td><td>不会优先选择H键供体残基（Ser/Thr）</td></tr>
+      <tr><td>看不见吡啶环</td><td>不会设计芳香堆积相互作用</td></tr>
+      <tr><td>看不见醛基</td><td>不会保护Schiff碱形成所需的Lys几何</td></tr>
+    </table>
+    <div class="notable-box"><strong>数字量化盲点的影响：</strong>
+      <br>ProteinMPNN在小分子界面的序列回收率: <strong>50.5%</strong>
+      <br>LigandMPNN在同样位置: <strong>63.3%</strong>
+      <br>差距约13个百分点，相当于每8个界面残基中多对1个的正确设计。在活性位点这种精度极高要求的场景，这个差距至关重要。
+    </div>
+  </div>
+</div>
+
+<!-- Method -->
+<div class="sec-label"><span class="sec-num">§3.2</span> 核心方法 — 异构消息传递图</div>
+
+<div id="lmpnn-method" class="para-block">
+  <div class="para-left">
+    <span class="para-id">LMPNN-P2</span>
+    <p>LigandMPNN extends ProteinMPNN's encoder-decoder architecture with a heterogeneous graph that includes non-protein atom nodes:</p>
+    <p style="margin-top:10px;"><strong>Graph construction:</strong></p>
+    <ul style="margin:8px 0 0 20px;font-size:14px;line-height:2;">
+      <li><span class="hl-p">Protein nodes: same as ProteinMPNN — amino acid residues, edges encode Cα-Cα distances and relative orientations</span></li>
+      <li><span class="hl-p">Non-protein atom nodes (new): one node per non-protein heavy atom; encodes element type, aromaticity, charge, 3D position relative to nearby protein residues, and chemical environment (bonds, hybridization state)</span></li>
+      <li><span class="hl-p">Cross-edges: spatial proximity edges connect non-protein atom nodes to nearby protein residue nodes, enabling bidirectional message passing</span></li>
+    </ul>
+    <p style="margin-top:10px;"><strong>Message passing:</strong> <span class="hl-p">Protein residue nodes now receive messages from both other protein residues AND nearby non-protein atoms. The aggregated message encodes "what ligand atoms are near me, what element types they are, and how are they oriented relative to me?" — this context directly informs sequence design at the interface.</span></p>
+    <p style="margin-top:10px;"><strong>Sidechain packing (bonus output):</strong> <span class="hl-p">LigandMPNN also predicts sidechain rotamer angles for all designed residues, not just sequence identity. This enables immediate structural evaluation of binding interactions without a separate rotamer sampling step.</span></p>
+    <p style="margin-top:10px;"><strong>Training:</strong> Trained on PDB structures with diverse ligand types: small molecules, nucleotides, metals, cofactors (explicitly including PLP-like cofactors and enzyme active sites). Held-out test set for sequence recovery benchmarking.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">LMPNN-P2</div>
+    <p><strong>段落功能：</strong>解释LigandMPNN的技术核心——异构图的构建和消息传递机制。关键在于"非蛋白原子节点"的加入如何改变了序列设计的信息输入。</p>
+    <div class="role-badge">核心方法</div>
+    <table class="term-table">
+      <tr><th>组件</th><th>作用</th></tr>
+      <tr><td>蛋白质节点 (旧)</td><td>氨基酸残基，Cα距离/方向编码</td></tr>
+      <tr><td>非蛋白原子节点 (新)</td><td>配体/辅因子每个重原子一个节点，编码元素类型、位置、化学环境</td></tr>
+      <tr><td>跨边 (新)</td><td>非蛋白节点↔蛋白质节点，基于空间近邻</td></tr>
+      <tr><td>侧链预测 (新)</td><td>同时输出序列身份+旋转异构体角度，无需另外跑rotamer sampling</td></tr>
+    </table>
+    <div class="notable-box"><strong>消息传递的物理意义：</strong>当一个Arg残基的节点"看到"附近有一个磷酸基团节点（O原子，负电荷），消息传递会告诉这个位置"你需要一个H键供体/正电荷残基"，因此Arg或Lys的概率会上升。这是在图神经网络层面实现的化学直觉。</div>
+    <div class="project-box"><strong>与你的项目（侧链预测的价值）：</strong>LigandMPNN的侧链预测输出可以直接作为你MD模拟的起始结构，无需额外跑Rosetta sidechain packing或SCWRL。这减少了pipeline中的工具依赖，也减少了因rotamer采样不足导致的初始结构问题。</div>
+  </div>
+</div>
+
+<!-- Results -->
+<div class="sec-label"><span class="sec-num">§3.3</span> 序列回收率结果</div>
+
+<div id="lmpnn-results" class="para-block">
+  <div class="para-left">
+    <span class="para-id">LMPNN-P3</span>
+    <p>LigandMPNN was benchmarked on sequence recovery across different binding contexts:</p>
+    <table class="compare-table" style="margin-top:12px;">
+      <tr><th>Interface type</th><th>LigandMPNN</th><th>ProteinMPNN</th><th>Rosetta</th></tr>
+      <tr><td>Small molecule (general)</td><td><strong>63.3%</strong></td><td>50.5%</td><td>50.4%</td></tr>
+      <tr><td>Nucleotide interface</td><td><strong>50.5%</strong></td><td>34.0%</td><td>35.2%</td></tr>
+      <tr><td>Metal coordination</td><td><strong>77.5%</strong></td><td>40.6%</td><td>36.0%</td></tr>
+    </table>
+    <p style="margin-top:12px;"><span class="hl-y">Sequence recovery = fraction of designed positions where LigandMPNN chooses the same amino acid as the native sequence in held-out PDB structures. Higher recovery = better recapitulation of the evolutionary logic for binding those specific non-protein atoms.</span></p>
+    <p style="margin-top:10px;">The <span class="hl-b">metal coordination result (77.5% vs. 40.6%) is the most striking</span>: LigandMPNN nearly doubles ProteinMPNN's performance. This reflects LigandMPNN's ability to learn the precise geometry of metal coordination chemistry — tetrahedral coordination of Zn²⁺, octahedral coordination of Fe³⁺, etc.</p>
+    <p style="margin-top:10px;"><span class="hl-b">Experimental validation: over 100 designed binders validated experimentally</span>, demonstrating that the sequence recovery metric translates to real-world design success.</p>
+    <p style="margin-top:10px;"><span class="hl-b">Sidechain packing accuracy: designed sidechains at binding interfaces are within experimental crystallographic resolution of native structures</span>, validating the integrated rotamer prediction capability.</p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">LMPNN-P3</div>
+    <p><strong>段落功能：</strong>用三类界面的序列回收率数字展示LigandMPNN相对于ProteinMPNN和Rosetta的系统性优势。</p>
+    <div class="role-badge">实验证据</div>
+    <div class="data-box">
+      <div class="label">关键数字总结</div>
+      小分子界面: 63.3% (vs 50.5% ProteinMPNN)<br>
+      核苷酸界面: 50.5% (vs 34.0%) → +48% 相对提升<br>
+      金属配位: 77.5% (vs 40.6%) → <strong>+91% 相对提升</strong><br>
+      实验验证: >100 个设计binder验证
+    </div>
+    <div class="notable-box"><strong>为什么金属配位提升最大？</strong>金属配位几何是最精确的相互作用类型——Zn²⁺四面体配位要求四个配体残基在精确角度上定位。这种对精确几何的敏感性使得"看不见金属"的ProteinMPNN性能极差。LigandMPNN"看到"金属原子和已有配体，可以正确推断缺失配体的理想类型和位置。</div>
+    <div class="project-box"><strong>PLP类比：</strong>PLP包含磷酸盐（类似核苷酸界面）和吡啶环（芳香系统）两类非蛋白原子。基于LigandMPNN在核苷酸界面+50%的相对提升，预期LigandMPNN在PLP界面的性能也会显著优于ProteinMPNN。这是选择LigandMPNN而非ProteinMPNN的直接定量依据。</div>
+  </div>
+</div>
+
+<!-- PLP specific -->
+<div class="sec-label"><span class="sec-num">§3.4</span> PLP辅因子场景的应用</div>
+
+<div id="lmpnn-plp" class="para-block">
+  <div class="para-left">
+    <span class="para-id">LMPNN-P4</span>
+    <p>For TrpB sequence design, LigandMPNN is applied with the full atomic coordinates of PLP as the non-protein context:</p>
+    <p style="margin-top:10px;"><strong>Input to LigandMPNN:</strong></p>
+    <ul style="margin:8px 0 0 20px;font-size:14px;line-height:2;">
+      <li><span class="hl-p">Designed backbone (from RFD3 or RFD1) as the protein structure</span></li>
+      <li><span class="hl-p">PLP atomic coordinates from 5DVZ crystal structure (or RFD3-generated pose if using RFD3)</span></li>
+      <li><span class="hl-p">Fixed positions: Lys87/Lys100 (Schiff base lysine — must be kept as Lys)</span></li>
+    </ul>
+    <p style="margin-top:10px;"><strong>LigandMPNN output for TrpB:</strong></p>
+    <ul style="margin:8px 0 0 20px;font-size:14px;line-height:2;">
+      <li><span class="hl-p">Amino acid sequence that maintains PLP Schiff base interaction with Lys87/Lys100</span></li>
+      <li><span class="hl-p">Phosphate H-bond donors (Ser/Thr) at the correct positions</span></li>
+      <li><span class="hl-p">Aromatic stacking partners for the PLP pyridine ring</span></li>
+      <li><span class="hl-p">Accommodation of the indole substrate binding pocket</span></li>
+      <li><span class="hl-p">Sidechain-packed structure for immediate use in MD simulations</span></li>
+    </ul>
+    <p style="margin-top:10px;"><span class="hl-y">The critical advantage over ProteinMPNN: LigandMPNN explicitly models the PLP phosphate, pyridine ring, and formyl group atoms. The phosphate oxygen atoms directly influence the preference for Ser/Thr residues at coordination positions. The pyridine ring nitrogen influences the preference for residues that can provide the proton relay network. ProteinMPNN has zero access to this atomic context.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">LMPNN-P4</div>
+    <p><strong>段落功能：</strong>把LigandMPNN的通用能力具体化为TrpB+PLP设计场景的操作流程。</p>
+    <div class="role-badge">TrpB专项应用</div>
+    <table class="term-table">
+      <tr><th>PLP原子组件</th><th>LigandMPNN的作用</th></tr>
+      <tr><td>磷酸盐 (3个O原子)</td><td>优先选择Ser/Thr/His作为H键供体</td></tr>
+      <tr><td>吡啶环 (芳香系统)</td><td>优先选择能芳香堆积的残基 (Phe/Tyr)</td></tr>
+      <tr><td>醛基/Schiff碱</td><td>确保Lys87/Lys100位置不被替换</td></tr>
+      <tr><td>全局位置和方向</td><td>防止侧链与PLP的立体冲突</td></tr>
+    </table>
+    <div class="data-box">
+      <div class="label">TrpB LigandMPNN 命令行框架</div>
+      python run.py \<br>
+      &nbsp;&nbsp;--pdb_path backbone_from_rfd3.pdb \<br>
+      &nbsp;&nbsp;--ligand_path 5dvz_plp_only.pdb \<br>
+      &nbsp;&nbsp;--fixed_residues "A87 A100" \<br>
+      &nbsp;&nbsp;--temperature 0.1 \<br>
+      &nbsp;&nbsp;--num_seq_per_target 10<br>
+      → output: FASTA + sidechain-packed PDB
+    </div>
+    <div class="warning-box"><strong>temperature参数需要调优：</strong>低temperature（0.1）→ 保守序列（接近野生型）；高temperature（0.3-0.5）→ 多样序列（偏离野生型）。对于TrpB设计，过低temperature会生成"接近WT"的冗余设计；过高temperature可能破坏关键相互作用。最优temperature对于保持COMM domain动力学的影响是未知的——需要实验验证。</div>
+  </div>
+</div>
+
+<!-- Limitations -->
+<div class="sec-label"><span class="sec-num">§3.5</span> 局限性分析</div>
+
+<div id="lmpnn-limits" class="para-block">
+  <div class="para-left">
+    <span class="para-id">LMPNN-P5</span>
+    <p>LigandMPNN is a powerful tool but has important limitations for TrpB design:</p>
+    <p style="margin-top:10px;"><span class="hl-g">1. Static structure assumption: LigandMPNN designs sequences for a single, fixed backbone conformation. It has no concept of conformational dynamics — it cannot know that the COMM domain needs to be flexible enough to undergo O→PC→C transitions. A sequence that is optimal for the "open" backbone conformation may be suboptimal or even counterproductive when the COMM domain needs to adopt the "closed" conformation.</span></p>
+    <p style="margin-top:10px;"><span class="hl-g">2. Single PLP pose: LigandMPNN conditions on a single PLP pose. In reality, the PLP geometry changes slightly between catalytic intermediates (Ain → Aex1 → A-A → Q2) as the Schiff base chemistry evolves. The design is optimized for one snapshot, not the full catalytic cycle.</span></p>
+    <p style="margin-top:10px;"><span class="hl-g">3. No thermodynamic information: LigandMPNN designs for structural compatibility, not thermodynamic stability of the binding complex. A sequence with high structural recovery may not achieve tight cofactor binding under simulated conditions (350 K, ff14SB force field).</span></p>
+    <p style="margin-top:10px;"><span class="hl-g">4. D-amino acid catalysis: TrpB for D-Trp synthesis operates in a non-natural mode. LigandMPNN was trained predominantly on L-amino acid enzymes. The geometric preferences learned from natural enzymes may not generalize to D-amino acid synthesis geometry.</span></p>
+  </div>
+  <div class="para-right">
+    <div class="para-id">LMPNN-P5</div>
+    <p><strong>段落功能：</strong>批判性分析LigandMPNN对TrpB设计的四个局限性，特别强调"静态结构假设"这个根本局限。</p>
+    <div class="role-badge">局限性分析</div>
+    <table class="term-table">
+      <tr><th>局限性</th><th>严重程度</th><th>验证方法</th></tr>
+      <tr><td>静态结构假设</td><td><strong>高</strong></td><td>MetaDynamics（你的核心工作）</td></tr>
+      <tr><td>单一PLP构象</td><td>中</td><td>多中间体FEL验证</td></tr>
+      <tr><td>无热力学信息</td><td>中</td><td>MD中监测PLP结合稳定性</td></tr>
+      <tr><td>D-氨基酸外推</td><td>中-高</td><td>实验验证是最终判据</td></tr>
+    </table>
+    <div class="project-box"><strong>最关键的局限性再次说明：</strong>LigandMPNN和RFD3都是"静态设计"工具——它们优化结构（骨架几何+序列选择）但对动力学一无所知。TrpB催化需要COMM domain的大幅构象转变（~14 Å的H6螺旋运动）。这个动力学要求根本不在LigandMPNN的优化目标中。MetaDynamics FEL是唯一能判断"这个设计的COMM domain是否动"的工具。</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SYNTHESIS -->
+<!-- ============================================================ -->
+<div class="sec-label"><span class="sec-num">SYNTH</span> 综合分析 — 三论文的关联与TrpB项目的逻辑链</div>
+
+<div id="synth-pipeline" class="synth-section">
+  <h2>§A 完整设计流程图</h2>
+  <p style="margin-bottom:16px;font-size:13.5px;color:var(--gray);">三篇论文共同构成了一条从"功能需求"到"可验证设计"的计算流程，你的MetaDynamics工作是这条流程的质量守门员。</p>
+
+  <div class="logic-chain">
+    <div class="lc-node">功能需求<br><small style="font-size:10px;">TrpB COMM动力学<br>PLP辅因子</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">RFD3<br><small style="font-size:10px;">全原子骨架生成<br>PLP感知</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">LigandMPNN<br><small style="font-size:10px;">序列设计<br>PLP原子上下文</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">tleap<br><small style="font-size:10px;">系统构建<br>ff14SB+TIP3P</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">MetaDynamics<br><small style="font-size:10px;">FEL验证<br>COMM动力学</small></div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-node">判断<br><small style="font-size:10px;">O→C可访问？<br>FEL形状正确？</small></div>
+  </div>
+
+  <h3>每一步的输入/输出</h3>
+  <table class="proj-table">
+    <tr><th>步骤</th><th>工具</th><th>输入</th><th>输出</th><th>验证标准</th></tr>
+    <tr><td>骨架生成</td><td>RFD3</td><td>PLP坐标 + 活性位点motif</td><td>全原子骨架 (PDB)</td><td>AF2重预测 TM &gt; 0.8</td></tr>
+    <tr><td>序列设计</td><td>LigandMPNN</td><td>骨架PDB + PLP (5DVZ)</td><td>FASTA + 侧链PDB</td><td>序列回收率 &gt; 60%（PLP界面）</td></tr>
+    <tr><td>系统构建</td><td>tleap+GAFF</td><td>序列 + PLP参数 (RESP)</td><td>parm7 + inpcrd</td><td>体系中性，无立体冲突</td></tr>
+    <tr><td>常规MD</td><td>AMBER pmemd</td><td>parm7 + inpcrd</td><td>500 ns轨迹</td><td>RMSD稳定，PLP不脱落</td></tr>
+    <tr><td>MetaDynamics</td><td>GROMACS+PLUMED2</td><td>GROMACS格式系统</td><td>bias轨迹 + hills文件</td><td>收敛（bias增量 &lt; 0.05 kJ/mol/ps）</td></tr>
+    <tr><td>FEL分析</td><td>plumed sum_hills</td><td>hills + colvar文件</td><td>s-z FEL (kcal/mol)</td><td>C态可及 (~+5 kcal/mol)，PC→C壁垒 &lt; 6 kcal/mol</td></tr>
+  </table>
+</div>
+
+<div id="synth-design-routes" class="synth-section">
+  <h2>§B 结构优先 vs 序列优先设计路线</h2>
+  <p style="margin-bottom:12px;font-size:13.5px;color:var(--gray);">蛋白质设计存在两种不同的哲学路线，三篇论文代表了不同的立场。</p>
+
+  <table class="proj-table">
+    <tr><th>维度</th><th>结构优先 (RFD3路线)</th><th>序列优先 (语言模型路线)</th></tr>
+    <tr><td>核心假设</td><td>结构决定功能，设计好骨架是第一步</td><td>序列决定结构，直接在序列空间采样</td></tr>
+    <tr><td>代表工具</td><td>RFDiffusion / RFD3 → LigandMPNN</td><td>ESM-IF / ProteinMPNN / ESM3</td></tr>
+    <tr><td>输入</td><td>结构约束 (活性位点motif, 配体)</td><td>序列上下文 / 结构编码</td></tr>
+    <tr><td>输出</td><td>骨架PDB → 序列FASTA</td><td>直接序列FASTA</td></tr>
+    <tr><td>配体处理</td><td>RFD3: 原子级联合设计 (明确优势)</td><td>通常无法处理非蛋白配体</td></tr>
+    <tr><td>动力学保证</td><td><strong>无（需要MD验证）</strong></td><td><strong>无（需要MD验证）</strong></td></tr>
+    <tr><td>对TrpB的适用性</td><td>高（PLP共价辅因子需要原子级精度）</td><td>中（可以做序列多样化，但PLP处理弱）</td></tr>
+  </table>
+
+  <div class="notable-box"><strong>两条路线的共同盲点：</strong>无论结构优先还是序列优先，目前所有主流蛋白质设计工具都只优化静态结构/序列——没有任何工具在设计过程中考虑蛋白质的动力学性质。这是领域级别的gap，不是某个工具的缺陷。这也是为什么MD验证仍然是从"计算设计"到"功能验证"之间不可替代的一环。</div>
+
+  <div class="project-box"><strong>Ramanathan Lab的具体选择：</strong>Yu Zhang选择了"结构优先"路线（RFDiffusion→LigandMPNN），这在有PLP辅因子的TrpB设计中是正确的选择。序列优先工具（如ESM3）处理PLP的能力明显弱于LigandMPNN，且无法直接在骨架级别控制COMM domain的构象。</div>
+</div>
+
+<div id="synth-plp" class="synth-section">
+  <h2>§C RFD3 + LigandMPNN 如何处理PLP辅因子</h2>
+  <p style="margin-bottom:12px;font-size:13.5px;color:var(--gray);">PLP是TrpB的必要辅因子，理解两个工具如何分别处理PLP是评估设计质量的关键。</p>
+
+  <h3>PLP的化学特征（设计约束来源）</h3>
+  <table class="proj-table">
+    <tr><th>PLP组件</th><th>化学角色</th><th>关键蛋白质相互作用</th><th>设计工具处理</th></tr>
+    <tr><td>C4'醛基 → Schiff碱</td><td>与底物/催化Lys共价连接</td><td>Lys87 (PfTrpB野生型) / Lys100 (变体编号)</td><td>RFD3: 固定motif; LigandMPNN: 固定Lys位置</td></tr>
+    <tr><td>磷酸盐 (C5'-OPO₃²⁻)</td><td>锚定PLP在活性位点</td><td>多个Ser/Thr的H键供体</td><td>LigandMPNN: 直接建模，优先选择H键供体</td></tr>
+    <tr><td>吡啶环 (芳香)</td><td>π系统，稳定反应中间体</td><td>芳香堆积 + 吡啶N的质子化</td><td>LigandMPNN: 建模π系统，优化堆积残基</td></tr>
+    <tr><td>3'-OH</td><td>H键受体</td><td>附近极性残基</td><td>LigandMPNN: 建模OH，优化极性相互作用</td></tr>
+  </table>
+
+  <h3>RFD3 处理PLP的方式</h3>
+  <div class="para-block" style="border:none;">
+    <div class="para-left" style="border-right:none;">
+      <p>In the RFD3 workflow for TrpB:</p>
+      <ol style="margin:8px 0 0 20px;font-size:14px;line-height:2;">
+        <li>The PLP coordinates from 5DVZ are provided as <strong>fixed non-protein atoms</strong> in the motif specification</li>
+        <li>RFD3 runs joint all-atom diffusion with PLP fixed — the protein backbone is denoised around the immobile PLP</li>
+        <li>The generated backbone has pockets shaped by the actual PLP electron density — phosphate H-bond positions are "pre-allocated" in the backbone geometry</li>
+        <li>Structural self-consistency is evaluated by RFAA re-prediction (RFAA can handle protein+PLP)</li>
+      </ol>
+    </div>
+    <div class="para-right">
+      <div class="project-box"><strong>关键优势：</strong>RFD3生成的骨架口袋形状是由PLP原子的存在"物理塑造"的，不是事后近似的。这意味着：
+        <br>• 磷酸盐结合口袋的极性在骨架层面就是正确的
+        <br>• 吡啶环的芳香堆积空间在骨架层面就预留好了
+        <br>• 不会有骨架原子与PLP重叠的情况
+      </div>
+    </div>
+  </div>
+
+  <h3>LigandMPNN 处理PLP的方式</h3>
+  <div class="para-block" style="border:none;">
+    <div class="para-left" style="border-right:none;">
+      <p>In the LigandMPNN workflow:</p>
+      <ol style="margin:8px 0 0 20px;font-size:14px;line-height:2;">
+        <li>PLP is provided as a <strong>non-protein ligand file</strong> (all heavy atoms, from 5DVZ or RFD3 output)</li>
+        <li>LigandMPNN adds PLP atoms as nodes in the message-passing graph</li>
+        <li>Residues near PLP receive messages from PLP atoms, conditioning their amino acid identity on PLP's atomic context</li>
+        <li>Lys87/Lys100 is fixed (specified as fixed residue in command line) to preserve Schiff base capability</li>
+        <li>Output: amino acid sequence + sidechain-packed PDB with all PLP-protein contacts explicitly modeled</li>
+      </ol>
+    </div>
+    <div class="para-right">
+      <div class="warning-box"><strong>潜在的过度优化问题：</strong>LigandMPNN可能过度优化PLP结合（使PLP结合过于紧密），导致PLP在催化循环中Schiff碱交换变慢。这是静态序列设计和动态催化功能之间固有的张力。需要MD验证PLP在催化循环不同阶段的结合自由能。</div>
+    </div>
+  </div>
+</div>
+
+<div id="synth-metad" class="synth-section">
+  <h2>§D 为什么MetaDynamics验证是不可替代的</h2>
+  <p style="margin-bottom:12px;font-size:13.5px;color:var(--gray);">这一节直接回答"你的工作在pipeline中的科学价值是什么"——给导师汇报时的核心论点。</p>
+
+  <h3>设计工具覆盖了什么，没有覆盖什么</h3>
+  <table class="proj-table">
+    <tr><th>问题</th><th>RFD3回答？</th><th>LigandMPNN回答？</th><th>MetaDynamics回答？</th></tr>
+    <tr><td>骨架结构自洽吗？</td><td>是 (AF2 TM-score)</td><td>部分</td><td>间接</td></tr>
+    <tr><td>PLP几何正确吗？</td><td>是（联合扩散设计）</td><td>是（原子级序列设计）</td><td>间接（结构分析）</td></tr>
+    <tr><td>COMM domain能O→C吗？</td><td><strong>否</strong></td><td><strong>否</strong></td><td><strong>是（核心输出）</strong></td></tr>
+    <tr><td>C态的自由能多少？</td><td><strong>否</strong></td><td><strong>否</strong></td><td><strong>是（FEL给出ΔG）</strong></td></tr>
+    <tr><td>PC→C的动力学壁垒？</td><td><strong>否</strong></td><td><strong>否</strong></td><td><strong>是（FEL壁垒高度）</strong></td></tr>
+    <tr><td>K82-Q2质子转移几何？</td><td>否</td><td>否</td><td><strong>是（MD中可测量）</strong></td></tr>
+    <tr><td>350K下的热稳定性？</td><td>否</td><td>否</td><td><strong>是（350K模拟）</strong></td></tr>
+  </table>
+
+  <h3>MetaDynamics验证的判断标准</h3>
+  <p style="margin-top:10px;font-size:13.5px;">基于JACS 2019的参考标准（PfTrpS全酶 = 正对照，PfTrpB WT = 负对照），一个<strong>成功的设计</strong>应该满足：</p>
+  <div class="data-box" style="margin-top:8px;">
+    <div class="label">MetaDynamics验证通过标准（参考JACS 2019 PfTrpB0B2）</div>
+    1. C态可及（FEL中存在可访问的C态盆地）<br>
+    2. E(Q2)阶段C态自由能 ≤ +5 kcal/mol（相对O/PC）<br>
+    3. PC→C壁垒 ≤ 6 kcal/mol（理想: ~2 kcal/mol，类似PfTrpB0B2）<br>
+    4. C态COMM domain RMSD &lt; 1.5 Å（相对X射线参考结构）<br>
+    5. C态K82-Q2距离 ≤ 3.6 Å（有效质子转移距离）<br>
+    6. PLP在整个模拟中保持Schiff碱（不脱落）
+  </div>
+
+  <h3>验证失败的可能情况及处理</h3>
+  <table class="proj-table">
+    <tr><th>失败模式</th><th>可能原因</th><th>处理建议</th></tr>
+    <tr><td>C态完全不可及</td><td>RFD3设计了过于刚性的COMM domain</td><td>尝试partial diffusion（更保守的骨架）；或放宽COMM domain约束重新设计</td></tr>
+    <tr><td>C态RMSD &gt; 1.5 Å</td><td>LigandMPNN序列与C态几何不兼容</td><td>检查C态时COMM domain关键接触残基；调高LigandMPNN temperature重新采样</td></tr>
+    <tr><td>K82-Q2距离 &gt; 3.6 Å</td><td>活性位点局部几何未完全正确</td><td>重新评估K87/K100位置；验证PLP Schiff碱键长</td></tr>
+    <tr><td>PLP在MD中脱落</td><td>磷酸盐结合不足；GAFF参数问题</td><td>检查PLP RESP电荷；检查与Ser残基的H键数量</td></tr>
+    <tr><td>350K下蛋白质展开</td><td>设计序列缺乏热稳定性</td><td>核查疏水核心；考虑增加远端稳定突变（类似PfTrpB0B2策略）</td></tr>
+  </table>
+
+  <div class="warning-box"><strong>重要说明——"成功的设计"不一定是WT的精确复制：</strong>PfTrpB0B2相比WT具有novel PC*构象（R159 cation-π），而且TrpA结合到0B2反而有害——说明进化可以走出与全酶机制完全不同的路径。你设计的序列的FEL形状可能与WT或0B2都不同，但只要满足上述定量标准，仍然是有效的设计。</div>
+</div>
+
+<div id="synth-glossary" class="synth-section">
+  <h2>§E 三论文术语总表</h2>
+  <table class="gloss-table">
+    <tr><th>术语</th><th>所属论文</th><th>解释</th></tr>
+    <tr><td>SE(3)</td><td>RFD1, RFD3</td><td>3D刚体运动群，包含平移（R³）和旋转（SO(3)）。蛋白质骨架帧的自然数学描述空间</td></tr>
+    <tr><td>IGSO₃</td><td>RFD1</td><td>SO(3)上的各向同性高斯噪声，用于旋转帧的扩散过程</td></tr>
+    <tr><td>DDPM</td><td>RFD1, RFD3</td><td>Denoising Diffusion Probabilistic Model，前向加噪+反向去噪的生成模型框架</td></tr>
+    <tr><td>RoseTTAFold (RF)</td><td>RFD1</td><td>Baker Lab的蛋白质结构预测网络，RFDiffusion的预训练基础</td></tr>
+    <tr><td>RFAA</td><td>RFD3</td><td>RoseTTAFold All-Atom，同时处理蛋白质+配体+核酸，RFD3的预训练基础</td></tr>
+    <tr><td>Motif scaffolding</td><td>RFD1, RFD3</td><td>固定关键残基/配体坐标，让扩散模型生成周围的蛋白质骨架</td></tr>
+    <tr><td>Partial diffusion</td><td>RFD1</td><td>对已知结构施加部分噪声再去噪，生成结构变体而非全新设计</td></tr>
+    <tr><td>TM-score</td><td>RFD1, RFD3</td><td>Template Modeling Score，0–1之间，&gt;0.5表示相同折叠，用于评估结构自洽性</td></tr>
+    <tr><td>ProteinMPNN</td><td>LigandMPNN</td><td>Baker Lab标准序列设计工具（Science 2022），不建模非蛋白原子，是LigandMPNN的前身</td></tr>
+    <tr><td>LigandMPNN</td><td>LigandMPNN</td><td>加入非蛋白原子节点的扩展版ProteinMPNN，用于配体/辅因子感知的序列设计</td></tr>
+    <tr><td>Sequence recovery</td><td>LigandMPNN</td><td>序列回收率：设计序列中与天然序列匹配的残基比例，在留出PDB结构上评估</td></tr>
+    <tr><td>Heterogeneous graph</td><td>LigandMPNN</td><td>包含多种节点类型（蛋白质残基+非蛋白原子）的图神经网络</td></tr>
+    <tr><td>PLP (Pyridoxal-5'-phosphate)</td><td>全部</td><td>磷酸吡哆醛，TrpB的辅因子，与催化Lys共价形成Schiff碱</td></tr>
+    <tr><td>Schiff碱</td><td>全部</td><td>PLP醛基与Lys ε-氨基形成的亚胺键 (C=N)，是TrpB催化的化学基础</td></tr>
+    <tr><td>COMM domain</td><td>全部</td><td>TrpB残基97-184，控制活性位点开闭，O/PC/C三种构象代表催化循环进程</td></tr>
+    <tr><td>FEL</td><td>全部</td><td>Free Energy Landscape，自由能面，描述蛋白质在构象空间各点的热力学稳定性</td></tr>
+    <tr><td>MetaDynamics path CV</td><td>全部</td><td>用PLUMED的FUNCPATHMSD实现的路径集体变量，s=沿路径进展，z=偏离路径程度</td></tr>
+    <tr><td>AF2</td><td>全部</td><td>AlphaFold2，用于验证设计结构的自洽性（重新预测TM-score）</td></tr>
+    <tr><td>Joint diffusion</td><td>RFD3</td><td>蛋白质和配体所有原子同时参与加噪/去噪的联合扩散过程</td></tr>
+    <tr><td>Sidechain packing</td><td>LigandMPNN</td><td>侧链旋转异构体构象预测，LigandMPNN同时输出序列+侧链坐标</td></tr>
+    <tr><td>Temperature parameter</td><td>LigandMPNN</td><td>序列采样温度，低T→保守（近WT），高T→多样（偏离WT）</td></tr>
+    <tr><td>5DVZ</td><td>全部</td><td>TrpB-PLP结合态参考晶体结构（含PLP内部Schiff碱），Ain中间体</td></tr>
+    <tr><td>5DW0</td><td>全部</td><td>TrpB-PLP-Ser Schiff碱态晶体结构（Aex1中间体参考）</td></tr>
+    <tr><td>PfTrpB0B2</td><td>JACS2019背景</td><td>Arnold实验室定向进化TrpB变体，6个远端突变（P12L等），stand-alone活性</td></tr>
+  </table>
+
+  <div style="margin-top:28px;padding:16px 20px;background:#f0ede4;border-radius:8px;font-size:12.5px;color:var(--gray);">
+    <strong>标注说明：</strong>本文档基于2026-04-05整理的阅读笔记综合撰写。所有实验数字（序列回收率63.3%，酶设计成功率90%等）来源于原始论文，但PLP相关数字在TrpB背景下的具体适用性需以原文数据为准。RFD3 (DOI: 10.1101/2025.09.18.676967) 为预印本，数据需关注同行评审发表后的更新。
+    <br><br>
+    <strong>用途说明：</strong>本标注为Zhenpeng Liu TrpB MetaDynamics复现项目的参考文档，用于理解Ramanathan Lab (Yu Zhang) pipeline的上游工具和设计原理，以及MetaDynamics验证步骤在整体pipeline中的科学定位。
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+// Sidebar active state on scroll
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(link => link.classList.remove('active'));
+      const active = document.querySelector(`.nav-link[href="#${entry.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
