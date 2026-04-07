@@ -166,27 +166,78 @@ _目前无_
 
 ### Phase B: MetaD 完成后 FES 分析流程
 
-- [ ] **B1. 确认正常完成**：`squeue` 检查 job 状态，`wc -l HILLS COLVAR`，`grep error metad.log`
-- [ ] **B2. COLVAR 时间序列**：统计 O(s<5) / PC(5<s<10) / C(s>10) 各有多少帧。如果 O+C = 0 → 跳到 10-walker
-- [ ] **B3. FES 重构** ⚠️ 必须加 `--kt 2.908`（GROMACS 用 kJ/mol，不是 kcal/mol，见 FP-021）
+> 所有命令在 Longleaf 的 `single_walker/` 目录执行：
+> `cd /work/users/l/i/liualex/AnimaLab/metadynamics/single_walker`
+> `conda activate trpb-md && export PLUMED_KERNEL=/work/users/l/i/liualex/plumed-2.9.2/lib/libplumedKernel.so`
+
+- [ ] **B1. 确认正常完成**
+  ```bash
+  squeue -u liualex | grep 41514529       # 应该不在了
+  wc -l HILLS COLVAR                      # HILLS ~25000, COLVAR ~50000
+  grep -i "error\|fatal\|nan" metad.log | head -5
   ```
+
+- [ ] **B2. COLVAR 时间序列**
+  ```bash
+  python3 -c "
+  import numpy as np; d=np.loadtxt('COLVAR',comments='#')
+  s=d[:,1]; print(f'O(s<5):{(s<5).sum()} PC(5-10):{((s>5)&(s<10)).sum()} C(s>10):{(s>10).sum()}')
+  "
+  ```
+  如果 O+C = 0 → 跳到 Phase C（10-walker）
+
+- [ ] **B3. FES 重构** ⚠️ `--kt 2.908`（kJ/mol, FP-021）
+  ```bash
   plumed sum_hills --hills HILLS --outfile fes.dat --mintozero --kt 2.908
   ```
-- [ ] **B4. 分段收敛**：截断 HILLS（`head -n $((ns*500+HEADER))`），分别重构 10/20/30/40 ns 的 FES
-- [ ] **B5. FES sanity check**：范围 0-30 kJ/mol（合理），不平坦（max-min > 5 kJ/mol）
-- [ ] **B6. 运行分析脚本**：`analyze_fes.py --fes fes.dat` + `check_convergence.py --fes-pattern "fes_*ns.dat"`
+
+- [ ] **B4. 分段收敛**（截断 HILLS 文件，不是 --stride）
+  ```bash
+  HEADER=$(grep -c "^#" HILLS)
+  for ns in 10 20 30 40; do
+    head -n $((ns * 500 + HEADER)) HILLS > HILLS_${ns}ns
+    plumed sum_hills --hills HILLS_${ns}ns --outfile fes_${ns}ns.dat --mintozero --kt 2.908
+  done
+  cp fes.dat fes_50ns.dat
+  ```
+
+- [ ] **B5. FES sanity check**
+  ```bash
+  python3 -c "
+  import numpy as np; d=np.loadtxt('fes.dat',comments='#'); f=d[:,2]
+  print(f'Range: {f.min():.1f}-{f.max():.1f} kJ/mol ({f.min()/4.184:.1f}-{f.max()/4.184:.1f} kcal/mol)')
+  print('FLAT' if f.max()-f.min()<1 else 'OK: not flat')
+  print('RANGE OK' if f.max()<200 else 'WARN: >200 kJ/mol')
+  "
+  ```
+
+- [ ] **B6. 运行分析脚本**
+  ```bash
+  # 上传脚本（如果还没传）
+  # scp replication/analysis/analyze_fes.py longleaf:.../single_walker/
+  # scp replication/analysis/check_convergence.py longleaf:.../single_walker/
+  python3 analyze_fes.py --fes fes.dat
+  python3 check_convergence.py --fes-glob "fes_*ns.dat"
+  ```
+  输出：`fes_plot.png`, `fes_report.json`, `convergence_plot.png`
+
 - [ ] **B7. 决策**（见下方决策矩阵）
-- [x] **FP-021 已记录** ✅ 2026-04-07（--kt 单位，Codex review 发现）
+- [x] **FP-021 已记录** ✅ 2026-04-07
 
 ### FES 决策矩阵
 
-| FES 结果 | 下一步 |
-|---------|--------|
-| 3-basin + 收敛 + ΔG≈5 kcal/mol | merge 10-walker branch → 生产运行 |
-| 3-basin 但未收敛 | 直接上 10-walker（SI 用 500-1000 ns 总采样） |
-| 只有 PC 区域采样 | 直接上 10-walker（单 walker HILLS 可 warm-start） |
-| 只有 2 个 basin | 不一定错（独立 TrpB 的 O 态可能不稳定），对照 JACS 2019 对应体系 |
-| 严重偏差 | 检查 LAMBDA、path frames Cα (res 97-184 + 282-305)、FUNCPATHMSD atom indexing |
+> analyze_fes.py 输出两个 JACS 对比指标：
+> - `C relative to lowest(O,PC)` — 参考值 ~5 kcal/mol (±2)
+> - `PC → C barrier` — 参考值 ~6 kcal/mol (±2)
+
+| analyze_fes.py 输出 | 含义 | 下一步 |
+|---------|--------|--------|
+| 两项 PASS + 收敛 | benchmark 复刻成功 | merge 10-walker branch → 生产运行 |
+| 两项 PASS 但未收敛 | basin 对但采样不够 | 直接上 10-walker（SI 用 500-1000 ns） |
+| COLVAR 只在 PC 区域 | 单 walker 采样不足 | 直接上 10-walker（HILLS 可 warm-start） |
+| 只有 2 个 basin | 不一定错（独立 TrpB O 态可能不稳定） | 对照 JACS 2019 对应体系再判断 |
+| FAIL：数值偏差 >2 kcal/mol | 参数或 CV 可能有误 | 检查 LAMBDA, path Cα (97-184 + 282-305), atom indexing |
+| sum_hills 失败或 fes.dat 空/corrupt | 命令错误 | 检查 --kt 单位、HILLS 文件完整性 |
 
 ---
 
