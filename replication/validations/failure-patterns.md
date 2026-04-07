@@ -272,6 +272,20 @@
 
 ---
 
+## FP-021: `plumed sum_hills --kt` 单位必须匹配模拟引擎
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-07 |
+| 发现者 | Codex (via /codex:rescue plan review) |
+| 受影响文件 | FES 后处理命令、`replication/parameters/JACS2019_MetaDynamics_Parameters.md`（写了 --kt 0.695 kcal/mol） |
+| 错误描述 | `plumed sum_hills` 需要 `--kt` 参数才能正确重构 well-tempered MetaD 的 FES。(1) 不加 `--kt` → 输出的是 raw bias potential，不是自由能。(2) 参数文件写 kT=0.695 kcal/mol，但 GROMACS+PLUMED 用 kJ/mol，正确值是 2.908 kJ/mol (= 0.695 × 4.184)。用 0.695 会导致 FES 能量缩放错 ×4.184（30 kJ/mol 变成 ~125 kJ/mol）。 |
+| 根因 | kcal/mol vs kJ/mol 单位混淆，与 FP-018 (Å⁻² vs nm⁻²) 属同一类错误 |
+| 防范措施 | (1) `sum_hills` 必须加 `--kt`。(2) GROMACS 用 kJ/mol → `--kt 2.908`；AMBER 用 kcal/mol → `--kt 0.695`。(3) B5 sanity check：FES max > 80 kJ/mol → 几乎肯定是 --kt 单位错。 |
+| 已修复 | ⚠️ 预防性修复（MetaD 尚未完成，命令已更正在 NEXT_ACTIONS.md） |
+
+---
+
 ## 通用规则（从以上模式提炼）
 
 1. **写任何文件前，先读 failure-patterns.md**，检查是否在重复已知错误
