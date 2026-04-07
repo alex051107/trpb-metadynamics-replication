@@ -201,13 +201,16 @@ _目前无_
   cp fes.dat fes_50ns.dat
   ```
 
-- [ ] **B5. FES sanity check**
+- [ ] **B5. FES sanity check**（⚠️ 如果 FAIL，先检查 --kt 是否用了 2.908 而非 0.695）
   ```bash
   python3 -c "
   import numpy as np; d=np.loadtxt('fes.dat',comments='#'); f=d[:,2]
-  print(f'Range: {f.min():.1f}-{f.max():.1f} kJ/mol ({f.min()/4.184:.1f}-{f.max()/4.184:.1f} kcal/mol)')
-  print('FLAT' if f.max()-f.min()<1 else 'OK: not flat')
-  print('RANGE OK' if f.max()<200 else 'WARN: >200 kJ/mol')
+  fmax_kj=f.max(); fmax_kcal=fmax_kj/4.184
+  print(f'Range: {f.min():.1f}-{fmax_kj:.1f} kJ/mol ({f.min()/4.184:.1f}-{fmax_kcal:.1f} kcal/mol)')
+  print('FLAT_CHECK:', 'FAIL - FES is flat, bias not working' if fmax_kj-f.min()<1 else 'PASS')
+  print('RANGE_CHECK:', 'PASS' if fmax_kj<80 else 'FAIL - FES max %.1f kJ/mol > 80, likely --kt unit error (FP-021)' % fmax_kj)
+  # FP-021 detector: if --kt was 0.695 instead of 2.908, FES is ~4.18x too large
+  # Expected max ~20-30 kJ/mol. If >80 kJ/mol, almost certainly wrong --kt.
   "
   ```
 
@@ -219,7 +222,7 @@ _目前无_
   python3 analyze_fes.py --fes fes.dat
   python3 check_convergence.py --fes-glob "fes_*ns.dat"
   ```
-  输出：`fes_plot.png`, `fes_report.json`, `convergence_plot.png`
+  输出：`fes_plot.png`, `fes_report.json`, `fes_convergence_plot.png`, `fes_convergence_report.json`
 
 - [ ] **B7. 决策**（见下方决策矩阵）
 - [x] **FP-021 已记录** ✅ 2026-04-07
