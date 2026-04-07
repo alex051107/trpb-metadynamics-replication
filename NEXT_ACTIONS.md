@@ -163,15 +163,30 @@ _目前无_
 ## 🟡 本周待做（2026-04-07 起）
 
 > **MetaD Job 41514529 预计 ~8h 后完成（84%, 42.1/50 ns）**
-> 完成后立即执行 FES 分析流程（见 plan: warm-cooking-unicorn.md）
 
-- [ ] **MetaD 完成后：COLVAR 时间序列分析**（检查 O/PC/C 三区域访问帧数）
-- [ ] **FES 重构**（`plumed sum_hills --kt 2.908 --mintozero`）⚠️ 必须加 --kt
-- [ ] **FES sanity check**（范围合理、不平坦）
-- [ ] **分段收敛检查**（截断 HILLS → 10/20/30/40/50 ns 分别重构）
-- [ ] **运行 analyze_fes.py + check_convergence.py**
-- [ ] **决策：上 10-walker 还是结果已够**（决策矩阵在 plan 里）
-- [ ] **记录 FP-021**（--kt 单位必须匹配模拟引擎，Codex review 发现）
+### Phase B: MetaD 完成后 FES 分析流程
+
+- [ ] **B1. 确认正常完成**：`squeue` 检查 job 状态，`wc -l HILLS COLVAR`，`grep error metad.log`
+- [ ] **B2. COLVAR 时间序列**：统计 O(s<5) / PC(5<s<10) / C(s>10) 各有多少帧。如果 O+C = 0 → 跳到 10-walker
+- [ ] **B3. FES 重构** ⚠️ 必须加 `--kt 2.908`（GROMACS 用 kJ/mol，不是 kcal/mol，见 FP-021）
+  ```
+  plumed sum_hills --hills HILLS --outfile fes.dat --mintozero --kt 2.908
+  ```
+- [ ] **B4. 分段收敛**：截断 HILLS（`head -n $((ns*500+HEADER))`），分别重构 10/20/30/40 ns 的 FES
+- [ ] **B5. FES sanity check**：范围 0-30 kJ/mol（合理），不平坦（max-min > 5 kJ/mol）
+- [ ] **B6. 运行分析脚本**：`analyze_fes.py --fes fes.dat` + `check_convergence.py --fes-pattern "fes_*ns.dat"`
+- [ ] **B7. 决策**（见下方决策矩阵）
+- [x] **FP-021 已记录** ✅ 2026-04-07（--kt 单位，Codex review 发现）
+
+### FES 决策矩阵
+
+| FES 结果 | 下一步 |
+|---------|--------|
+| 3-basin + 收敛 + ΔG≈5 kcal/mol | merge 10-walker branch → 生产运行 |
+| 3-basin 但未收敛 | 直接上 10-walker（SI 用 500-1000 ns 总采样） |
+| 只有 PC 区域采样 | 直接上 10-walker（单 walker HILLS 可 warm-start） |
+| 只有 2 个 basin | 不一定错（独立 TrpB 的 O 态可能不稳定），对照 JACS 2019 对应体系 |
+| 严重偏差 | 检查 LAMBDA、path frames Cα (res 97-184 + 282-305)、FUNCPATHMSD atom indexing |
 
 ---
 
