@@ -160,41 +160,46 @@ _目前无_
 
 ---
 
-## 🟡 本周待做（2026-04-08 更新）
+## 🟡 本周待做（2026-04-09 更新：回到 PATHMSD）
 
-> **❌ Job 41514529 失败**：跑了 46.3/50 ns 后 walltime kill。Stage 4 (Skeptic) 检查发现 **path CV 数学上是坏的**——`FUNCPATHMSD LAMBDA=3.391` 用了 total-SD 约定，比 PLUMED 期望的 per-atom MSD 约定小 N_atoms = 112 倍。
+> **❌ Job 41514529 失败**：跑了 46.3/50 ns 后 walltime kill，path CV 数学错误（FP-022）。
 >
-> **诊断和修复完成**：见 FP-022（`replication/validations/failure-patterns.md`）和 validation note `replication/validations/2026-04-08_path_cv_lambda_bug.md`。`fix/path-cv-repair` 分支已就绪。
+> **2026-04-08 初修**：FUNCPATHMSD + SQUARED + LAMBDA=379.77（已 merge 到 master）
+>
+> **2026-04-09 更优方案**：在 Longleaf 上用源码编译版 PLUMED 2.9.2 测试 PATHMSD，直接工作。
+> FP-020 原诊断（"PATHMSD 不认非连续 serial"）被证伪——那是 conda 版 .so 残缺的问题。
+> 决定**回到 PATHMSD**（匹配 SI 原版协议，更简洁、数值更稳定、z(R) 更物理）。
+> 详见 FP-020 更正 + FP-023（trailing END 陷阱）+ `2026-04-08_path_cv_lambda_bug.md`。
 
-### Phase A (NEW)：部署 FP-022 修复 + 重跑 initial run
+### Phase A (更新 2026-04-09)：部署 PATHMSD 修复 + 重跑 initial run
 
-- [ ] **A1. Merge `fix/path-cv-repair` → `master`** 并 push 到 GitHub
+- [ ] **A1. Commit 当前改动**（PATHMSD plumed.dat、FP-020 更正、FP-023、PIPELINE_STATE、PPT）并 push
 - [ ] **A2. 同步修复后的文件到 Longleaf**
   ```bash
   scp replication/metadynamics/single_walker/plumed.dat \
       longleaf:/work/users/l/i/liualex/AnimaLab/metadynamics/single_walker/
-  scp replication/metadynamics/path_cv/generate_path_cv.py \
-      longleaf:/work/users/l/i/liualex/AnimaLab/metadynamics/path_cv/
+  # 注意：path_gromacs.pdb 已在 Longleaf 上用 sed 删过 trailing END
+  # 本地路径文件如果要再重建需要跑 generate_path_cv.py（已加 FP-023 safety check）
   ```
-- [ ] **A3. self-consistency test 在 Longleaf 上确认**（可选但推荐）
+- [ ] **A3. 备份旧 Job 41514529 数据**
   ```bash
-  cd /work/.../single_walker/rerun
+  ssh longleaf
+  cd /work/users/l/i/liualex/AnimaLab/metadynamics/single_walker
+  mkdir -p archive_FP022_FUNCPATHMSD_broken && \
+    mv HILLS COLVAR metad.log metad.xtc metad.tpr archive_FP022_FUNCPATHMSD_broken/
+  ```
+- [ ] **A4. 本地驱动确认新 plumed.dat（PATHMSD 版）能跑通**
+  ```bash
+  cd /work/.../single_walker
   /work/users/l/i/liualex/plumed-2.9.2/bin/plumed driver \
-      --plumed plumed.dat --mf_xtc ../metad.xtc \
+      --plumed plumed.dat --mf_xtc archive_FP022_FUNCPATHMSD_broken/metad.xtc \
       --timestep 0.002 --trajectory-stride 5000
-  # 应该看到："Your path cvs look good!"
-  # COLVAR_rerun s 值应该 ≈ 1.05（不再是 7.79）
+  # 期望：s(R) ≈ 1.0-1.7，z ≈ 0.004-0.08，0 NaN
   ```
-- [ ] **A4. 备份旧 Job 41514529 数据**（不重新覆盖）
+- [ ] **A5. 重提交 50 ns initial run with PATHMSD plumed.dat**
   ```bash
   cd /work/.../single_walker
-  mkdir -p archive_FP022_broken && \
-    mv HILLS COLVAR metad.log metad.xtc metad.tpr archive_FP022_broken/
-  ```
-- [ ] **A5. 重提交 50 ns initial run with fixed plumed.dat**
-  ```bash
-  cd /work/.../single_walker
-  sbatch submit.sh   # 同样的 submit script，但 plumed.dat 已修
+  sbatch submit.sh   # submit.sh 无变化，plumed.dat 已改
   ```
 - [ ] **A6. 等待 ~3 天**
 

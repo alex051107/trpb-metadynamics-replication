@@ -390,6 +390,13 @@ def write_plumed_path_file(universe: "mda.Universe", frames: List[np.ndarray],
     """
     Write all frames in PLUMED PATH format (multi-model PDB file).
     Each MODEL...ENDMDL block represents one frame.
+
+    FP-023 (2026-04-09): File MUST end with the last ENDMDL, not a trailing
+    bare 'END' line. PLUMED's PATHMSD treats a trailing 'END' as the start
+    of an empty (N+1)-th frame and aborts with
+    "number of atoms in a frame should be more than zero". This function
+    writes only MODEL/ENDMDL blocks and explicitly does NOT emit a trailing
+    END marker.
     """
     with open(output_path, 'w') as f:
         for frame_idx, coords in enumerate(frames):
@@ -427,6 +434,18 @@ def write_plumed_path_file(universe: "mda.Universe", frames: List[np.ndarray],
                 atom_idx += 1
 
             f.write("ENDMDL\n")
+
+    # FP-023 safety check: ensure file does not end with a trailing bare END
+    with open(output_path, 'r') as f:
+        content = f.read()
+    lines = content.rstrip("\n").split("\n")
+    while lines and lines[-1].strip() == "END":
+        lines.pop()
+    with open(output_path, 'w') as f:
+        f.write("\n".join(lines) + "\n")
+    assert lines[-1].strip() == "ENDMDL", (
+        f"path file must end with ENDMDL, got: {lines[-1]!r} (FP-023)"
+    )
 
 
 def parse_existing_path_pdb(path_file: str) -> List[np.ndarray]:

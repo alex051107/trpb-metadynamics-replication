@@ -87,20 +87,20 @@
       },
       "started_at": "2026-03-31",
       "verified_by": "pipeline_guard",
-      "notes": "Job 41514529 (single-walker MetaD) completed 46.3 ns of 50 ns before walltime, but Skeptic verification (stage 4) found that the produced HILLS/COLVAR are unusable for FES reconstruction due to FP-022 (FUNCPATHMSD LAMBDA convention bug). Source files (generate_path_cv.py, single_walker/plumed.dat) and parameters file have been corrected. Stage 3 must be RE-RUN with fixed plumed.dat before Stage 4 can proceed."
+      "notes": "Job 41514529 (single-walker MetaD, FUNCPATHMSD broken) rolled over via FP-022 fix. 2026-04-09 follow-up: PATHMSD verified working on source-compiled PLUMED 2.9.2 + plumed driver. FP-020 re-diagnosed (original 'non-sequential serial' claim was wrong — only the conda .so issue was real). plumed.dat switched to PATHMSD (matches SI protocol). Waiting for re-submission of 50 ns initial run with new plumed.dat."
     },
     "4_skeptic": {
-      "status": "blocked_by_fp_022",
+      "status": "partially_unblocked",
       "artifact": "replication/validations/2026-04-08_path_cv_lambda_bug.md",
       "verification": {
         "type": "file_exists",
         "path": "replication/validations/2026-04-08_path_cv_lambda_bug.md",
         "nonempty": true
       },
-      "verified_by": "claude+codex+local_numerical_test",
-      "verdict": "FAIL — Job 41514529 produced no usable bias data; CV was broken by FP-022. Re-run required with fix/path-cv-repair branch artifacts.",
-      "blocking_issue": "FP-022 in replication/validations/failure-patterns.md",
-      "fix_status": "ready in branch fix/path-cv-repair"
+      "verified_by": "claude+codex+local_numerical_test+longleaf_plumed_driver",
+      "verdict": "FP-022 fix verified. PATHMSD path chosen as the production setup (2026-04-09). Stage 4 still blocked until a fresh 50 ns initial run with PATHMSD plumed.dat produces usable HILLS/COLVAR on Longleaf.",
+      "blocking_issue": "Pending re-submission of initial MetaD run with PATHMSD plumed.dat",
+      "fix_status": "plumed.dat updated; ready for Longleaf re-submission"
     },
     "5_journalist": {
       "status": "not_started",
@@ -130,15 +130,33 @@
       "re:\\bfes_analysis\\b"
     ]
   },
-  "last_updated": "2026-04-08T21:30:00+00:00",
+  "last_updated": "2026-04-09T01:20:00+00:00",
   "active_failure_patterns": [
+    {
+      "id": "FP-020",
+      "discovered": "2026-04-04",
+      "re_diagnosed": "2026-04-09",
+      "title": "conda-forge PLUMED .so module missing (not a PATHMSD limitation)",
+      "severity": "medium",
+      "status": "resolved — source-compiled PLUMED 2.9.2 fixes it; FP-020 no longer implies a PATHMSD issue",
+      "see_also": "replication/validations/failure-patterns.md (FP-020 updated note)"
+    },
     {
       "id": "FP-022",
       "discovered": "2026-04-08",
+      "superseded_by": "switch back to PATHMSD (2026-04-09)",
       "title": "FUNCPATHMSD LAMBDA off by N_atoms (total-SD vs per-atom MSD)",
       "severity": "critical",
-      "fix_branch": "fix/path-cv-repair",
+      "status": "obsolete — FUNCPATHMSD path abandoned in favor of PATHMSD",
       "see_also": "replication/validations/2026-04-08_path_cv_lambda_bug.md"
+    },
+    {
+      "id": "FP-023",
+      "discovered": "2026-04-09",
+      "title": "Trailing bare END in path reference PDB triggers empty-frame error in PATHMSD",
+      "severity": "low",
+      "status": "resolved — strip trailing END from path_gromacs.pdb; generate_path_cv.py fix pending",
+      "see_also": "replication/validations/failure-patterns.md (FP-023)"
     }
   ]
 }

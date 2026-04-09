@@ -1,33 +1,41 @@
 # WT-MetaD PLUMED input for PfTrpS(Ain) — JACS 2019 benchmark reproduction
 #
-# LAMBDA history (see FP-018, FP-022):
-#   - FP-018 (2026-04-04): Å⁻² → nm⁻² × 100 unit conversion added
-#   - FP-022 (2026-04-08): Â RMSD → SQUARED + LAMBDA recomputed from per-atom
-#     MSD (not total SD). Old LAMBDA=3.3910 was wrong by factor N_atoms=112.
-#     Correct value from generate_path_cv.py:
-#         per-atom MSD_adjacent = 0.6056 Å² = 0.006056 nm²
-#         λ = 2.3 / 0.006056 = 379.77 nm⁻²
+# History (see failure-patterns.md for full context):
 #
-# CRITICAL: Each RMSD action MUST include SQUARED. Without SQUARED, PLUMED
-# feeds plain RMSD (nm) into FUNCPATHMSD, and LAMBDA must be in different
-# units — we would need λ ≈ 29.57 nm⁻¹. The SQUARED + 379.77 combination
-# matches the SI formula λ = 2.3/MSD naturally.
+#   FP-018 (2026-04-04): Å⁻² → nm⁻² × 100 unit conversion added for LAMBDA
+#
+#   FP-020 (2026-04-04, re-diagnosed 2026-04-09):
+#     Originally attributed PATHMSD failures to "non-sequential atom serials"
+#     (1614, 1621, 1643, ...). Actual root cause was a broken libplumedKernel.so
+#     in the conda-forge PLUMED 2.9.2 build. With source-compiled PLUMED 2.9.2,
+#     PATHMSD handles non-sequential serials correctly.
+#
+#   FP-022 (2026-04-08): FUNCPATHMSD workaround used per-atom-mean RMSD
+#     semantics, so LAMBDA had to be recomputed from per-atom MSD (379.77)
+#     instead of the original total-SD value (3.391). This was a silent
+#     N_atoms = 112× error in the FUNCPATHMSD path. Now moot — we are
+#     switching back to PATHMSD.
+#
+#   FP-023 (2026-04-09): A trailing bare "END" after the last "ENDMDL" in
+#     the multi-model reference PDB makes PATHMSD try to parse an empty
+#     16th frame and abort with "number of atoms in a frame should be more
+#     than zero". The fix is to strip the trailing END so the file ends
+#     with the last "ENDMDL".
+#
+# 2026-04-09 decision: switch BACK to PATHMSD (matches SI protocol exactly).
+#   - Simpler: 1 path CV line vs 17 (15 RMSD + FUNCPATHMSD)
+#   - More stable numerically: 0 NaN vs 116 NaN over 4631 frames
+#   - Physical z(R) range: 0.004–0.08 nm² vs 1.45–1.92 nm² for FUNCPATHMSD
+#   - Matches SI protocol: Osuna 2019 SI says "path collective variables"
+#     with GROMACS 5.1.2 + PLUMED2 — PATHMSD is the dedicated action.
+#
+# LAMBDA = 379.77 nm⁻² from: λ = 2.3 / <rmsd>² × 100 (per-atom, in Å², × 100
+# for GROMACS nm). Formula confirmed from PLUMED docs and PLUMED users forum.
+# For our 15-frame path of 112 Cα atoms, per-atom RMSD_adjacent = 0.778 Å,
+# so λ = 2.3 / 0.6056 Å² × 100 = 379.77 nm⁻².
 
-r1:  RMSD REFERENCE=frames/frame_01.pdb TYPE=OPTIMAL SQUARED
-r2:  RMSD REFERENCE=frames/frame_02.pdb TYPE=OPTIMAL SQUARED
-r3:  RMSD REFERENCE=frames/frame_03.pdb TYPE=OPTIMAL SQUARED
-r4:  RMSD REFERENCE=frames/frame_04.pdb TYPE=OPTIMAL SQUARED
-r5:  RMSD REFERENCE=frames/frame_05.pdb TYPE=OPTIMAL SQUARED
-r6:  RMSD REFERENCE=frames/frame_06.pdb TYPE=OPTIMAL SQUARED
-r7:  RMSD REFERENCE=frames/frame_07.pdb TYPE=OPTIMAL SQUARED
-r8:  RMSD REFERENCE=frames/frame_08.pdb TYPE=OPTIMAL SQUARED
-r9:  RMSD REFERENCE=frames/frame_09.pdb TYPE=OPTIMAL SQUARED
-r10: RMSD REFERENCE=frames/frame_10.pdb TYPE=OPTIMAL SQUARED
-r11: RMSD REFERENCE=frames/frame_11.pdb TYPE=OPTIMAL SQUARED
-r12: RMSD REFERENCE=frames/frame_12.pdb TYPE=OPTIMAL SQUARED
-r13: RMSD REFERENCE=frames/frame_13.pdb TYPE=OPTIMAL SQUARED
-r14: RMSD REFERENCE=frames/frame_14.pdb TYPE=OPTIMAL SQUARED
-r15: RMSD REFERENCE=frames/frame_15.pdb TYPE=OPTIMAL SQUARED
-path: FUNCPATHMSD ARG=r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15 LAMBDA=379.77
-metad: METAD ARG=path.s,path.z SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
-PRINT ARG=path.s,path.z,metad.bias FILE=COLVAR STRIDE=500
+path: PATHMSD REFERENCE=path_gromacs.pdb LAMBDA=379.77
+
+metad: METAD ARG=path.sss,path.zzz SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
+
+PRINT ARG=path.sss,path.zzz,metad.bias FILE=COLVAR STRIDE=500

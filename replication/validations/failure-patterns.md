@@ -258,7 +258,7 @@
 
 ---
 
-## FP-020: conda-forge PLUMED 2.9.2 的 libplumedKernel.so 模块残缺
+## FP-020: conda-forge PLUMED 2.9.2 的 libplumedKernel.so 模块残缺（+ 2026-04-09 更正）
 
 | 字段 | 内容 |
 |------|------|
@@ -267,8 +267,9 @@
 | 受影响文件 | conda-forge plumed 2.9.2 包 |
 | 错误描述 | plumed driver（独立二进制）能用 PATHMSD/METAD，但 libplumedKernel.so 缺少 colvar/mapping/function 模块。PATHMSD 在 mdrun 中报 "number of atoms in a frame should be more than zero" |
 | 根因 | conda-forge 编译只把完整功能编进 plumed 二进制，没编进 .so |
-| 防范措施 | 从源码编译 PLUMED（--enable-rpath），用自编译的 libplumedKernel.so。同时发现 PATHMSD 在 mdrun 中只认连续编号 PDB，改用 FUNCPATHMSD 绕过 |
-| 已修复 | ✅ 源码编译 PLUMED 2.9.2 + FUNCPATHMSD |
+| 防范措施 | 从源码编译 PLUMED（--enable-rpath），用自编译的 libplumedKernel.so |
+| 已修复 | ✅ 源码编译 PLUMED 2.9.2 |
+| **⚠️ 2026-04-09 更正** | 当时的诊断还包含第二条："PATHMSD 在 mdrun 中只认连续编号 PDB，改用 FUNCPATHMSD 绕过"——**这条是错的**。2026-04-09 在源码编译版 PLUMED 2.9.2 上用 plumed driver + `path_gromacs.pdb`（non-sequential serial 1614, 1621, 1643, ...）直接测试 PATHMSD，完美工作。原本的 "number of atoms in a frame should be more than zero" 错误有两个原因：(a) conda 版 .so 残缺，(b) path PDB 尾部多余的 `END` 行（见 FP-023）。**FP-020 只和 conda 版本有关**，与 atom serial 连续性无关。因为这个误诊，FP-022（FUNCPATHMSD LAMBDA 约定错误）本来是可以避免的——如果当时直接用源码版 + PATHMSD，整个 FP-022 不会发生。 |
 
 ---
 
@@ -296,7 +297,21 @@
 | 错误描述 | `FUNCPATHMSD` 内部公式是 `s = Σ i × exp(-λ × d_i) / Σ exp(-λ × d_i)`，PLUMED 2.9.2 源码 (`FuncPathMSD.cpp`) 把 ARG 输入直接喂进 exp，**不会内部平方**。我们的 plumed.dat 用 `RMSD ... TYPE=OPTIMAL`（不带 SQUARED），PLUMED 输出的是 per-atom RMSD（nm）。但 LAMBDA=3.3910 是按 "λ = 2.3 / total_SD" 算出来的（其中 total_SD = 0.6783 nm² 是 112 个原子位移平方的总和）。"per-atom MSD = 0.006056 nm²" 才是和 PLUMED 输出兼容的量；正确的 LAMBDA 应该是 2.3/0.006056 = **379.77 nm⁻²**，不是 3.391。**两者差正好 N_atoms = 112 倍。** 症状：相邻 frame 的 kernel weight 是 exp(-3.391 × 0.0778) = 0.77（应该是 exp(-2.3) = 0.10），CV 完全没法分辨 frame，所有构象都被压缩到 s ≈ 4-12（不是 1-15）。Job 41514529 的 46.3 ns COLVAR 显示 s 一直在 7.77-7.83，被误以为是"系统卡在 PC basin"，实际上是"坏 CV 数学伪影 + 系统其实在 O basin（s≈1.05 经修复后重算确认）"。同时因为坏 CV 的梯度 ds/dx 几乎为零，bias 转回原子的物理力极弱，46 ns 等价于无偏置 MD，没有任何增强采样发生。 |
 | 根因 | (1) `generate_path_cv.py` 里 `calculate_lambda` 默认 `convention="total_sd"`，main 流程用 `calculate_lambda(total_sd)`，得到 λ ≈ 0.0339 Å⁻²。(2) FP-018 修复时把 0.0339 Å⁻² × 100 = 3.391 nm⁻² 作为最终 LAMBDA 写入 plumed.dat，但没有同时切换 RMSD action 到 SQUARED。(3) FP-020 之前我们用过 PATHMSD（PATHMSD 内部可能用 total-SD 兼容公式），切换到 FUNCPATHMSD 时没意识到约定不同。(4) 没有做 self-consistency test（喂参考帧给 CV 公式，看 frame_i 是否输出 s=i），所以 bug 没被早期发现。(5) PLUMED 自己在 driver 启动时会打印 "Consistency check completed!"，但这条消息只在 driver 模式可见，mdrun 模式下没有，bug 悄悄通过。 |
 | 防范措施 | **三层保护**：(1) `generate_path_cv.py` 默认 convention 已改为 `"plumed"`，同时加 assertion 检查 λ ∈ [0.1, 100] Å⁻²（旧的 0.0339 现在会立即报错）；(2) 脚本自动生成 `plumed_path_cv.dat` snippet，包含正确的 SQUARED 关键字 + LAMBDA 数值，**不要再手动从 summary.txt 复制 λ**；(3) 任何新的 plumed.dat 提交前必须跑 self-consistency test (`replication/validations/path_cv_debug_2026-04-08/01_self_consistency_test.py`)，确认 s(frame_i) ≈ i。**通用规则**：path CV 修改后必须用 PLUMED driver 短跑一段已有轨迹（不需要新 MD），看 PLUMED 是否打印 "Your path cvs look good!" 消息，并人工检查 COLVAR 输出范围是否合理。 |
-| 已修复 | ✅ 2026-04-08 (branch `fix/path-cv-repair`)：generate_path_cv.py 默认 convention 改为 plumed；single_walker/plumed.dat 用 SQUARED + LAMBDA=379.77；JACS2019_MetaDynamics_Parameters.md 更新；validation note 见 `replication/validations/2026-04-08_path_cv_lambda_bug.md`。**仍待**：在 Longleaf 上重跑 50 ns initial run with fixed plumed.dat。 |
+| 已修复 | ✅ 2026-04-08 FUNCPATHMSD + SQUARED + LAMBDA=379.77；**2026-04-09 更优方案**：直接回到 PATHMSD（见 FP-020 更正和 FP-023）。FP-022 的根源是错误地切换到 FUNCPATHMSD，如果当时用源码版 PLUMED + PATHMSD，FP-022 本来就不会出现。 |
+
+---
+
+## FP-023: PATHMSD reference PDB 尾部多余的 `END` 行导致误读空帧
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-09 |
+| 发现者 | Claude (via Longleaf plumed driver test) |
+| 受影响文件 | `replication/metadynamics/structures/path_frames/path_fixed.pdb`、`path_gromacs.pdb` 等所有多 MODEL 的 path reference PDB |
+| 错误描述 | PLUMED PATHMSD 读多 MODEL PDB 时，每个 `ENDMDL` 或 `END` 之间的内容被当作一个 reference frame。我们的 path_gromacs.pdb 结构是：`MODEL 1 ... ENDMDL MODEL 2 ... ENDMDL ... MODEL 15 ... ENDMDL END`——最后一个 `END` 被 PATHMSD 当作第 16 帧的开始，然后发现第 16 帧没有 ATOM 行，报错 `ERROR in input to action PATHMSD with label path : number of atoms in a frame should be more than zero`。 |
+| 根因 | PATHMSD 的多 MODEL 解析对 `END` 和 `ENDMDL` 一视同仁，trailing `END` 被误判为第 N+1 帧的 marker |
+| 防范措施 | path reference PDB 必须以 `ENDMDL` 结尾，**不要**有 trailing `END`。修复命令：`sed -i "/^END$/d" path_gromacs.pdb`。`generate_path_cv.py` 的 `write_plumed_path_file` 函数也应该不写 trailing END。 |
+| 已修复 | ✅ 2026-04-09 Longleaf 上手动 sed 删除 trailing END；PATHMSD 驱动测试通过，15 帧全部正确读取。generate_path_cv.py 的修复待做（Runner stage）。 |
 
 ---
 
