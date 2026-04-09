@@ -1,5 +1,25 @@
 # PLUMED 2.9 single-walker WT-MetaD template for PfTrpS(Ain) TrpB benchmark
 #
+# ⚠️ DEPRECATED — DO NOT USE THIS TEMPLATE AS-IS (FP-022, 2026-04-08)
+#
+# This template predates FP-022 (path CV LAMBDA convention bug). It uses
+# PATHMSD with LAMBDA=3.3910, which is wrong by factor N_atoms = 112.
+# The PATHMSD path also failed for unrelated reasons (FP-020: PATHMSD does
+# not handle non-sequential atom serials in multi-model PDB through mdrun).
+#
+# CORRECT TEMPLATE: see replication/metadynamics/single_walker/plumed.dat
+# (uses FUNCPATHMSD + RMSD ... SQUARED + LAMBDA=379.77)
+#
+# OR: regenerate with replication/metadynamics/path_cv/generate_path_cv.py
+# which now auto-emits a ready-to-use plumed_path_cv.dat snippet.
+#
+# This file is kept only for historical reference. See:
+#   - replication/validations/2026-04-08_path_cv_lambda_bug.md
+#   - replication/validations/failure-patterns.md (FP-022)
+#
+# Original (broken) content below for reference:
+# ----------------------------------------------------------------------------
+
 # This is the pre-production validation input:
 #   1. confirm PATHMSD wiring
 #   2. confirm converted GROMACS atom indices
@@ -20,7 +40,9 @@
 # PLUMED automatically adjusts Gaussian widths based on local CV fluctuations.
 # This matches the SI protocol (adaptive Gaussian widths).
 
-path: PATHMSD REFERENCE=PLACEHOLDER_PENDING_CONVERSION_PATH_REFERENCE_PDB LAMBDA=3.3910  # Å⁻² × 100 = nm⁻² (FP-018)
+# ⚠️ FP-022: LAMBDA=3.3910 is WRONG (off by N_atoms=112). Use 379.77 with
+# FUNCPATHMSD + SQUARED. Do NOT copy this line into a new plumed.dat.
+path: PATHMSD REFERENCE=PLACEHOLDER_PENDING_CONVERSION_PATH_REFERENCE_PDB LAMBDA=3.3910  # ⚠️ DEPRECATED, see header
 
 k82_q2: DISTANCE ATOMS=PLACEHOLDER_PENDING_CONVERSION_K82_NZ_Q2_C
 e104_q2: DISTANCE ATOMS=PLACEHOLDER_PENDING_CONVERSION_E104_OE_Q2_C
