@@ -1,0 +1,52 @@
+# Fixed PLUMED input for TrpB path CV MetaDynamics
+#
+# Changes vs broken plumed.dat (Job 41514529):
+#   1. Added SQUARED keyword to each RMSD action
+#      → now PLUMED outputs RMSD² (per-atom MSD, nm²) instead of plain RMSD (nm)
+#      → matches the canonical SI convention λ = 2.3 / MSD_adjacent
+#   2. Changed LAMBDA from 3.391 to 379.8
+#      → computed as 2.3 / (mean per-atom MSD between adjacent frames)
+#      → per-atom MSD_adjacent = 0.006056 nm² (from local self-consistency test)
+#      → 2.3 / 0.006056 = 379.8 nm⁻²
+#
+# Why the old setup was broken:
+#   FUNCPATHMSD takes its ARG input values as-is and uses them in exp(-λ*d)
+#   without internal squaring (verified against PLUMED 2.9.2 source code
+#   /src/function/FuncPathMSD.cpp). The old setup fed plain RMSD (0.0778 nm
+#   adjacent) with LAMBDA=3.391, giving λ*d_adj = 0.264 → exp ≈ 0.77. This
+#   makes the kernel far too broad: adjacent-frame contributions are nearly
+#   equal and the CV collapses. Self-consistency test showed frame_01 mapped
+#   to s=4.02 and frame_15 to s=11.98 (both wrong by ~3 units).
+#
+# With the fix, λ*d_adj = 379.8 × 0.006056 = 2.3 → exp ≈ 0.10, which is the
+# canonical path CV kernel sharpness recommended in PLUMED tutorials and
+# matches the SI formula from Maria-Solano et al. JACS 2019.
+#
+# Expected behavior under the fix (from 01_self_consistency_test.py):
+#   s(frame_01) = 1.09  (target: 1,  error: ~1%)
+#   s(frame_08) = 8.00  (target: 8,  error: 0%)
+#   s(frame_15) = 14.91 (target: 15, error: ~1%)
+#
+# NOTE: This plumed.dat assumes frames/frame_01.pdb through frame_15.pdb are
+# the same 15 reference frames as the original run. If the path endpoints are
+# independently wrong (e.g., 5DVZ not mapping to s=1 even with correct LAMBDA),
+# that is a SEPARATE issue that requires path regeneration, not just a LAMBDA fix.
+
+r1:  RMSD REFERENCE=frames/frame_01.pdb TYPE=OPTIMAL SQUARED
+r2:  RMSD REFERENCE=frames/frame_02.pdb TYPE=OPTIMAL SQUARED
+r3:  RMSD REFERENCE=frames/frame_03.pdb TYPE=OPTIMAL SQUARED
+r4:  RMSD REFERENCE=frames/frame_04.pdb TYPE=OPTIMAL SQUARED
+r5:  RMSD REFERENCE=frames/frame_05.pdb TYPE=OPTIMAL SQUARED
+r6:  RMSD REFERENCE=frames/frame_06.pdb TYPE=OPTIMAL SQUARED
+r7:  RMSD REFERENCE=frames/frame_07.pdb TYPE=OPTIMAL SQUARED
+r8:  RMSD REFERENCE=frames/frame_08.pdb TYPE=OPTIMAL SQUARED
+r9:  RMSD REFERENCE=frames/frame_09.pdb TYPE=OPTIMAL SQUARED
+r10: RMSD REFERENCE=frames/frame_10.pdb TYPE=OPTIMAL SQUARED
+r11: RMSD REFERENCE=frames/frame_11.pdb TYPE=OPTIMAL SQUARED
+r12: RMSD REFERENCE=frames/frame_12.pdb TYPE=OPTIMAL SQUARED
+r13: RMSD REFERENCE=frames/frame_13.pdb TYPE=OPTIMAL SQUARED
+r14: RMSD REFERENCE=frames/frame_14.pdb TYPE=OPTIMAL SQUARED
+r15: RMSD REFERENCE=frames/frame_15.pdb TYPE=OPTIMAL SQUARED
+path: FUNCPATHMSD ARG=r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15 LAMBDA=379.8
+metad: METAD ARG=path.s,path.z SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
+PRINT ARG=path.s,path.z,metad.bias FILE=COLVAR STRIDE=500
