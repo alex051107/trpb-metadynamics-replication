@@ -14,7 +14,7 @@
 ## Me
 Zhenpeng Liu, undergraduate at UNC Chapel Hill (liualex@ad.unc.edu). Preparing for Caltech/Anima Lab summer research position. Building a TrpB MetaDynamics replication project to demonstrate computational biology skills.
 
-## Project Status (last updated: 2026-04-07)
+## Project Status (last updated: 2026-04-09)
 
 | Milestone | Status | Notes |
 |-----------|--------|-------|
@@ -24,13 +24,13 @@ Zhenpeng Liu, undergraduate at UNC Chapel Hill (liualex@ad.unc.edu). Preparing f
 | SI protocol extraction | **done** | Full 5-phase protocol; 10 gaps identified |
 | PLP parameterization (GAFF+RESP) | **done** | Ain_gaff.mol2 + Ain.frcmod generated; charge=-2 confirmed |
 | PDB residue name verification | **done** | 5DVZ=LLP, 5DW0=PLS, 4HPX=0JO |
-| O→C reference path (15 frames) | **done** | path.pdb, 112 Cα, λ=3.39 nm⁻² (=0.034 Å⁻²) |
+| O→C reference path (15 frames) | **done** | path.pdb, 112 Cα; **λ corrected from 3.391 → 379.77 nm⁻² (FP-022, 2026-04-08)** |
 | System build (tleap) | **done** | 39,268 atoms, charge neutral, 4 Na⁺ |
 | Toy MetaD test (alanine dipeptide) | **done** | GROMACS+PLUMED2 validated |
 | Conventional MD (500 ns) | **done** | Job 40806029, 71.55 hrs, 22 GB trajectory |
 | AMBER→GROMACS conversion | **done** | ParmEd, 39,268 atoms verified |
 | PLUMED source build | **done** | PLUMED 2.9.2 from source (conda 版 libplumedKernel.so 残缺) |
-| **Well-tempered MetaD** | **running (84%)** | Job 41514529, 42.1/50 ns, ETA ~8h (2026-04-07) |
+| **Well-tempered MetaD initial run** | **❌ FAILED → fix ready** | Job 41514529: 46.3/50 ns then walltime; broken by FP-022 (CV LAMBDA convention). Fix in `fix/path-cv-repair` (merged). **Resubmit pending.** |
 | Tutorial (EN+CN) | **done** | project-guide/TrpB_Replication_Tutorial_EN/CN.md (~2000 lines each) |
 | Weekly report (Week 4) | **done** | reports/WeeklyReport_Week4_2026-04-04.docx |
 | Pipeline research (9 papers) | **done** | PDFs + reading notes + annotation HTMLs |

@@ -172,13 +172,25 @@
 | Path frames | 15 | 15 | ✅ | S3 |
 | Atoms | Cα of 97-184 + 282-305 | Cα of 97-184 + 282-305 | ✅ | S3 |
 | Interpolation | Linear (Cartesian) | Linear (Cartesian) | ✅ | S3 |
-| **MSD** | **80 Å²** | **67.826 Å²** | ⚠️ **差异 ~15%** | S3 |
-| **λ** | **2.3/80 = 0.029 Å⁻²** | **2.3/67.8 = 0.0339 Å⁻²** | ⚠️ **差异 ~17%** | S3 |
-| λ formula constant | 2.3 (固定) | 2.3 (固定) | ✅ | S3 |
+| MSD (total SD, legacy ref) | 80 Å² | 67.826 Å² | ~15% 差异 | S3 |
+| **Per-atom MSD (PLUMED)** | ~0.71 Å² (80/112) | **0.6056 Å²** | ✅ 用于计算 λ | S3 |
+| **λ (PLUMED, correct)** | — | **3.7979 Å⁻² = 379.77 nm⁻²** | ✅ **FP-022 修复** | — |
+| ~~λ (total-SD, broken)~~ | 0.029 Å⁻² | ~~0.0339 Å⁻² = 3.391 nm⁻²~~ | ❌ **DO NOT USE** | — |
+| λ formula | 2.3 / MSD_per-atom | 同 | ✅ | S3 |
+| RMSD convention | — | **`RMSD ... SQUARED`** (必须) | ✅ **FP-022 修复** | — |
 
-> **⚠️ Lambda 差异说明**：SI 报告 MSD=80, λ=0.029。我们从 1WDW/3CEP 实际 Cα 坐标算出 MSD=67.8, λ=0.0339。差异最可能来自**对齐方式**——SI 未报告用哪种 superposition。当前 PLUMED 脚本使用本地值 0.0339。
+> **⚠️ FP-022 (2026-04-08)**：之前的 λ = 3.391 nm⁻² 是用 "total SD" 约定（所有原子位移平方的总和）算出来的，但 PLUMED 的 `FUNCPATHMSD` 需要 "per-atom MSD" 约定（每原子位移平方的平均）。两种约定相差 N_atoms = 112 倍。
 >
-> **FP-015 相关**：之前发现 `calculate_msd()` 函数返回的是 RMSD 而非 MSD（单位错误）。已修复（lambda 从 3.798 → 0.034）。当前值 0.0339 是修复后的结果。
+> **症状**：用 λ = 3.391 和 plain `RMSD` 输入时，相邻 frame 的 kernel weight 是 exp(-0.26) ≈ 0.77（应该是 exp(-2.3) ≈ 0.10），CV 完全无法区分 frame，所有构象被压缩到 s ≈ 4–12 区间，而不是 1–15。
+>
+> **修复**：
+> 1. `plumed.dat` 每个 RMSD action 加 `TYPE=OPTIMAL SQUARED`
+> 2. `FUNCPATHMSD LAMBDA=379.77`（不是 3.391）
+> 3. 用 `generate_path_cv.py` 自动生成的 `plumed_path_cv.dat`，不要手动复制 λ
+>
+> **诊断经过**：`replication/validations/2026-04-08_path_cv_lambda_bug.md`
+>
+> **相关 FP**：FP-015（calculate_msd 返回 RMSD）、FP-018（Å⁻² → nm⁻² 缺 ×100）、FP-022（total-SD vs per-atom MSD 混淆）三者是同一类错误——物理约定和实现约定不匹配。
 
 ### State Definitions
 

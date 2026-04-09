@@ -160,11 +160,45 @@ _目前无_
 
 ---
 
-## 🟡 本周待做（2026-04-07 起）
+## 🟡 本周待做（2026-04-08 更新）
 
-> **MetaD Job 41514529 预计 ~8h 后完成（84%, 42.1/50 ns）**
+> **❌ Job 41514529 失败**：跑了 46.3/50 ns 后 walltime kill。Stage 4 (Skeptic) 检查发现 **path CV 数学上是坏的**——`FUNCPATHMSD LAMBDA=3.391` 用了 total-SD 约定，比 PLUMED 期望的 per-atom MSD 约定小 N_atoms = 112 倍。
+>
+> **诊断和修复完成**：见 FP-022（`replication/validations/failure-patterns.md`）和 validation note `replication/validations/2026-04-08_path_cv_lambda_bug.md`。`fix/path-cv-repair` 分支已就绪。
 
-### Phase B: MetaD 完成后 FES 分析流程
+### Phase A (NEW)：部署 FP-022 修复 + 重跑 initial run
+
+- [ ] **A1. Merge `fix/path-cv-repair` → `master`** 并 push 到 GitHub
+- [ ] **A2. 同步修复后的文件到 Longleaf**
+  ```bash
+  scp replication/metadynamics/single_walker/plumed.dat \
+      longleaf:/work/users/l/i/liualex/AnimaLab/metadynamics/single_walker/
+  scp replication/metadynamics/path_cv/generate_path_cv.py \
+      longleaf:/work/users/l/i/liualex/AnimaLab/metadynamics/path_cv/
+  ```
+- [ ] **A3. self-consistency test 在 Longleaf 上确认**（可选但推荐）
+  ```bash
+  cd /work/.../single_walker/rerun
+  /work/users/l/i/liualex/plumed-2.9.2/bin/plumed driver \
+      --plumed plumed.dat --mf_xtc ../metad.xtc \
+      --timestep 0.002 --trajectory-stride 5000
+  # 应该看到："Your path cvs look good!"
+  # COLVAR_rerun s 值应该 ≈ 1.05（不再是 7.79）
+  ```
+- [ ] **A4. 备份旧 Job 41514529 数据**（不重新覆盖）
+  ```bash
+  cd /work/.../single_walker
+  mkdir -p archive_FP022_broken && \
+    mv HILLS COLVAR metad.log metad.xtc metad.tpr archive_FP022_broken/
+  ```
+- [ ] **A5. 重提交 50 ns initial run with fixed plumed.dat**
+  ```bash
+  cd /work/.../single_walker
+  sbatch submit.sh   # 同样的 submit script，但 plumed.dat 已修
+  ```
+- [ ] **A6. 等待 ~3 天**
+
+### Phase B: MetaD 重跑完成后 FES 分析流程（沿用之前的 B1-B7）
 
 > 所有命令在 Longleaf 的 `single_walker/` 目录执行：
 > `cd /work/users/l/i/liualex/AnimaLab/metadynamics/single_walker`
@@ -260,6 +294,8 @@ _目前无_
 | 参数文件注释 PDF | 04-04 | 6 页彩色 |
 | **9 篇论文 PDF 下载** | 04-05 | GenSLM/RFD/GRPO/MFBO/STAR-MD/DeepTDA/LigandMPNN |
 | **4 组 reading notes** | 04-05 | GenSLM/RFD+LMPNN/GRPO+MFBO/SE3+DeepTDA |
+| **FP-022 path CV LAMBDA bug 诊断 + 修复** | 04-08 | branch fix/path-cv-repair, 三步曲完成 |
+| **PLUMED driver 离线验证** | 04-08 | 用修复后 plumed.dat 重算 metad.xtc，PLUMED 自检通过 |
 | **5 个 annotation HTML** | 04-05 | dual-column 中文标注 |
 | **Logic Chain ch.19-23** | 04-05 | Pipeline 全景/RFD/GRPO+MFBO/SE3/角色重定位 |
 | **10-walker 脚本** | 04-06 | feature/10-walker-metad branch, 含 README |

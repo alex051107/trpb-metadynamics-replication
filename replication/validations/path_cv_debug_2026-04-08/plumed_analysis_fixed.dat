@@ -1,17 +1,22 @@
-# WT-MetaD PLUMED input for PfTrpS(Ain) — JACS 2019 benchmark reproduction
+# plumed_analysis_fixed.dat
 #
-# LAMBDA history (see FP-018, FP-022):
-#   - FP-018 (2026-04-04): Å⁻² → nm⁻² × 100 unit conversion added
-#   - FP-022 (2026-04-08): Â RMSD → SQUARED + LAMBDA recomputed from per-atom
-#     MSD (not total SD). Old LAMBDA=3.3910 was wrong by factor N_atoms=112.
-#     Correct value from generate_path_cv.py:
-#         per-atom MSD_adjacent = 0.6056 Å² = 0.006056 nm²
-#         λ = 2.3 / 0.006056 = 379.77 nm⁻²
+# Analysis-only PLUMED input for re-computing path.s and path.z on the
+# Job 41514529 trajectory with the CORRECTED LAMBDA and SQUARED convention.
 #
-# CRITICAL: Each RMSD action MUST include SQUARED. Without SQUARED, PLUMED
-# feeds plain RMSD (nm) into FUNCPATHMSD, and LAMBDA must be in different
-# units — we would need λ ≈ 29.57 nm⁻¹. The SQUARED + 379.77 combination
-# matches the SI formula λ = 2.3/MSD naturally.
+# Key differences from the original (broken) plumed.dat:
+#   1. RMSD ... SQUARED  (outputs per-atom MSD in nm², not RMSD in nm)
+#   2. LAMBDA = 379.77   (was 3.391, off by factor ~112 = N_atoms)
+#   3. No METAD action   (we are NOT depositing new bias; we are
+#                         re-analyzing the existing trajectory)
+#
+# Run with:
+#   plumed driver \
+#     --plumed plumed_analysis_fixed.dat \
+#     --mf_xtc ../metad.xtc \
+#     --timestep 0.002 \
+#     --trajectory-stride 5000
+#
+# (timestep 0.002 ps × stride 5000 = 10 ps per frame in metad.xtc)
 
 r1:  RMSD REFERENCE=frames/frame_01.pdb TYPE=OPTIMAL SQUARED
 r2:  RMSD REFERENCE=frames/frame_02.pdb TYPE=OPTIMAL SQUARED
@@ -29,5 +34,4 @@ r13: RMSD REFERENCE=frames/frame_13.pdb TYPE=OPTIMAL SQUARED
 r14: RMSD REFERENCE=frames/frame_14.pdb TYPE=OPTIMAL SQUARED
 r15: RMSD REFERENCE=frames/frame_15.pdb TYPE=OPTIMAL SQUARED
 path: FUNCPATHMSD ARG=r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15 LAMBDA=379.77
-metad: METAD ARG=path.s,path.z SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
-PRINT ARG=path.s,path.z,metad.bias FILE=COLVAR STRIDE=500
+PRINT ARG=path.s,path.z FILE=COLVAR_rerun_fixed STRIDE=1

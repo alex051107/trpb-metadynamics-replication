@@ -17,34 +17,33 @@ MSD Statistics:
   Mean total SD:   67.826 ± 0.007 Å²
 
 Lambda Estimates:
-  λ from PLUMED MSD: 3.797948 Å^-2
-  λ from total SD:   0.033910 Å^-2
+  ★ λ (PLUMED convention, USE THIS): 3.7979 Å⁻² = 379.7948 nm⁻²
+  λ (legacy total-SD, DO NOT USE):    0.033910 Å⁻² (wrong by factor N_atoms=112, see FP-022)
 
-Reference (JACS 2019):
-  Reported MSD: ~80 Å²
-  Reported λ:   ~0.028750 Å^-2
-  Total-SD ratio vs paper: 0.85x
+Reference (JACS 2019 SI):
+  Reported MSD: ~80 Å² (interpreted as total SD)
+  Our total SD: 67.826 Å² (ratio 0.85x)
 
-Interpretation:
-  Official PLUMED documentation defines PATHMSD/FUNCPATHMSD in terms of
-  mean squared displacement values from RMSD ... SQUARED.
-  The paper's quoted MSD≈80 is therefore best interpreted here as the
-  unnormalized total squared displacement over all selected Cα atoms.
-  Residual mismatch from 80 likely reflects local path construction details
-  (alignment / residue mapping / interpolation), not the sqrt bug.
+CRITICAL (FP-022, 2026-04-08):
+  Always use the PLUMED convention λ (per-atom MSD) in plumed.dat.
+  Always write 'RMSD ... TYPE=OPTIMAL SQUARED' in plumed.dat so the
+  inputs to FUNCPATHMSD are per-atom MSD (nm² under GROMACS units).
+  Using the legacy total-SD λ = 2.3/80 ≈ 0.029 Å⁻² gives a value 112×
+  smaller than needed, collapses the path CV, and causes false PC
+  confinement. See replication/validations/2026-04-08_path_cv_lambda_bug.md.
 
 Frame-by-frame metrics:
-   1 →  2: PLUMED MSD = 0.606 Å² ; total SD = 67.823 Å² ; λ(total) = 0.033912 Å^-2
-   2 →  3: PLUMED MSD = 0.606 Å² ; total SD = 67.827 Å² ; λ(total) = 0.033910 Å^-2
-   3 →  4: PLUMED MSD = 0.606 Å² ; total SD = 67.835 Å² ; λ(total) = 0.033906 Å^-2
-   4 →  5: PLUMED MSD = 0.605 Å² ; total SD = 67.812 Å² ; λ(total) = 0.033917 Å^-2
-   5 →  6: PLUMED MSD = 0.606 Å² ; total SD = 67.830 Å² ; λ(total) = 0.033908 Å^-2
-   6 →  7: PLUMED MSD = 0.606 Å² ; total SD = 67.821 Å² ; λ(total) = 0.033913 Å^-2
-   7 →  8: PLUMED MSD = 0.606 Å² ; total SD = 67.832 Å² ; λ(total) = 0.033907 Å^-2
-   8 →  9: PLUMED MSD = 0.606 Å² ; total SD = 67.828 Å² ; λ(total) = 0.033909 Å^-2
-   9 → 10: PLUMED MSD = 0.606 Å² ; total SD = 67.816 Å² ; λ(total) = 0.033915 Å^-2
-  10 → 11: PLUMED MSD = 0.606 Å² ; total SD = 67.834 Å² ; λ(total) = 0.033906 Å^-2
-  11 → 12: PLUMED MSD = 0.606 Å² ; total SD = 67.820 Å² ; λ(total) = 0.033913 Å^-2
-  12 → 13: PLUMED MSD = 0.606 Å² ; total SD = 67.832 Å² ; λ(total) = 0.033907 Å^-2
-  13 → 14: PLUMED MSD = 0.606 Å² ; total SD = 67.826 Å² ; λ(total) = 0.033910 Å^-2
-  14 → 15: PLUMED MSD = 0.606 Å² ; total SD = 67.830 Å² ; λ(total) = 0.033908 Å^-2
+   1 →  2: per-atom MSD = 0.6056 Å² ; total SD = 67.823 Å² ; λ(plumed) = 3.7981 Å⁻²
+   2 →  3: per-atom MSD = 0.6056 Å² ; total SD = 67.827 Å² ; λ(plumed) = 3.7979 Å⁻²
+   3 →  4: per-atom MSD = 0.6057 Å² ; total SD = 67.835 Å² ; λ(plumed) = 3.7975 Å⁻²
+   4 →  5: per-atom MSD = 0.6055 Å² ; total SD = 67.812 Å² ; λ(plumed) = 3.7987 Å⁻²
+   5 →  6: per-atom MSD = 0.6056 Å² ; total SD = 67.830 Å² ; λ(plumed) = 3.7977 Å⁻²
+   6 →  7: per-atom MSD = 0.6055 Å² ; total SD = 67.821 Å² ; λ(plumed) = 3.7982 Å⁻²
+   7 →  8: per-atom MSD = 0.6056 Å² ; total SD = 67.832 Å² ; λ(plumed) = 3.7976 Å⁻²
+   8 →  9: per-atom MSD = 0.6056 Å² ; total SD = 67.828 Å² ; λ(plumed) = 3.7978 Å⁻²
+   9 → 10: per-atom MSD = 0.6055 Å² ; total SD = 67.816 Å² ; λ(plumed) = 3.7985 Å⁻²
+  10 → 11: per-atom MSD = 0.6057 Å² ; total SD = 67.834 Å² ; λ(plumed) = 3.7975 Å⁻²
+  11 → 12: per-atom MSD = 0.6055 Å² ; total SD = 67.820 Å² ; λ(plumed) = 3.7983 Å⁻²
+  12 → 13: per-atom MSD = 0.6056 Å² ; total SD = 67.832 Å² ; λ(plumed) = 3.7976 Å⁻²
+  13 → 14: per-atom MSD = 0.6056 Å² ; total SD = 67.826 Å² ; λ(plumed) = 3.7980 Å⁻²
+  14 → 15: per-atom MSD = 0.6056 Å² ; total SD = 67.830 Å² ; λ(plumed) = 3.7977 Å⁻²

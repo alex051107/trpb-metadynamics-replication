@@ -319,22 +319,46 @@ def calculate_rmsd(coords1: np.ndarray, coords2: np.ndarray) -> float:
     return float(np.sqrt(calculate_msd(coords1, coords2)))
 
 
-def calculate_lambda(msd_value: float, convention: str = "total_sd") -> float:
+def calculate_lambda(msd_value: float, convention: str = "plumed") -> float:
     """Calculate λ parameter: λ = LAMBDA_SCALE / MSD.
 
+    IMPORTANT (FP-022, 2026-04-08):
+        The default convention is now 'plumed' (per-atom MSD), NOT 'total_sd'.
+        PLUMED's RMSD action outputs per-atom-normalized values:
+            RMSD = sqrt((1/N_atoms) × Σ |r_i - r_i^ref|²)
+        When fed into FUNCPATHMSD (directly or with SQUARED), d_i is either
+        per-atom RMSD (nm) or per-atom MSD (nm²). The λ parameter must be
+        computed on the same convention.
+
+        Using "total_sd" (sum over atoms, NOT divided by N_atoms) gives a
+        λ value that is N_atoms = 112 times too small for FUNCPATHMSD. This
+        causes the path CV to collapse: adjacent-frame kernel weight becomes
+        exp(-0.26) ≈ 0.77 instead of the target exp(-2.3) ≈ 0.10, so the
+        CV cannot distinguish frames and all configurations map to s ≈ 8.
+
+        See: replication/validations/2026-04-08_path_cv_lambda_bug.md
+
     Args:
-        msd_value: MSD in Å² (either per-atom PLUMED or total SD)
-        convention: "total_sd" (JACS-style, expect ~0.03) or "plumed" (per-atom, expect ~3.8)
+        msd_value: MSD in Å² (per-atom if convention="plumed",
+                   total sum if convention="total_sd")
+        convention: "plumed" (DEFAULT, correct for FUNCPATHMSD)
+                    or "total_sd" (legacy, kept only for comparison with
+                    JACS 2019 SI's quoted "80 Å²")
     """
     result = LAMBDA_SCALE / msd_value
-    if convention == "total_sd":
-        assert 0.001 < result < 1.0, (
-            f"lambda(total_sd)={result} outside range 0.001-1.0 — JACS 2019 expects ~0.029"
-        )
-    elif convention == "plumed":
+    if convention == "plumed":
         assert 0.1 < result < 100, (
-            f"lambda(plumed)={result} outside range 0.1-100"
+            f"lambda(plumed)={result} Å⁻² outside expected range 0.1-100. "
+            f"Expected ~3.8 Å⁻² for a linear O→C path in PfTrpB. "
+            f"Did you accidentally pass total_sd instead of per-atom MSD?"
         )
+    elif convention == "total_sd":
+        assert 0.001 < result < 1.0, (
+            f"lambda(total_sd)={result} outside range 0.001-1.0. "
+            f"This convention is NOT correct for FUNCPATHMSD (see FP-022)."
+        )
+    else:
+        raise ValueError(f"unknown convention: {convention}")
     return result
 
 
@@ -482,26 +506,28 @@ def write_summary_file(
         f.write(f"  Mean PLUMED MSD: {avg_msd:.3f} ± {std_msd:.3f} Å²\n")
         f.write(f"  Mean total SD:   {avg_total_sd:.3f} ± {std_total_sd:.3f} Å²\n")
         f.write("\nLambda Estimates:\n")
-        f.write(f"  λ from PLUMED MSD: {avg_lambda_plumed:.6f} Å^-2\n")
-        f.write(f"  λ from total SD:   {avg_lambda_jacs:.6f} Å^-2\n")
-        f.write("\nReference (JACS 2019):\n")
-        f.write(f"  Reported MSD: ~{PAPER_MSD:.0f} Å²\n")
-        f.write(f"  Reported λ:   ~{LAMBDA_SCALE / PAPER_MSD:.6f} Å^-2\n")
-        f.write(f"  Total-SD ratio vs paper: {avg_total_sd / PAPER_MSD:.2f}x\n")
-        f.write("\nInterpretation:\n")
-        f.write("  Official PLUMED documentation defines PATHMSD/FUNCPATHMSD in terms of\n")
-        f.write("  mean squared displacement values from RMSD ... SQUARED.\n")
-        f.write("  The paper's quoted MSD≈80 is therefore best interpreted here as the\n")
-        f.write("  unnormalized total squared displacement over all selected Cα atoms.\n")
-        f.write("  Residual mismatch from 80 likely reflects local path construction details\n")
-        f.write("  (alignment / residue mapping / interpolation), not the sqrt bug.\n")
+        f.write(f"  ★ λ (PLUMED convention, USE THIS): {avg_lambda_plumed:.4f} Å⁻² "
+                f"= {avg_lambda_plumed * 100:.4f} nm⁻²\n")
+        f.write(f"  λ (legacy total-SD, DO NOT USE):    {avg_lambda_jacs:.6f} Å⁻² "
+                f"(wrong by factor N_atoms={n_atoms}, see FP-022)\n")
+        f.write("\nReference (JACS 2019 SI):\n")
+        f.write(f"  Reported MSD: ~{PAPER_MSD:.0f} Å² (interpreted as total SD)\n")
+        f.write(f"  Our total SD: {avg_total_sd:.3f} Å² "
+                f"(ratio {avg_total_sd / PAPER_MSD:.2f}x)\n")
+        f.write("\nCRITICAL (FP-022, 2026-04-08):\n")
+        f.write("  Always use the PLUMED convention λ (per-atom MSD) in plumed.dat.\n")
+        f.write("  Always write 'RMSD ... TYPE=OPTIMAL SQUARED' in plumed.dat so the\n")
+        f.write("  inputs to FUNCPATHMSD are per-atom MSD (nm² under GROMACS units).\n")
+        f.write("  Using the legacy total-SD λ = 2.3/80 ≈ 0.029 Å⁻² gives a value 112×\n")
+        f.write("  smaller than needed, collapses the path CV, and causes false PC\n")
+        f.write("  confinement. See replication/validations/2026-04-08_path_cv_lambda_bug.md.\n")
         f.write("\nFrame-by-frame metrics:\n")
         for i, (msd, total_sd) in enumerate(zip(msd_values, total_sd_values), start=1):
             f.write(
                 f"  {i:2d} → {i+1:2d}: "
-                f"PLUMED MSD = {msd:.3f} Å² ; "
+                f"per-atom MSD = {msd:.4f} Å² ; "
                 f"total SD = {total_sd:.3f} Å² ; "
-                f"λ(total) = {calculate_lambda(total_sd):.6f} Å^-2\n"
+                f"λ(plumed) = {calculate_lambda(msd, 'plumed'):.4f} Å⁻²\n"
             )
 
 
@@ -580,9 +606,11 @@ Examples:
         )
 
         print("  Summary-only statistics:")
-        print(f"    Mean PLUMED MSD: {np.mean(msd_values):.3f} Å²")
-        print(f"    Mean total SD:   {np.mean(total_sd_values):.3f} Å²")
-        print(f"    λ(total SD):     {np.mean([calculate_lambda(v) for v in total_sd_values]):.6f} Å^-2")
+        print(f"    Mean per-atom MSD (PLUMED): {np.mean(msd_values):.4f} Å²")
+        print(f"    Mean total SD (legacy):     {np.mean(total_sd_values):.3f} Å²")
+        lam_plumed_avg = np.mean([calculate_lambda(v, 'plumed') for v in msd_values])
+        print(f"    ★ λ (PLUMED, USE THIS):     {lam_plumed_avg:.4f} Å⁻²"
+              f" = {lam_plumed_avg * 100:.4f} nm⁻²")
         print(f"  ✓ Wrote {summary_file}")
         return
 
@@ -654,11 +682,13 @@ Examples:
     for i in range(len(frames) - 1):
         msd = calculate_msd(frames[i], frames[i + 1])
         total_sd = calculate_total_squared_displacement(frames[i], frames[i + 1])
-        lam = calculate_lambda(total_sd)
+        # FP-022 fix: compute lambda from per-atom MSD (PLUMED convention),
+        # NOT from total SD. The total SD convention is off by N_atoms = 112.
+        lam = calculate_lambda(msd, convention="plumed")
         msd_values.append(msd)
         total_sd_values.append(total_sd)
         lambda_values.append(lam)
-        print(f"  {i+1:2d}→{i+2:2d}    {msd:10.3f}   {total_sd:11.3f}   {lam:10.6f}")
+        print(f"  {i+1:2d}→{i+2:2d}    {msd:10.3f}   {total_sd:11.3f}   {lam:10.4f}")
 
     # Statistics
     avg_msd = np.mean(msd_values)
@@ -668,11 +698,12 @@ Examples:
     avg_lambda = np.mean(lambda_values)
 
     print("  " + "-" * 55)
-    print(f"  Mean PLUMED MSD: {avg_msd:7.3f} ± {std_msd:.3f} Å²")
-    print(f"  Mean total SD:   {avg_total_sd:7.3f} ± {std_total_sd:.3f} Å²")
-    print(f"  Mean λ(total):   {avg_lambda:10.6f} Å^-2")
-    print(f"  Paper MSD:       {PAPER_MSD:7.3f} Å² (for reference)")
-    print(f"  Total-SD ratio:  {avg_total_sd / PAPER_MSD:.2f}x (1.0 = perfect match)")
+    print(f"  Mean PLUMED per-atom MSD: {avg_msd:7.3f} ± {std_msd:.3f} Å²")
+    print(f"  Mean total SD (legacy):   {avg_total_sd:7.3f} ± {std_total_sd:.3f} Å²")
+    print(f"  Mean λ (PLUMED, correct): {avg_lambda:10.4f} Å⁻²")
+    print(f"                            = {avg_lambda * 100:10.4f} nm⁻²  ← write THIS into plumed.dat")
+    print(f"  Paper MSD (reference):    {PAPER_MSD:7.3f} Å² (interpreted as total SD)")
+    print(f"  Total-SD ratio:           {avg_total_sd / PAPER_MSD:.2f}x (1.0 = perfect match)")
 
     # ========== WRITE OUTPUT ==========
     print(f"\nWriting output files to {output_dir}...")
@@ -706,6 +737,30 @@ Examples:
     )
     print(f"  ✓ {summary_file.name}")
 
+    # ========== WRITE READY-TO-USE PLUMED SNIPPET ==========
+    # Prevents copy-paste errors like FP-022 (wrong LAMBDA convention).
+    lambda_nm2 = avg_lambda * 100.0  # Å⁻² → nm⁻² (GROMACS uses nm)
+    snippet_path = output_dir / "plumed_path_cv.dat"
+    with open(snippet_path, "w") as f:
+        f.write("# Auto-generated PLUMED snippet — DO NOT edit LAMBDA by hand.\n")
+        f.write("# Generated by generate_path_cv.py on {}.\n".format(
+            __import__("datetime").datetime.now().isoformat(timespec="seconds")
+        ))
+        f.write("#\n")
+        f.write("# LAMBDA was computed from per-atom MSD in the PLUMED convention:\n")
+        f.write(f"#   mean per-atom MSD (adjacent frames) = {avg_msd:.4f} Å²\n")
+        f.write(f"#   λ = 2.3 / MSD = {avg_lambda:.4f} Å⁻² = {lambda_nm2:.4f} nm⁻²\n")
+        f.write("#\n")
+        f.write("# CRITICAL: use SQUARED on each RMSD action. Without SQUARED, PLUMED\n")
+        f.write("# feeds plain RMSD (nm) into FUNCPATHMSD, and the LAMBDA convention\n")
+        f.write("# does not match. See FP-022 in failure-patterns.md.\n")
+        f.write("#\n")
+        for i in range(args.num_frames):
+            f.write(f"r{i+1}: RMSD REFERENCE=frames/frame_{i+1:02d}.pdb TYPE=OPTIMAL SQUARED\n")
+        args_list = ",".join(f"r{i+1}" for i in range(args.num_frames))
+        f.write(f"path: FUNCPATHMSD ARG={args_list} LAMBDA={lambda_nm2:.4f}\n")
+    print(f"  ✓ {snippet_path.name} (ready-to-use PLUMED snippet, includes LAMBDA)")
+
     # ========== FINAL SUMMARY ==========
     print("\n" + "=" * 70)
     print("SUCCESS: Path CV frames generated!")
@@ -714,10 +769,14 @@ Examples:
     print(f"  • {args.num_frames} individual PDB frames (frame_01.pdb through frame_{args.num_frames:02d}.pdb)")
     print(f"  • path.pdb (PLUMED PATH format multi-model file)")
     print(f"  • summary.txt (statistics and MSD values)")
+    print(f"  • plumed_path_cv.dat (ready-to-use snippet with correct LAMBDA and SQUARED)")
     print(f"\nNext steps:")
-    print(f"  1. Copy path.pdb to Longleaf at: /work/users/l/i/liualex/AnimaLab/structures/")
-    print(f"  2. Use in PLUMED input with: PATHMSD REFERENCE=path.pdb")
-    print(f"  3. Compare total SD against paper-style MSD reference (expected ≈ {PAPER_MSD} Å²)")
+    print(f"  1. Copy frames/ and plumed_path_cv.dat to Longleaf production directory")
+    print(f"  2. Include plumed_path_cv.dat in your main plumed.dat, OR copy the path")
+    print(f"     action line and RMSD actions into your main plumed.dat")
+    print(f"  3. Use FUNCPATHMSD (not PATHMSD) — see FP-020 (atom serial issue)")
+    print(f"  4. NEVER edit LAMBDA by hand; re-run this script if frames change")
+    print(f"  5. Compare per-atom MSD against paper value (~{PAPER_MSD}/112 = {PAPER_MSD/112:.3f} Å²)")
     print("=" * 70)
 
 

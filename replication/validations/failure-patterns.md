@@ -286,6 +286,20 @@
 
 ---
 
+## FP-022: FUNCPATHMSD LAMBDA 用了 total-SD 约定，差 N_atoms = 112 倍
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-08 |
+| 发现者 | Claude + Codex 联合（先 Codex 在 /codex:rescue 第二轮 review 中怀疑 FUNCPATHMSD 语义不对，后 Claude 用本地 Python 数值实验确认 LAMBDA=3.391 给不出自洽结果，最后 PLUMED driver 在 Longleaf 上的实际重跑证实修复有效） |
+| 受影响文件 | `replication/metadynamics/path_cv/generate_path_cv.py` (`calculate_lambda` 默认 convention)、`replication/metadynamics/single_walker/plumed.dat` (LAMBDA=3.3910 + 缺 SQUARED)、`replication/metadynamics/plumed/plumed_trpb_metad.dat`、`plumed_trpb_metad_single.dat` 等所有 plumed 模板、`replication/parameters/JACS2019_MetaDynamics_Parameters.md` (Path CV 表)、Job 41514529 的 46.3 ns HILLS/COLVAR（无法用于 FES 重构） |
+| 错误描述 | `FUNCPATHMSD` 内部公式是 `s = Σ i × exp(-λ × d_i) / Σ exp(-λ × d_i)`，PLUMED 2.9.2 源码 (`FuncPathMSD.cpp`) 把 ARG 输入直接喂进 exp，**不会内部平方**。我们的 plumed.dat 用 `RMSD ... TYPE=OPTIMAL`（不带 SQUARED），PLUMED 输出的是 per-atom RMSD（nm）。但 LAMBDA=3.3910 是按 "λ = 2.3 / total_SD" 算出来的（其中 total_SD = 0.6783 nm² 是 112 个原子位移平方的总和）。"per-atom MSD = 0.006056 nm²" 才是和 PLUMED 输出兼容的量；正确的 LAMBDA 应该是 2.3/0.006056 = **379.77 nm⁻²**，不是 3.391。**两者差正好 N_atoms = 112 倍。** 症状：相邻 frame 的 kernel weight 是 exp(-3.391 × 0.0778) = 0.77（应该是 exp(-2.3) = 0.10），CV 完全没法分辨 frame，所有构象都被压缩到 s ≈ 4-12（不是 1-15）。Job 41514529 的 46.3 ns COLVAR 显示 s 一直在 7.77-7.83，被误以为是"系统卡在 PC basin"，实际上是"坏 CV 数学伪影 + 系统其实在 O basin（s≈1.05 经修复后重算确认）"。同时因为坏 CV 的梯度 ds/dx 几乎为零，bias 转回原子的物理力极弱，46 ns 等价于无偏置 MD，没有任何增强采样发生。 |
+| 根因 | (1) `generate_path_cv.py` 里 `calculate_lambda` 默认 `convention="total_sd"`，main 流程用 `calculate_lambda(total_sd)`，得到 λ ≈ 0.0339 Å⁻²。(2) FP-018 修复时把 0.0339 Å⁻² × 100 = 3.391 nm⁻² 作为最终 LAMBDA 写入 plumed.dat，但没有同时切换 RMSD action 到 SQUARED。(3) FP-020 之前我们用过 PATHMSD（PATHMSD 内部可能用 total-SD 兼容公式），切换到 FUNCPATHMSD 时没意识到约定不同。(4) 没有做 self-consistency test（喂参考帧给 CV 公式，看 frame_i 是否输出 s=i），所以 bug 没被早期发现。(5) PLUMED 自己在 driver 启动时会打印 "Consistency check completed!"，但这条消息只在 driver 模式可见，mdrun 模式下没有，bug 悄悄通过。 |
+| 防范措施 | **三层保护**：(1) `generate_path_cv.py` 默认 convention 已改为 `"plumed"`，同时加 assertion 检查 λ ∈ [0.1, 100] Å⁻²（旧的 0.0339 现在会立即报错）；(2) 脚本自动生成 `plumed_path_cv.dat` snippet，包含正确的 SQUARED 关键字 + LAMBDA 数值，**不要再手动从 summary.txt 复制 λ**；(3) 任何新的 plumed.dat 提交前必须跑 self-consistency test (`replication/validations/path_cv_debug_2026-04-08/01_self_consistency_test.py`)，确认 s(frame_i) ≈ i。**通用规则**：path CV 修改后必须用 PLUMED driver 短跑一段已有轨迹（不需要新 MD），看 PLUMED 是否打印 "Your path cvs look good!" 消息，并人工检查 COLVAR 输出范围是否合理。 |
+| 已修复 | ✅ 2026-04-08 (branch `fix/path-cv-repair`)：generate_path_cv.py 默认 convention 改为 plumed；single_walker/plumed.dat 用 SQUARED + LAMBDA=379.77；JACS2019_MetaDynamics_Parameters.md 更新；validation note 见 `replication/validations/2026-04-08_path_cv_lambda_bug.md`。**仍待**：在 Longleaf 上重跑 50 ns initial run with fixed plumed.dat。 |
+
+---
+
 ## 通用规则（从以上模式提炼）
 
 1. **写任何文件前，先读 failure-patterns.md**，检查是否在重复已知错误
@@ -302,3 +316,5 @@
 12. **PLUMED .dat 文件不使用 `\` 续行**：GROMACS 2026 mdrun 接口不正确处理反斜杠，所有参数写在一行
 13. **不要信任 conda-forge 的 PLUMED .so 模块完整性**：生产环境必须从源码编译 PLUMED，验证 `plumed info --components` 输出包含所需模块
 14. **`plumed sum_hills --kt` 单位必须匹配模拟引擎**：GROMACS 用 kJ/mol → `--kt 2.908`；AMBER 用 kcal/mol → `--kt 0.695`。不加 `--kt` 输出的是 bias potential 不是 FES；用错单位 FES 能量缩放错 ×4.184。（FP-021, Codex review 2026-04-07 发现）
+15. **`FUNCPATHMSD` 必须配合 `RMSD ... SQUARED` 使用，且 LAMBDA 用 per-atom MSD 算**：`FUNCPATHMSD` 把 ARG 输入直接喂进 `exp(-λ × d)`，不会内部平方。如果 ARG 是 plain RMSD（nm），那 LAMBDA 单位是 nm⁻¹；如果 ARG 是 SQUARED RMSD = per-atom MSD（nm²），那 LAMBDA 单位是 nm⁻²。**SI 论文里 "λ = 2.3 / MSD" 公式中的 MSD 必须是 per-atom 平均，不是所有原子的 sum**。错用 sum 会让 LAMBDA 小 N_atoms 倍，CV 完全失效。**修改 path CV 必须做 self-consistency test：把每个参考 frame 喂回 CV，frame_i 应该输出 s=i。**（FP-022, Claude+Codex 2026-04-08 发现）
+16. **path CV 任何修改后必须用 PLUMED driver 离线验证一段已有轨迹**：`plumed driver --plumed plumed.dat --mf_xtc some.xtc` 启动时会打印 "Your path cvs look good!" 或类似检查消息。这是发现 path CV bug 的最快方式，比重跑 50 ns MetaD 快 100 倍。验证 COLVAR 输出范围是否物理合理。

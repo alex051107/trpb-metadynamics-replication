@@ -86,17 +86,21 @@
         ]
       },
       "started_at": "2026-03-31",
-      "verified_by": "pipeline_guard"
+      "verified_by": "pipeline_guard",
+      "notes": "Job 41514529 (single-walker MetaD) completed 46.3 ns of 50 ns before walltime, but Skeptic verification (stage 4) found that the produced HILLS/COLVAR are unusable for FES reconstruction due to FP-022 (FUNCPATHMSD LAMBDA convention bug). Source files (generate_path_cv.py, single_walker/plumed.dat) and parameters file have been corrected. Stage 3 must be RE-RUN with fixed plumed.dat before Stage 4 can proceed."
     },
     "4_skeptic": {
-      "status": "not_started",
-      "artifact": "replication/validations/2026-03-31_osuna2019_benchmark_stage4_validation.md",
+      "status": "blocked_by_fp_022",
+      "artifact": "replication/validations/2026-04-08_path_cv_lambda_bug.md",
       "verification": {
         "type": "file_exists",
-        "path": "replication/validations/2026-03-31_osuna2019_benchmark_stage4_validation.md",
+        "path": "replication/validations/2026-04-08_path_cv_lambda_bug.md",
         "nonempty": true
       },
-      "verified_by": null
+      "verified_by": "claude+codex+local_numerical_test",
+      "verdict": "FAIL — Job 41514529 produced no usable bias data; CV was broken by FP-022. Re-run required with fix/path-cv-repair branch artifacts.",
+      "blocking_issue": "FP-022 in replication/validations/failure-patterns.md",
+      "fix_status": "ready in branch fix/path-cv-repair"
     },
     "5_journalist": {
       "status": "not_started",
@@ -126,5 +130,15 @@
       "re:\\bfes_analysis\\b"
     ]
   },
-  "last_updated": "2026-04-05T04:00:00+00:00"
+  "last_updated": "2026-04-08T21:30:00+00:00",
+  "active_failure_patterns": [
+    {
+      "id": "FP-022",
+      "discovered": "2026-04-08",
+      "title": "FUNCPATHMSD LAMBDA off by N_atoms (total-SD vs per-atom MSD)",
+      "severity": "critical",
+      "fix_branch": "fix/path-cv-repair",
+      "see_also": "replication/validations/2026-04-08_path_cv_lambda_bug.md"
+    }
+  ]
 }
