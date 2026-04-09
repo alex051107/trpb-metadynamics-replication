@@ -1,36 +1,82 @@
-# Fixed PLUMED input for TrpB path CV MetaDynamics
+# ============================================================================
+# ⚠️  DO NOT USE THIS FILE FOR PRODUCTION RUNS WITHOUT COMPLETING THE CHECKLIST
+# ============================================================================
+#
+# This is a DIAGNOSTIC ARTIFACT, not a validated production input.
+# It fixes ONE bug (LAMBDA mis-calibration) out of at least THREE known issues.
+# Running it as-is on Longleaf will very likely produce another failed job.
+#
+# ----------------------------------------------------------------------------
+# REQUIRED CHECKLIST BEFORE ANY PRODUCTION USE
+# ----------------------------------------------------------------------------
+#
+# [ ] 1. Re-compute LAMBDA from the ACTUAL Longleaf frames, not the repo copy.
+#        The value 379.8 below was derived from per-atom MSD measured on
+#        repo/path.pdb. Longleaf job frames may have a slightly different
+#        MSD (different alignment or atom ordering). Run the self-consistency
+#        test on tmp/metad_review_41514529/frames/ and confirm the correct λ.
+#
+# [ ] 2. Verify that 5DVZ (the Ain O-state crystal structure) projects to
+#        s ≈ 1 under the corrected LAMBDA. Codex already showed that on the
+#        current (broken) path, 5DVZ sits at s = 7.79 — and this is NOT just
+#        because LAMBDA is wrong. It is independent evidence that the path
+#        endpoints (1WDW and 3CEP) may not actually bracket the Ain O-state.
+#        If 5DVZ still maps to s ≠ 1 after fixing LAMBDA, the path MUST BE
+#        REGENERATED with different endpoints before any production run.
+#
+# [ ] 3. Re-calibrate METAD SIGMA for the new convention.
+#        Switching from plain RMSD (nm) to SQUARED/MSD (nm²) changes the
+#        units of path.z. SIGMA=0.05 was a fallback for RMSD units and may
+#        not match the geometric variance of the new z. ADAPTIVE=GEOM will
+#        converge over time, but the first few hundred hills can still be
+#        placed with the wrong shape.
+#
+# [ ] 4. Dry-run with the PLUMED driver offline (no GROMACS) before any MD.
+#        Load the existing Job 41514529 metad.xtc trajectory, re-compute
+#        path.s and path.z under this fixed plumed.dat, and check whether
+#        the same physical configurations give more varied s values.
+#        This takes minutes, not days, and proves the fix is real.
+#
+# [ ] 5. Decide whether to restart from a new starting structure.
+#        Codex confirmed start.gro is essentially identical to equil.rst7
+#        (0.005 Å RMSD in the 112-atom CV subset), and 5DVZ crystal itself
+#        projects to s ≈ 7.79. If you want the run to start at s ≈ 1, you
+#        need a DIFFERENT starting structure, not just a fixed plumed.dat.
+#
+# ----------------------------------------------------------------------------
+# What this file actually fixes (ONE of THREE known bugs)
+# ----------------------------------------------------------------------------
 #
 # Changes vs broken plumed.dat (Job 41514529):
 #   1. Added SQUARED keyword to each RMSD action
-#      → now PLUMED outputs RMSD² (per-atom MSD, nm²) instead of plain RMSD (nm)
-#      → matches the canonical SI convention λ = 2.3 / MSD_adjacent
-#   2. Changed LAMBDA from 3.391 to 379.8
-#      → computed as 2.3 / (mean per-atom MSD between adjacent frames)
-#      → per-atom MSD_adjacent = 0.006056 nm² (from local self-consistency test)
-#      → 2.3 / 0.006056 = 379.8 nm⁻²
+#      → PLUMED now outputs per-atom MSD (nm²) instead of plain RMSD (nm)
+#   2. Changed LAMBDA from 3.391 to 379.8 (tentative, see checklist item 1)
+#      → 2.3 / (mean per-atom MSD_adjacent) = 2.3 / 0.006056
 #
-# Why the old setup was broken:
-#   FUNCPATHMSD takes its ARG input values as-is and uses them in exp(-λ*d)
-#   without internal squaring (verified against PLUMED 2.9.2 source code
-#   /src/function/FuncPathMSD.cpp). The old setup fed plain RMSD (0.0778 nm
-#   adjacent) with LAMBDA=3.391, giving λ*d_adj = 0.264 → exp ≈ 0.77. This
-#   makes the kernel far too broad: adjacent-frame contributions are nearly
-#   equal and the CV collapses. Self-consistency test showed frame_01 mapped
-#   to s=4.02 and frame_15 to s=11.98 (both wrong by ~3 units).
+# Why the old setup was mathematically broken:
+#   FUNCPATHMSD uses its ARG inputs as-is in exp(-λ*d) without internal
+#   squaring (verified against PLUMED 2.9.2 source FuncPathMSD.cpp upstream).
+#   Old setup fed RMSD (0.0778 nm adjacent) with LAMBDA=3.391, so
+#   λ*d_adj = 0.264 → kernel weight exp(-0.264) ≈ 0.77. Adjacent frames
+#   contribute almost equally → path CV cannot distinguish frames →
+#   s(frame_01) computed as 4.02 instead of 1, s(frame_15) as 11.98 instead
+#   of 15. Self-consistency test (01_self_consistency_test.py) confirms this.
 #
-# With the fix, λ*d_adj = 379.8 × 0.006056 = 2.3 → exp ≈ 0.10, which is the
-# canonical path CV kernel sharpness recommended in PLUMED tutorials and
-# matches the SI formula from Maria-Solano et al. JACS 2019.
+# With the proposed fix, λ*d_adj = 379.8 × 0.006056 = 2.3 → kernel weight
+# exp(-2.3) ≈ 0.10, matching the canonical PLUMED tutorial setting and the
+# SI formula from Maria-Solano et al. JACS 2019.
 #
-# Expected behavior under the fix (from 01_self_consistency_test.py):
-#   s(frame_01) = 1.09  (target: 1,  error: ~1%)
-#   s(frame_08) = 8.00  (target: 8,  error: 0%)
-#   s(frame_15) = 14.91 (target: 15, error: ~1%)
+# Expected behavior under the fix (ON REPO FRAMES, local numerical test):
+#   s(frame_01) = 1.09  (target: 1,  error ~1%)
+#   s(frame_08) = 8.00
+#   s(frame_15) = 14.91 (target: 15, error ~1%)
 #
-# NOTE: This plumed.dat assumes frames/frame_01.pdb through frame_15.pdb are
-# the same 15 reference frames as the original run. If the path endpoints are
-# independently wrong (e.g., 5DVZ not mapping to s=1 even with correct LAMBDA),
-# that is a SEPARATE issue that requires path regeneration, not just a LAMBDA fix.
+# UNRESOLVED: The two other bugs (see checklist items 2 and 3) are NOT
+# addressed here. Codex's Longleaf diagnostics suggest fix #2 is critical:
+# even after fixing LAMBDA, if the path itself puts 5DVZ at s ≠ 1, no
+# amount of MetaDynamics can make a single-walker run appear to explore
+# "from O to C". That would require path regeneration, not a plumed.dat tweak.
+# ============================================================================
 
 r1:  RMSD REFERENCE=frames/frame_01.pdb TYPE=OPTIMAL SQUARED
 r2:  RMSD REFERENCE=frames/frame_02.pdb TYPE=OPTIMAL SQUARED

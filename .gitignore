@@ -31,6 +31,9 @@ Thumbs.db
 *~
 /tmp/
 
+# Git worktrees (isolated workspaces for debugging/testing)
+.worktrees/
+
 # Node
 node_modules/
 
