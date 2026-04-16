@@ -310,8 +310,69 @@
 | 受影响文件 | `replication/metadynamics/structures/path_frames/path_fixed.pdb`、`path_gromacs.pdb` 等所有多 MODEL 的 path reference PDB |
 | 错误描述 | PLUMED PATHMSD 读多 MODEL PDB 时，每个 `ENDMDL` 或 `END` 之间的内容被当作一个 reference frame。我们的 path_gromacs.pdb 结构是：`MODEL 1 ... ENDMDL MODEL 2 ... ENDMDL ... MODEL 15 ... ENDMDL END`——最后一个 `END` 被 PATHMSD 当作第 16 帧的开始，然后发现第 16 帧没有 ATOM 行，报错 `ERROR in input to action PATHMSD with label path : number of atoms in a frame should be more than zero`。 |
 | 根因 | PATHMSD 的多 MODEL 解析对 `END` 和 `ENDMDL` 一视同仁，trailing `END` 被误判为第 N+1 帧的 marker |
-| 防范措施 | path reference PDB 必须以 `ENDMDL` 结尾，**不要**有 trailing `END`。修复命令：`sed -i "/^END$/d" path_gromacs.pdb`。`generate_path_cv.py` 的 `write_plumed_path_file` 函数也应该不写 trailing END。 |
-| 已修复 | ✅ 2026-04-09 Longleaf 上手动 sed 删除 trailing END；PATHMSD 驱动测试通过，15 帧全部正确读取。generate_path_cv.py 的修复待做（Runner stage）。 |
+| 防范措施 | path reference PDB 必须以 `ENDMDL` 结尾，**不要**有 trailing `END`。应急修复命令：`sed -i "/^END$/d" path_gromacs.pdb`。`generate_path_cv.py` 的 `write_plumed_path_file` 函数已加三重防护（详见下面"已修复"行）。 |
+| 已修复 | ✅ 2026-04-09 三层修复都完成：**(1) Longleaf 上**手动 `sed -i "/^END$/d" path_gromacs.pdb` 删除 trailing END，PATHMSD 驱动测试通过（15 帧全部正确读取）；**(2) `generate_path_cv.py` 的 `write_plumed_path_file()` 已更新**——docstring 显式注明 FP-023 (L394-399)；writing loop 只输出 `MODEL/ENDMDL` 不追加 `END` (L401-436)；write 之后加了主动 strip 保护 (L438-445)；最终 `assert lines[-1].strip() == "ENDMDL"` (L446-448)——三重防护；**(3) 同步验证**：本地和 Longleaf 的 `path_gromacs.pdb` md5 一致 (`cbc88225f516d11f07b78d312c9cdfdb`)；Job 42679152 (PATHMSD) 2026-04-09 ~17:25 已在 Longleaf c0301 起跑，PATHMSD kernel 加载成功、`path.sss ≈ 1.04`、0 NaN——实地确认 FP-023 不再触发。 |
+
+---
+
+## FP-024: ADAPTIVE=GEOM 下 SIGMA=0.05 让 Gaussian 塌缩成针尖，bias 堆在 s=1 推不出 O basin
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-15 |
+| 发现者 | Claude + Codex + 3 路并行 agent（physics / literature / longleaf forensics）联合诊断，primary-source 验证来自 PLUMED 2.9 官方 METAD 文档 |
+| 受影响文件 | `replication/metadynamics/single_walker/plumed.dat`、`replication/metadynamics/annotated/plumed_annotated.dat`、Longleaf 上 Job 42679152 的 50 ns HILLS/COLVAR（可复用做 baseline 对比但无法用于 FES 重构） |
+| 错误描述 | Job 42679152（2026-04-09 起跑、2026-04-12 正常结束的 50 ns PATHMSD 单 walker）在修复了 FP-020/022/023 之后物理上正常运行：25,000 个 Gaussian 正常沉积，metad.bias 累积到 48 kJ/mol（≈12 kcal/mol），height 按 well-tempered 规律衰减到 ~0。**但 walker 整个 50 ns 卡在 s(R)=1.00-1.63（74.6% 时间在 s=1.0-1.1，0% 时间在 PC 或 C 区域）**。直接后果：SI 要求"initial run 扫过 s=1..15 然后从 trajectory 抽 10 帧做 10-walker 起点"这一步完全失败，整个 10-walker 阶段卡住。|
+| 根因 | PLUMED 2.9 官方 METAD 文档原话："Sigma is one number that has distance units or time step dimensions"（对 ADAPTIVE 模式），即 `SIGMA=0.05` 在 `ADAPTIVE=GEOM` 下表示"Gaussian 应该覆盖 0.05 nm 的 Cartesian 空间"，**是单一标量，不是 CV 单位**。PLUMED 反投影到 s 方向后，实测 sigma_s 从 0.011 长到 0.072（path 轴 1-15 的 0.5-0.7%）；sigma_z 从 0.001 长到 0.003 nm²（针尖）。25,000 个这么窄的 Gaussian 全挤在 s=1.0-1.6，堆成一个深而窄的"尖刺"bias，但 bias 力梯度在 s≈1.6 边界处**不足以匹配真实 FES 的回拉梯度**，walker 每次尝试 s>1.6 都被拉回 s=1，进入振荡死循环。 Osuna SI **只写了"adaptive Gaussian width scheme was used"**（引 Branduardi 2012），从头到尾没给 SIGMA 数值（Agent-B 文献审计确认：2021 ACS Catal follow-up、2024 Faraday Discuss、PLUMED-NEST 全部 defer 到同一个 SI），所以"照 SI"只能照到 HEIGHT/PACE/BIASFACTOR/TEMP/ADAPTIVE=GEOM 这五个明确参数，SIGMA 必须我们自己做 informed choice。 |
+| 正确做法 | 保留 `ADAPTIVE=GEOM`，加 `SIGMA_MIN` 和 `SIGMA_MAX`——PLUMED 2.9 文档原话："the lower bounds for the sigmas (in CV units) when using adaptive hills"——即 SIGMA_MIN/MAX 是 **per-CV，在 CV 单位**的 floor/ceiling。我们的选择：`SIGMA_MIN=0.3,0.005`（s 方向至少覆盖 path 2%，z 方向至少 0.005 nm²）+ `SIGMA_MAX=1.0,0.05`（s 方向最多 path 7%，z 方向最多 0.05 nm²）。同时把 `SIGMA` 从 0.05 nm 调到 0.1 nm（Cartesian 几何种子翻倍）。 |
+| 防范措施 | (1) **任何 ADAPTIVE=GEOM 的 MetaD 输入必须同时写 SIGMA_MIN 和 SIGMA_MAX**，这两个 key 是 per-CV in CV units（与 SIGMA 本身的单位不同）；(2) **新跑 MetaD 前，先跑 5-10 ns 探针**检查 COLVAR 有没有突破起始 basin，不要一上来就跑 50+ ns；(3) **HILLS 文件第一行的 sigma 列是诊断金标准**——如果 sigma 只有 path 轴 1% 或更小，Gaussian 一定不够宽，99% 会卡住；(4) **写 campaign report 时必须注明哪些参数"SI 明示"、哪些"我们选的默认"**，不要笼统写"follow SI"。 |
+| 已修复 | ✅ 2026-04-15 本地 `single_walker/plumed.dat` 和 `annotated/plumed_annotated.dat` 都改到新参数，带 SIGMA_MIN/MAX + FP-024 注释。Longleaf 待部署 + 探针验证。 |
+
+---
+
+## FP-025: Tutorial 里 `[SI p.S3]` 引用的 SIGMA=0.2,0.1 是假的，SI 根本没写
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-15 |
+| 发现者 | Claude（在 FP-024 primary-source 验证过程中顺手 grep 发现仓库里 5 个互相冲突的 SIGMA 数值，其中 tutorial 版本带 SI 引用最可疑） |
+| 受影响文件 | `project-guide/TrpB_Replication_Tutorial_EN.md` L2028 和 L2087-2088；`project-guide/TrpB_Replication_Tutorial_CN.md` L2089 和 L2148, L2241 |
+| 错误描述 | Tutorial 把 `SIGMA=0.2,0.1` 写进 plumed.dat 示例，并在参数解释表注明来源为 `[SI p.S3]`。但我本人用 Zotero MCP + pdf extraction 完整读过 Osuna 2019 SI p.S1-S10，**SI 从头到尾没有任何数值形式的 SIGMA**，只在 p.S3 写了 "The adaptive Gaussian width scheme, in which hills variance adapt to local properties of the free-energy surface, was used"（引 Branduardi 2012）。这个 `[SI p.S3]` 引用是早期写 tutorial 的 AI（大概率 cowork 那轮）凭印象编出来的。| 
+| 根因 | 早期文档阶段没有 primary-source 验证要求，AI 写 tutorial 时把"应该有的数字"当作"SI 有的数字"写进表里。同类型问题比 FP-016（Lambert 60k vs 100k）更隐蔽，因为它藏在看起来很权威的参数表里。 |
+| 下游影响 | 2026-04-04 debug note 也用了 `SIGMA=0.2,0.1`（没有引用，但显然受 tutorial 影响）；当前生产版又独立改回 `SIGMA=0.05`（也没引用）。仓库里总共 5 个冲突的 SIGMA 数值（见 plan file 表格），都没有明确的 primary source。 |
+| 防范措施 | (1) **任何 `[SI p.SX]` 引用必须逐字在原 PDF 里找到匹配段落，不能推断**；(2) **数值参数表的每一行都要有可追溯来源**，来源类型分三种：SI 明示（引用原文页+句）、PLUMED 默认（引官方文档页）、我们选的默认（说明理由）；(3) **Tutorial 和 production 脚本的数值必须 md5 关联同步**，或者 Tutorial 明确标"示例，实际跑用 live 文件"。 |
+| 已修复 | ⚠️ FP-025 本身未修：Tutorial 两个版本的 `[SI p.S3]` 假引用还在，参数表和代码块都还是 `SIGMA=0.2,0.1`。计划：下次 Tutorial 大改时一起清理（非 blocking，不影响当前 production 跑）。 |
+
+---
+
+## FP-026: Checkpoint restart of a completed MetaD run silently loses 10 ns of bias without `convert-tpr -extend` + `RESTART`
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-16 |
+| 发现者 | Codex stop-time adversarial review on branch `feature/probe-extension-50ns` v1 script |
+| 受影响文件 | `.worktrees/probe-extension/replication/metadynamics/single_walker/extend_to_50ns.sh` v1（未部署即被拦） |
+| 错误描述 | 为把 Job 43813633 的 10 ns 探针续跑到 50 ns，v1 脚本用的是 `gmx mdrun -cpi metad.cpt -nsteps 25000000 -plumed plumed.dat`。两个独立 bug 叠加会 silently 把 10 ns 成果清零：(1) `metad.tpr` 的 `nsteps=5,000,000`，`metad.cpt` 停在 step 5,000,000（完成状态），mdrun 读完 checkpoint 就判定"simulation already complete" **先于** `-nsteps` override 生效而退出，实际新增步数为 0。(2) `plumed.dat` 没有 `RESTART` 指令，PLUMED 看到 HILLS 已存在，按 no-restart 语义把旧 HILLS 备份到 `bck.0.HILLS` 然后从头沉积，等于丢掉 10 ns 72 kJ/mol bias。|
+| 根因 | 对 GROMACS + PLUMED restart 协议的经验依赖写代码，没查 primary source 就声称"safe resume"。PLUMED 2.9 RESTART 官方文档原话（plumed.org/doc-v2.9/user-doc/html/_r_e_s_t_a_r_t.html）：**"not all the MD code send to PLUMED information about restarts. If you are not sure, always put RESTART when you are restarting"**。GROMACS 这边 `-cpi` + `-nsteps` 组合在完成状态 tpr 上的边缘行为官方也没明说，社区标准做法是 `gmx convert-tpr -extend <ps>` 先改 tpr。|
+| 正确做法 | 一次续跑拆成两步：(1) `gmx convert-tpr -s metad.tpr -extend 40000 -o metad_ext.tpr` 生成新 tpr；(2) `gmx mdrun -s metad_ext.tpr -cpi metad.cpt -plumed plumed_restart.dat -deffnm metad ...`，其中 `plumed_restart.dat` 第一行是 `RESTART`，后面 byte-identical 到 plumed.dat。sbatch 带 pre-flight 硬 assert（`grep '^RESTART' plumed_restart.dat`）+ post-flight 硬 assert（`wc -l HILLS` 增加、没有 `bck.*.HILLS`）。|
+| 防范措施 | (1) **任何 GROMACS+PLUMED MetaD 续跑**都必须 "convert-tpr -extend → mdrun -cpi with plumed_restart.dat (RESTART 指令)" 两步；(2) 续跑脚本必须有 pre-flight + post-flight 硬 assert；(3) 声称 "safe resume" 之前查两边引擎的 restart 文档；(4) 所有新 sbatch 脚本在部署前 **应该 Codex adversarial review**，不靠经验。|
+| 已修复 | ✅ 2026-04-16 v2 `extend_to_50ns.sh` + `plumed_restart.dat` 已部署到 Longleaf；Job 44008381 PD on hov。|
+
+---
+
+## FP-027: 重新诠释 SI "80" 为 λ（本仓 summary.txt 早已解释为 total SD Å²），导致 3+ 小时错误诊断方向
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-16 |
+| 发现者 | Codex adversarial review（原话："your new 'SI `80` vs our `379.77` differs 4.75x' diagnosis is comparing different quantities, so the core premise is not sound"）；用户当场确认 "lambda 是我们计算出来的"；仓库 `replication/metadynamics/path_cv/summary.txt` line 23-25 自己早写了 "Reported MSD: ~80 Å² (interpreted as total SD) / Our total SD: 67.826 Å² (ratio 0.85x)" |
+| 受影响文件 | 本次 session 内 Claude 的诊断推理（未污染任何 commit 文件）；`.worktrees/alignment-diag/test_alignments.py`（诊断脚本，保留作后续警示，不 merge） |
+| 错误描述 | Claude 在 2026-04-16 下午重读 Osuna 2019 SI page S3 原文 "The λ parameter was computed as 2.3 multiplied by the inverse of the mean square displacement between successive frames, 80"，**把末尾的 "80" 解读为 λ 值**（nm⁻² 单位隐含），推出 SI λ=80 vs 我们 379.77 差 4.75×，据此花 3+ 小时追查 "alignment method 不同" 假设：跨物种 sequence alignment 诊断、4 种 Kabsch alignment 变体对比、写完整诊断脚本。最后被 Codex 打穿：这个 "80" 在项目 `summary.txt` line 23-25 早已注明是 total SD Å²（67.826 vs 80 = 0.85× 近乎匹配），不需要重新诠释。|
+| 根因 | (1) **没有先读仓库里既有注释就自行重新诠释 SI 数值**；(2) **单位/语义不明时凭语法推断代替 primary-source**（SI "80" 无显式单位；summary.txt 已做 judgment call，应 trust 直到有反证）；(3) **用户在 session 早些时候已说过 "单位问题 i 也说过了"**，Claude 没吃进这个 prior。|
+| 正确做法 | (1) **SI 数值在仓库内已有注释的，重新诠释前必须读该注释**并判定"保留原注释"vs"推翻原注释+反证"；(2) **单位/语义歧义时给至少两种读法的数字对照表**，跟用户确认选哪种，不单方面定性；(3) **用户说过的话吃进 prior**，要推翻必须显式说 "I'm pushing back because X"。|
+| 下游影响 | 创建 `.worktrees/alignment-diag/` worktree + branch `diag/path-cv-alignment`（保留警示，不 merge）。没有污染生产。Offline CV audit（Codex 推荐）证明 path CV 物理上正确（1WDW→s=1.09, 3CEP→s=14.91, 4HPX→s=14.91）。|
+| 防范措施 | (1) **SI 数值诠释必须先读仓库既有注释**；(2) **用户确认过的事实 = prior**；(3) **任何"重大诊断方向切换"前跑一次 Codex adversarial review**；(4) 在 `PARAMETER_PROVENANCE.md` 显式记每个 SI 数值的 current interpretation + alternatives + 选理由。|
+| 已修复 | ✅ 2026-04-16 Claude 承认错误、session 内立即停止 alignment 方向、切到 Codex 推荐的 offline CV audit 验证 path CV 物理正确、FP-027 作为永久警示记入。worktree `.worktrees/alignment-diag/` 保留但不 merge。|
 
 ---
 
@@ -333,3 +394,8 @@
 14. **`plumed sum_hills --kt` 单位必须匹配模拟引擎**：GROMACS 用 kJ/mol → `--kt 2.908`；AMBER 用 kcal/mol → `--kt 0.695`。不加 `--kt` 输出的是 bias potential 不是 FES；用错单位 FES 能量缩放错 ×4.184。（FP-021, Codex review 2026-04-07 发现）
 15. **`FUNCPATHMSD` 必须配合 `RMSD ... SQUARED` 使用，且 LAMBDA 用 per-atom MSD 算**：`FUNCPATHMSD` 把 ARG 输入直接喂进 `exp(-λ × d)`，不会内部平方。如果 ARG 是 plain RMSD（nm），那 LAMBDA 单位是 nm⁻¹；如果 ARG 是 SQUARED RMSD = per-atom MSD（nm²），那 LAMBDA 单位是 nm⁻²。**SI 论文里 "λ = 2.3 / MSD" 公式中的 MSD 必须是 per-atom 平均，不是所有原子的 sum**。错用 sum 会让 LAMBDA 小 N_atoms 倍，CV 完全失效。**修改 path CV 必须做 self-consistency test：把每个参考 frame 喂回 CV，frame_i 应该输出 s=i。**（FP-022, Claude+Codex 2026-04-08 发现）
 16. **path CV 任何修改后必须用 PLUMED driver 离线验证一段已有轨迹**：`plumed driver --plumed plumed.dat --mf_xtc some.xtc` 启动时会打印 "Your path cvs look good!" 或类似检查消息。这是发现 path CV bug 的最快方式，比重跑 50 ns MetaD 快 100 倍。验证 COLVAR 输出范围是否物理合理。
+17. **ADAPTIVE=GEOM 的 MetaD 必须同时写 SIGMA_MIN 和 SIGMA_MAX**：SIGMA 本身是 Cartesian nm 单一标量（PLUMED docs 原话: "Sigma is one number that has distance units"），但反投影到 CV 后的 per-CV sigma 可以任意塌缩到 < 1% path 范围。SIGMA_MIN/MAX 是 per-CV in CV units（docs 原话: "in CV units when using adaptive hills"），必须显式给 floor/ceiling。不加的症状：walker 卡在起始 basin 的一个指甲盖大小窗口里，bias 累积到 10+ kcal/mol 也推不动（FP-024, 2026-04-15）。
+18. **新跑 MetaD 前必须先跑 5-10 ns 探针**：HILLS 文件第一行的 sigma 列 + COLVAR 前 2000 行的 s(R) 分布，就能告诉你 Gaussian 宽度合理不合理、walker 有没有从起始 basin 爬出来。不要一上来就投 50-100 ns 长 job 等三天回来才发现卡住（FP-024 教训）。
+19. **`[SI p.SX]` 引用必须逐字在原 PDF 里找到匹配**：数值参数表里任何引用 "SI" 的数字，都必须能指向 PDF 里一段包含该数字或直接推导它的原文。推断、"按理应该是"、"follow SI spirit" 都不算；引用类型分三种：SI 明示、PLUMED/软件默认（附官方文档链接）、我们选的默认（说明理由）。防范 FP-016 / FP-025 类"权威感假引用"。
+20. **GROMACS+PLUMED MetaD 续跑必须两步 + 两重 assert**：(a) `gmx convert-tpr -s X.tpr -extend <ps> -o X_ext.tpr`；(b) `gmx mdrun -s X_ext.tpr -cpi X.cpt -plumed plumed_restart.dat`，其中 plumed_restart.dat 第一行 `RESTART`；pre-flight `grep '^RESTART' plumed_restart.dat` + post-flight `wc -l < HILLS` 增长且无 `bck.*.HILLS` 生成。声称 "safe resume" 之前查两边官方 restart 文档，不靠经验。（FP-026, 2026-04-16, Codex stop-hook 发现）
+21. **SI 数值重新诠释前必须读本仓库对该数值的既有注释**：summary.txt / failure-patterns.md / parameter 表里已经 interpret 过的 SI 数字，重新诠释前必须读注释并判定"保留"或"推翻+反证"，不能单方面换读法然后据此推理。单位/语义不明时给双读对照表跟用户确认。用户确认过的事实作为 prior，要推翻必须显式说。（FP-027, 2026-04-16, Codex adversarial review 发现）
