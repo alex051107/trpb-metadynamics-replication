@@ -33,7 +33,9 @@
 #   start.gro       - 平衡后的坐标（从 AMBER 准备 → 转换到 GROMACS 格式）
 #   topol.top       - 系统拓扑文件（ff14SB + TIP3P + PLP 的 GAFF 参数）
 #   plumed.dat      - PLUMED MetaD 输入文件（见 plumed_annotated.dat 的详细注释）
-#   frames/         - 包含 frame_01.pdb ... frame_15.pdb（Path CV 的 15 个参考结构）
+#   path_gromacs.pdb - Path CV 的 15 个参考帧（multi-model PDB，PATHMSD 读取）
+#                      注：2026-04-09 从 FUNCPATHMSD+frames/ 切回 PATHMSD+单 PDB
+#                      文件末必须是 ENDMDL，不能有 trailing END（FP-023）
 #
 # 输出文件：
 #   metad.tpr       - 便携运行文件（gmx grompp 生成），包含运行所需的一切信息
@@ -152,7 +154,7 @@ cd $SLURM_SUBMIT_DIR
 echo "=== Environment ==="
 echo "PLUMED_KERNEL: $PLUMED_KERNEL"
 echo "OMP_NUM_THREADS: $OMP_NUM_THREADS"
-echo "LAMBDA: 3.3910 nm^-2 (= 0.033910 A^-2 x 100)"
+echo "LAMBDA: 379.77 nm^-2 (PATHMSD per-atom MSD convention, 2026-04-09 pivot)"
 
 # --- GROMACS 预处理（gmx grompp）---
 # grompp = GROmacs PreProcessor

@@ -1,205 +1,361 @@
 # ===========================================================================
 # PLUMED 2.9 输入文件：PfTrpS(Ain) COMM domain 的 well-tempered MetaD 模拟
-# 复刻来源：Romero-Rivera et al., JACS 2019, SI p.S3
+# （带详细中文注释的教学版 — 对应生产文件 plumed.dat，md5 对照 README.md）
+# 复刻来源：Maria-Solano et al., JACS 2019, 141, 13049–13056, SI p.S3
 # ===========================================================================
 #
-# ⚠️ 2026-04-08 重要更新（FP-022）：本文件已根据 path CV LAMBDA 修复更新。
-#   - 每个 RMSD action 加了 `SQUARED` 关键字（输出 per-atom MSD，nm²）
-#   - LAMBDA 从 3.3910 改为 379.77 nm⁻²
-#   - LAMBDA 推导段落（"第 2 步"内）解释了 N_atoms=112 的转换因子
+# ⚠️ 2026-04-09 重要变更（FP-020 重新诊断）：
+#   本文件现在用的是 PATHMSD（SI 原版协议），不再是之前的 FUNCPATHMSD workaround。
 #
-# 旧值 LAMBDA=3.3910 是把 SI 公式 λ=2.3/MSD 中的 MSD 当作"所有原子位移
-# 平方的总和"（67.83 Å²）算出来的；但 PLUMED 的 RMSD action 输出的是
-# per-atom 平均，所以 PLUMED 期望的 MSD 是 0.6056 Å²，对应的 λ 应该是
-# 379.77 nm⁻²。两者差正好 N_atoms = 112 倍。详见：
-#   - replication/validations/2026-04-08_path_cv_lambda_bug.md
-#   - replication/validations/failure-patterns.md (FP-022)
+#   切换背景：
+#     - 2026-04-04 我们第一次试 PATHMSD，在 gmx mdrun 接口下报错
+#     - 当时误诊为 "PATHMSD 不认非连续 atom serial"，切到 FUNCPATHMSD
+#     - 2026-04-08 发现 FUNCPATHMSD 的 LAMBDA convention 有 112× 错误（FP-022），修复
+#     - 2026-04-09 用源码编译版 PLUMED 2.9.2 重新测试 PATHMSD，一次就过
+#       → 真实原因是 conda 版 libplumedKernel.so 模块残缺 + path PDB 尾部多一个 END 行
+#       → PATHMSD 本身从头到尾就能用，FUNCPATHMSD workaround 是不必要的
+#
+#   切回 PATHMSD 的理由：
+#     - 匹配 SI 原版协议（Osuna 用的是 PATHMSD）
+#     - 代码量：1 行 vs 16 行（15 个 RMSD action + 1 个 FUNCPATHMSD）
+#     - 数值稳定：在 46 ns 轨迹上离线重算 0 NaN vs FUNCPATHMSD 的 116 NaN
+#     - 物理合理：z(R) 在 0.004–0.08 nm² vs FUNCPATHMSD 的 1.45–1.92 nm²
+#
+#   历史 bug 完整档案：
+#     - replication/validations/failure-patterns.md (FP-018/020/022/023/024/025)
+#     - replication/validations/2026-04-08_path_cv_lambda_bug.md
+#     - reports/TechWalkthrough_2026-04-09.md §5-§6
+#
+# ⚠️ 2026-04-15 二次更新（FP-024 + FP-025）：
+#   Job 42679152（50 ns PATHMSD，2026-04-12 跑完）walker 全程卡在 s(R)=1.0-1.6。
+#   根因：ADAPTIVE=GEOM 下 SIGMA=0.05 对应 Cartesian 0.05 nm，反投影到 s 方向
+#   得到的 sigma 塌到 0.011-0.072（path 1-15 范围的 0.5%）。25000 个 Gaussian
+#   挤在 s=1 处堆成"细钉"，bias 累到 12 kcal/mol 也爬不出 O basin。
+#   修复：加 SIGMA_MIN=0.3,0.005 + SIGMA_MAX=1.0,0.05（per-CV in CV units，
+#   按 PLUMED 2.9 官方 METAD 文档来）。另外 SIGMA 从 0.05 调到 0.1 nm。
+#   同时追加 FP-025：tutorial 里 "SIGMA=0.2,0.1 [SI p.S3]" 是假引用，
+#   Osuna SI 全文没任何数值 SIGMA。
 # ===========================================================================
 #
 # 概述
 # ----
 # 本文件做三件事：
-#   1. 计算当前构象与 15 个参考帧的 RMSD（均方根偏差）
-#   2. 用这 15 个 RMSD 值计算 Path CV（路径集合变量），得到两个标量：
-#      s(R) = 沿路径的"进度"（在 Open 和 Closed 之间走到哪了）
-#      z(R) = 偏离路径的"距离"（离最近的参考帧有多远）
-#   3. 在 s 和 z 两个方向上施加 well-tempered metadynamics 偏置势，
+#   1. 用 PATHMSD action 一步计算 Path CV，得到两个标量：
+#      path.sss = 沿路径的"进度"（Open→Closed 走到哪了，理论范围 1–15）
+#      path.zzz = 偏离路径的"距离"（离最近参考帧有多远，nm² 单位）
+#   2. 在 path.sss 和 path.zzz 两个方向上施加 well-tempered metadynamics 偏置势，
 #      让蛋白质能跨越自由能垒，从 Open 状态采样到 Closed 状态
+#   3. 每 1 ps 把当前 CV 值 + 累积 bias 写到 COLVAR 文件
 #
 # 输入文件：
-#   frames/frame_01.pdb ... frame_15.pdb
-#     - 15 个参考结构，定义了从 Open（开放态）到 Closed（关闭态）的路径
-#     - 每个 PDB 包含 112 个 Cα 原子（COMM domain 残基 97-184 共 88 个
-#       + base 残基 282-305 共 24 个 = 112 个）
-#     - 坐标单位是 nm（GROMACS 约定，不是 Å；1 nm = 10 Å）
-#     - frame_01 = Open 端点（来自 PDB 1WDW），frame_15 = Closed 端点（来自 PDB 3CEP）
-#     - 中间帧（02-14）通过 Cα 坐标线性插值生成
+#   path_gromacs.pdb
+#     - 一个 multi-model PDB，包含 15 个 MODEL…ENDMDL 块
+#     - 每个 MODEL 定义一个参考帧（从 Open 到 Closed 的路径插值）
+#     - 每帧 112 个 Cα 原子：COMM domain 残基 97-184 共 88 个
+#                            + base 残基 282-305 共 24 个 = 112 个
+#     - 坐标单位 Å（PDB 惯例）；PLUMED 读入后内部自动转成 nm
+#     - frame 01 = Open 端点（来自 1WDW），frame 15 = Closed 端点（来自 3CEP）
+#     - 中间帧 02–14 通过 Cα 坐标线性插值生成（generate_path_cv.py）
+#     - ⚠️ 文件末尾必须是 ENDMDL，不能有 trailing `END`（FP-023）
+#       否则 PATHMSD 会尝试解析第 16 帧然后崩溃
 #
 # 输出文件：
-#   COLVAR  - 每 500 步输出一行（在 dt=0.002 ps 时 = 每 1 ps 一行）
-#             包含三列：path.s（路径进度）、path.z（路径偏离）、metad.bias（当前偏置势）
-#             典型大小：50 ns 产生约 50000 行，约 50 MB
-#   HILLS   - 每 1000 步记录一个沉积的高斯山丘（每 2 ps 一个）
-#             包含：时间、s 值、z 值、sigma_s、sigma_z、高度、biasfactor
-#             典型大小：50 ns 产生约 25000 行，约 5 MB
-#             后续用 plumed sum_hills 命令可以从这个文件重建自由能面（FES）
+#   COLVAR  - 每 500 步输出一行（dt=0.002 ps × 500 = 每 1 ps 一行）
+#             列：time / path.sss / path.zzz / metad.bias
+#             典型大小：50 ns 产生约 50000 行，~2 MB
+#             用途：画 CV 时间序列、看有没有跨 basin
+#   HILLS   - 每 1000 步（每 2 ps）记录一个 deposit 的 Gaussian hill
+#             列：time / path.sss / path.zzz / sigma_s / sigma_z / height / biasfactor
+#             典型大小：50 ns 产生约 25000 行，~4 MB
+#             用途：后续用 `plumed sum_hills` 从这个文件重建 FES
+#
+# 运行环境（重要）：
+#   必须用源码编译版 PLUMED 2.9.2，不能用 conda-forge 版（FP-020）
+#   在 submit.sh 里通过 PLUMED_KERNEL 环境变量指定：
+#     export PLUMED_KERNEL=/work/users/l/i/liualex/plumed-2.9.2/lib/libplumedKernel.so
 #
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
-# 第 1 步：计算当前构象与 15 个参考帧的 RMSD
+# 第 1 步：用 PATHMSD 一步计算 Path CV (s, z)
 # ---------------------------------------------------------------------------
-# 每个 r_i = RMSD(当前结构, frame_i)，计算前会做最优叠合（去除平动和转动）
+# 底层公式（Branduardi, Gervasio, Parrinello. J. Chem. Phys. 126, 054103, 2007）：
 #
-# TYPE=OPTIMAL 表示使用 Kearsley 四元数算法做最优旋转叠合
-#   - 为什么选 OPTIMAL？因为它是数值最稳定的 RMSD 叠合方法
-#   - 如果改成 SIMPLE（不叠合），RMSD 会因为刚体运动而虚高，完全没有物理意义
+#                  Σᵢ i · exp(-λ · MSDᵢ)
+#   path.sss(R) = ————————————————————————      (沿路径的进度，1 到 15)
+#                    Σᵢ exp(-λ · MSDᵢ)
 #
-# RMSD 只在参考 PDB 中出现的原子上计算（即 112 个 Cα 原子）
-# 为什么只用 Cα？因为 COMM domain 的构象变化主要是骨架运动，
-# 侧链的热涨落太大会淹没信号。用 Cα 捕捉 backbone 的集体运动。
+#                       1
+#   path.zzz(R) = - ———  · log( Σᵢ exp(-λ · MSDᵢ) )   (离路径的距离，nm²)
+#                       λ
+#
+# 其中 MSDᵢ 是当前构象和参考帧 i 之间的 per-atom mean squared displacement
+# （先做 Kabsch 最优叠合去掉刚体平动和转动，再算 (1/N)·Σ|Δrⱼ|²）
+#
+# 和 FUNCPATHMSD 的区别：
+#   PATHMSD 把上面这整个公式封装成一个 action——你只要给它一个 multi-model
+#   PDB 和一个 LAMBDA，它自己算 15 个 MSD、自己套公式、输出 path.sss / path.zzz。
+#   不需要你写 15 个 RMSD action 再拼一个 FUNCPATHMSD。
+#
+# 输出字段命名（PATHMSD 固定约定，改不了）：
+#   path.sss — 对应公式里的 s(R)，进度
+#   path.zzz — 对应公式里的 z(R)，距离
+#   注意：FUNCPATHMSD 输出的是 path.s / path.z（两个字母），两者不兼容！
+#   如果你从 FUNCPATHMSD 切 PATHMSD 忘了改 METAD 的 ARG，会报错。
+#
+# LAMBDA 参数的推导：
+#   PLUMED 文档和 plumed-users mailing list 都推荐让相邻参考帧的 kernel weight
+#   大约等于 exp(-2.3) ≈ 0.10（既能区分相邻帧，又让过渡平滑）：
+#
+#     exp(-λ · ⟨MSD_adjacent⟩) ≈ 0.10
+#   ⟺  λ = 2.3 / ⟨MSD_adjacent⟩
+#
+#   ⟨MSD_adjacent⟩ 是相邻两帧之间的 per-atom MSD，用 generate_path_cv.py 的
+#   calculate_msd() 算出来是：
+#
+#     ⟨MSD_adjacent⟩ = 0.6056 Å² = 0.006056 nm²
+#     → λ = 2.3 / 0.006056 = 379.77 nm⁻²
+#
+#   ⚠️ 必须用 per-atom MSD（即 np.mean(Σ|Δr|²)），不能用 total SD
+#   （即 np.sum(Σ|Δr|²)）。两者差一个因子 N_atoms = 112：
+#     - 用 total SD：λ = 2.3 / 0.67834 = 3.391 nm⁻²（坏的，上周 FP-022）
+#     - 用 per-atom MSD：λ = 379.77 nm⁻²（正确，今天这版）
+#   详见 failure-patterns.md FP-022。
+#
+# REFERENCE 文件的要求：
+#   - 必须是 multi-model PDB（多个 MODEL/ENDMDL 块）
+#   - 每个 MODEL 里的原子数必须完全一致（我们这里都是 112）
+#   - 原子 serial 不必连续（FP-020 原误诊已纠正；PATHMSD 本来就支持）
+#   - 文件尾必须是 ENDMDL，不能有 trailing END（FP-023）
+#   - 坐标可以是 Å（PDB 惯例），PLUMED 读入时自动转 nm
+#
+# ─── LAMBDA = 379.77 nm^-2 ─────────────────────────────────
+# Source: SI-derived (SI p.S3 给公式 "λ = 2.3 / <MSD_adj>"，但没直接
+#         给数值；我们本地算 <MSD_adj> per-atom = 0.006056 nm² 代入。
+#         见 replication/metadynamics/path_cv/summary.txt:23-25 和
+#         replication/parameters/PARAMETER_PROVENANCE.md LAMBDA 行）
+# ⚠️ FP-027 警告: SI p.S3 句尾的 "80" 是 total SD 单位 Å²，**不是** λ。
+#    曾经误读成 λ=80 nm⁻² 花 3+ 小时错方向诊断，详见 failure-patterns.md FP-027
+# 含义: path CV 权重函数 exp(-λ·MSD_i) 的衰减系数；决定"邻帧贡献强度"
+# 调大 2× → 759.54: 相邻帧权重 exp(-4.6)=0.010，walker 几乎只看最近
+#   一帧 → s(R) 变成阶跃函数，帧间梯度 ≈ 0 → 力传不到原子 → 卡帧
+# 调小 2× → 189.89: 权重 exp(-1.15)=0.317，邻帧贡献太多 → s(R) 被平
+#   滑模糊 → FES 沿 path 丢分辨率 (Branduardi 2007 Figure 2 对比示意)
+# 推荐区间: 2.3/MSD_adj 附近 ±50% (PLUMED-NEST best practice)
+# ───────────────────────────────────────────────────────────
+path: PATHMSD REFERENCE=path_gromacs.pdb LAMBDA=379.77
 
-r1: RMSD REFERENCE=frames/frame_01.pdb TYPE=OPTIMAL SQUARED   # 第 1 帧：Open 端点（来自 1WDW 晶体结构）
-r2: RMSD REFERENCE=frames/frame_02.pdb TYPE=OPTIMAL SQUARED   # 第 2 帧：插值结构（1→15 之间的第 2 个点）
-r3: RMSD REFERENCE=frames/frame_03.pdb TYPE=OPTIMAL SQUARED   # 第 3 帧：插值结构
-r4: RMSD REFERENCE=frames/frame_04.pdb TYPE=OPTIMAL SQUARED   # 第 4 帧：插值结构
-r5: RMSD REFERENCE=frames/frame_05.pdb TYPE=OPTIMAL SQUARED   # 第 5 帧：插值结构
-r6: RMSD REFERENCE=frames/frame_06.pdb TYPE=OPTIMAL SQUARED   # 第 6 帧：插值结构
-r7: RMSD REFERENCE=frames/frame_07.pdb TYPE=OPTIMAL SQUARED   # 第 7 帧：插值结构
-r8: RMSD REFERENCE=frames/frame_08.pdb TYPE=OPTIMAL SQUARED   # 第 8 帧：插值结构（大约是路径中点）
-r9: RMSD REFERENCE=frames/frame_09.pdb TYPE=OPTIMAL SQUARED   # 第 9 帧：插值结构
-r10: RMSD REFERENCE=frames/frame_10.pdb TYPE=OPTIMAL SQUARED  # 第 10 帧：插值结构
-r11: RMSD REFERENCE=frames/frame_11.pdb TYPE=OPTIMAL SQUARED  # 第 11 帧：插值结构
-r12: RMSD REFERENCE=frames/frame_12.pdb TYPE=OPTIMAL SQUARED  # 第 12 帧：插值结构
-r13: RMSD REFERENCE=frames/frame_13.pdb TYPE=OPTIMAL SQUARED  # 第 13 帧：插值结构
-r14: RMSD REFERENCE=frames/frame_14.pdb TYPE=OPTIMAL SQUARED  # 第 14 帧：插值结构
-r15: RMSD REFERENCE=frames/frame_15.pdb TYPE=OPTIMAL SQUARED  # 第 15 帧：Closed 端点（来自 3CEP 晶体结构）
-
-# ---------------------------------------------------------------------------
-# 第 2 步：用 FUNCPATHMSD 计算路径集合变量（Path CV）
-# ---------------------------------------------------------------------------
-#
-# 关于 FUNCPATHMSD 和 PATHMSD 的关系：
-#   - PATHMSD 是早期 PLUMED（1.x 和 2.x 早期版本）的"一体式"关键字：
-#     它同时读取参考帧、计算 RMSD、计算路径函数，全在一个 action 里
-#   - FUNCPATHMSD 是 PLUMED 2.x 推荐的"分步式"写法：
-#     先用 RMSD 单独计算每帧的 RMSD（第 1 步），
-#     再用 FUNCPATHMSD 把这些 RMSD 值组合成 s 和 z
-#   - 两者在数学上完全等价，公式一模一样，只是代码组织方式不同
-#   - FUNCPATHMSD 更灵活（可以换 RMSD 类型、加权等），也更容易调试
-#   - 原文 SI 用的是 PATHMSD（因为用的 PLUMED 2.3），我们用 FUNCPATHMSD
-#     是因为 PLUMED 2.9 推荐这种写法，结果完全一样
-#
-# 路径函数的数学定义：
-#   s(R) = 路径进度 = (1/(N-1)) * Σ_i [(i-1) * exp(-λ * r_i²)]
-#                                     / Σ_i [exp(-λ * r_i²)]
-#     范围：约 1（Open）到约 15（Closed）
-#     物理含义：当前构象最接近哪一帧？s=1 表示接近 Open，s=15 表示接近 Closed
-#
-#   z(R) = 路径偏离 = -(1/λ) * ln(Σ_i [exp(-λ * r_i²)])
-#     物理含义：当前构象离最近的参考帧有多远？z 越小说明越贴近已知路径，
-#     z 很大说明跑到了路径外面（可能探索到了新的构象）
-#
-# LAMBDA 的推导过程（单位转换是关键！）：
-#   原文 SI（Romero-Rivera 2019）给出公式：λ = 2.3 / <d²>
-#   其中 <d²> 是相邻帧之间 MSD（均方位移）的平均值
-#
-#   原文用 80 帧：λ_SI = 2.3/80 = 0.02875 Å⁻²（注意这里 SI 的单位是 Å）
-#   我们用 15 帧，计算得到 <d²> = 67.8 Å²
-#   所以 λ_ours = 2.3 / 67.8 = 0.033910 Å⁻²
-#
-#   单位转换到 GROMACS 的 nm：
-#     因为 1 nm = 10 Å，所以 1 nm² = 100 Å²
-#     λ 的单位是 [长度]⁻²，从 Å⁻² 转到 nm⁻² 要乘以 100
-#     0.033910 Å⁻² × 100 = 3.3910 nm⁻²
-#
-#   如果 LAMBDA 调大：帧之间的区分度更高，s 和 z 更"尖锐"，
-#     但太大会导致只"看到"最近的帧，丢失路径的连续性
-#   如果 LAMBDA 调小：帧之间的区分度降低，s 和 z 更平滑，
-#     但太小会导致多帧贡献混在一起，s 失去方向性
-#   经验法则：λ × <d²> ≈ 2.3 是最优选择（Branduardi et al. 2007 的建议）
-
-path: FUNCPATHMSD ARG=r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15 LAMBDA=379.77
 
 # ---------------------------------------------------------------------------
-# 第 3 步：在 s(R) 和 z(R) 上施加 well-tempered MetaD 偏置
+# 第 2 步：在 (path.sss, path.zzz) 上施加 well-tempered metadynamics bias
 # ---------------------------------------------------------------------------
+# Well-tempered MetaD 是 Barducci, Bussi, Parrinello. PRL 100, 020603, 2008
+# 提出的改进版 MetaD。和原版相比：
+#   - 原版：每个 Gaussian hill 的高度恒定，bias 会无限累积，不收敛
+#   - WT 版：hill 高度随已有 bias 衰减，guarantees 最终 bias 收敛
+#            V(s,t) → -(1 - 1/γ) · F(s)，其中 γ = (T + ΔT) / T = BIASFACTOR
 #
-# ARG=path.s,path.z  - 同时在进度（s）和偏离（z）两个方向上加偏置 [SI p.S3]
-#   为什么要偏置 z？如果只偏置 s，系统只能沿已知路径走。加上 z 的偏置，
-#   系统还可以探索路径"旁边"的构象空间，发现可能的替代路径
+# ARG=path.sss,path.zzz
+#   bias 施加在这两个 CV 上。二维 MetaD 意味着 Gaussian hill 是一个椭圆，
+#   σ_s 控制 s 方向的宽度，σ_z 控制 z 方向的宽度。
+#   ⚠️ 注意这里用的是 path.sss / path.zzz（PATHMSD 的命名），
+#   不是 path.s / path.z（FUNCPATHMSD 的命名）。
 #
-# SIGMA=0.05          - 初始种子值（nm），仅在最初几步使用
-#   ADAPTIVE=GEOM 模式下，此值很快被自适应算法覆盖。
-#   自适应算法根据局部 CV 波动自动调整高斯宽度：
-#   采样密集处用窄山丘（精细分辨率），稀疏处用宽山丘（快速覆盖新区域）。
-#   [SI p.S3: "adaptive Gaussian width scheme"]
+# ADAPTIVE=GEOM
+#   自适应 sigma 模式之一：按 CV 的几何变化调整 Gaussian 宽度
+#   - GEOM：基于 CV 空间的局部几何（默认）
+#   - DIFF：基于 CV 的时间涨落
+#   SI 用的是 GEOM。作用是让 bias 在 CV 变化快的区域用窄 hill、慢的区域用宽 hill。
 #
-# ADAPTIVE=GEOM       - 几何自适应高斯宽度 [SI p.S3]
-#   山丘的 sigma 不再固定，而是根据当前位置的 CV 局部波动自动调节。
-#   这避免了需要预先跑经典 MD 来校准 SIGMA 的步骤。
-#   如果 SIGMA 调大：山丘更宽，填充自由能面更快，但分辨率降低，
-#     细小的能量阱可能被抹平
-#   如果 SIGMA 调小：分辨率更高，但收敛慢得多，可能需要几倍的模拟时间
+# FILE=HILLS
+#   每个 hill 的参数写到这里。后续用 `plumed sum_hills` 从这个文件重建 FES。
+#   ⚠️ 这个文件和 COLVAR 不一样：HILLS 只记录 bias deposit 事件，
+#   不记录每一帧的 CV 值。
 #
-# HEIGHT=0.628        - 初始高斯山丘高度，单位 kJ/mol [SI p.S3]
-#   来源：SI 报告 0.15 kcal/mol，转换为 GROMACS 单位：
-#   0.15 kcal/mol × 4.184 kJ/kcal = 0.6276 kJ/mol，四舍五入为 0.628 kJ/mol
-#   这是一个比较保守的高度（约 0.25 kT 在 350 K），确保不会过度偏置
+# 下面给 10 个数值参数按 {Source + 含义 + 调大 2×/调小 2× 影响 + 推荐区间}
+# 的教学块分别解释。这是 PI / reviewer 审查"参数来源是否可信 + 变大变小
+# 会影响什么"时的主要参考资料。所有 Source 标签语义见
+# replication/parameters/PARAMETER_PROVENANCE.md 顶部的 Source legend。
 #
-#   如果 HEIGHT 调大：偏置势积累更快，能更快翻越能垒，
-#     但可能导致自由能面不准确（"过度推动"）
-#   如果 HEIGHT 调小：更精确但收敛更慢，可能在合理时间内无法翻越高能垒
+# ─── SIGMA = 0.1 (nm) ──────────────────────────────────────
+# Source: Our-choice (SI silent on numerical SIGMA)
+# 历史: Pre-2026-04-15 = 0.05 (PLUMED default-ish, no floor) → FP-024 崩塌
+#       → 现在 0.1 + 强制下限 SIGMA_MIN=0.3,0.005。
+#       另有 FP-025：早期 tutorial 写过 "SIGMA=0.2,0.1 [SI p.S3]"，是假引用，
+#       Osuna SI p.S1-S10 全文没有任何数值 SIGMA（只写"adaptive Gaussian
+#       width scheme was used"，引 Branduardi 2012）。
+# 含义: Gaussian hill 的 **Cartesian 几何种子**，单一标量，单位 nm。
+#       ADAPTIVE=GEOM 下 PLUMED 把它反投影到 s 和 z 方向，得到两个
+#       per-CV 的 sigma（再被 SIGMA_MIN/MAX clip）。
+# 调大 2× → 0.2 nm: 反投影后 per-CV sigma 翻倍 → Gaussian 更胖
+#   → 好处: walker 在起始 basin 迅速被填平 → 更快出 O basin
+#   → 代价: FES 分辨率下降，相邻 basin 可能被糊成一个
+# 调小 2× → 0.05 nm: 回到 FP-024 的灾难场景；sigma_s 反投影后塌到 0.011
+#   → 25000 个针尖 hill 全挤在 s=1.0-1.6，bias 累到 12 kcal/mol
+#   也推不出 O basin（Job 42679152 实测）
+# 推荐区间: 0.08-0.15 nm，且必须同时写 SIGMA_MIN/MAX（FP-024 教训）
+# ───────────────────────────────────────────────────────────
 #
-# PACE=1000           - 每 1000 个 MD 步沉积一个高斯山丘 [SI p.S3]
-#   在 dt=0.002 ps 时，PACE=1000 意味着每 2 ps 加一个山丘
-#   这个频率足够让系统在两次沉积之间"感受"到新山丘并做出响应
+# ─── SIGMA_MIN[0] = 0.3 (s 方向, CV 单位) ──────────────────
+# Source: Our-choice (SI silent; PLUMED 2.9 METAD docs 强制 ADAPTIVE 模式下
+#         必须给 floor 才能防塌缩)
+# 含义: Gaussian 在 path 进度 s 方向的**最小宽度下限**，CV 单位（path 轴 1-15）。
+#       反投影得到的 sigma_s 若小于此值，PLUMED clip 回 0.3。
+# 调大 2× → 0.6: Gaussian 至少覆盖 path 的 4% → 填坑更快但分辨率降
+#   → 相邻参考帧的细结构可能糊掉，s=8 (PC) 和 s=9 可能合并
+# 调小 2× → 0.15: 接近崩塌阈值；若 ADAPTIVE 再压一压 sigma_s 就回到 FP-024
+#   → walker 有再次卡在起始 basin 的风险
+# 推荐区间: path 轴长的 1-5% (我们 path 长 14，对应 0.14-0.7)
+# ───────────────────────────────────────────────────────────
 #
-#   如果 PACE 调大（如 5000）：山丘密度降低，偏置势更平滑，但收敛更慢
-#   如果 PACE 调小（如 200）：山丘密度增大，可能导致"堆积"效应，
-#     系统还没来得及响应就被推走了
+# ─── SIGMA_MIN[1] = 0.005 (z 方向, nm²) ────────────────────
+# Source: Our-choice (SI silent; 基于 Job 42679152 实测 z 范围 0.002-0.13 nm²)
+# 含义: Gaussian 在 path 偏离 z 方向的**最小宽度下限**，单位 nm² (MSD 单位)。
+# 调大 2× → 0.01: z 向 Gaussian 最窄也有 0.01 nm² → 偏离路径方向填得快
+#   → 代价: walker 在"离路径很远"的非物理区域也被推 (z>0.1 的空域乱填)
+# 调小 2× → 0.0025: 接近 Job 42679152 实测 sigma_z 下限 0.001
+#   → z 向 Gaussian 太细 → FES 在 z 方向噪声大
+# 推荐区间: 系统实测 z 范围下 10-30 分位值 (我们 0.002-0.13 → 0.005 合理)
+# ───────────────────────────────────────────────────────────
 #
-# BIASFACTOR=10       - well-tempering 因子 γ (gamma) [SI p.S3]
-#   有效温度 = T × γ = 350 K × 10 = 3500 K
-#   物理含义：随着某个位置被反复访问，山丘高度会衰减：
-#   h(t) = h₀ × exp(-V(s,t) / (kT × (γ-1)))
-#   γ=10 意味着当偏置势 V 达到 kT×9 ≈ 26 kJ/mol 时，新山丘只有初始高度的 1/e ≈ 37%
-#   这就是"well-tempered"的含义：不会无限堆积，最终收敛到真实自由能面
+# ─── SIGMA_MAX[0] = 1.0 (s 方向, CV 单位) ──────────────────
+# Source: Our-choice (SI silent)
+# 含义: Gaussian 在 path 进度 s 方向的**最大宽度上限**，CV 单位。
+#       反投影得到的 sigma_s 若大于此值，PLUMED clip 回 1.0。
+# 调大 2× → 2.0: Gaussian 可覆盖 path 的 14% → 邻 basin 被糊在一起
+#   → FES 分辨率差，O/PC/C 三态分不清
+# 调小 2× → 0.5: Gaussian 最宽只能 0.5 (3% of path)
+#   → 在平坦 FES 区域（CV 变化慢）填坑速度慢，收敛时间变长
+# 推荐区间: path 轴的 5-15% (我们 path 长 14 → 0.7-2.1)
+# ───────────────────────────────────────────────────────────
 #
-#   如果 BIASFACTOR 调大（如 50）：衰减更慢，相当于更"暴力"的采样，
-#     可以翻越更高的能垒，但收敛更慢
-#   如果 BIASFACTOR 调小（如 5）：衰减更快，更快收敛但可能被困在局部最小值
-#   经验法则：BIASFACTOR = 5-20 适合大多数生物分子体系
+# ─── SIGMA_MAX[1] = 0.05 (z 方向, nm²) ─────────────────────
+# Source: Our-choice (SI silent; 基于 Job 42679152 z 分布上半部)
+# 含义: Gaussian 在 z 方向的**最大宽度上限**，单位 nm²。
+# 调大 2× → 0.1: z 方向 Gaussian 可以很胖 → z=0 物理路径附近的
+#   细结构被糊掉 → 分不清 "on-path" 和 "off-path" 构象
+# 调小 2× → 0.025: z 向 Gaussian 最宽只能 0.025
+#   → 偏离路径的区域填坑慢，walker 在 z 方向卡住概率上升
+# 推荐区间: 系统实测 z 范围的 30-50 分位值 (我们 0.002-0.13 → 0.04-0.07)
+# ───────────────────────────────────────────────────────────
 #
-# TEMP=350            - 模拟温度，单位 K [SI p.S3]
-#   来源：PfTrpS 是来自 Pyrococcus furiosus（一种超嗜热古菌）的酶
-#   最适活性温度约 75-80°C（348-353 K），SI 选择 350 K
-#   这个参数必须与 .mdp 文件中的 ref_t 完全一致！不一致会导致 well-tempering 公式出错
+# ─── HEIGHT = 0.628 kJ/mol ─────────────────────────────────
+# Source: SI-quote (SI p.S3 原文 "Initial Gaussian potentials of height
+#         0.15 kcal/mol"，换算: 0.15 × 4.184 = 0.6276 ≈ 0.628 kJ/mol)
+# 含义: 每个 hill 的**初始高度**，单位 kJ/mol。WT-MetaD 下实际高度
+#       随已有 bias 按 exp(-V/(k_B·ΔT)) 衰减，不是最终高度。
+# 调大 2× → 1.256 kJ/mol: bias 积累速度 2×
+#   → 好处: 更快填平 FES basin
+#   → 代价: 过量沉积 → 冲出物理合理区域 (z>>0.1) 概率↑；WT 收敛变慢
+# 调小 2× → 0.314 kJ/mol: bias 积累速度 0.5×
+#   → 好处: 更精细的 FES (适合收敛阶段，SI 也可能后期降 height)
+#   → 代价: 50 ns 可能填不满 basin，walker 仍卡在起始态
+# 推荐区间: 0.1-1.0 kJ/mol (Barducci 2008 WT-MetaD 原文建议 k_B·T 量级)
+# ───────────────────────────────────────────────────────────
 #
-# FILE=HILLS          - 沉积的高斯山丘记录文件
-#   后续分析用：plumed sum_hills --hills HILLS --outfile fes.dat --mintozero
+# ─── PACE = 1000 (steps) ───────────────────────────────────
+# Source: SI-quote (SI p.S3 原文 "hills ... deposited every 2 ps of MD
+#         simulation at 350 K"；dt=2 fs → 2 ps / 2 fs = 1000 steps)
+# 含义: 每隔多少 MD 步沉积一个 Gaussian hill。直接决定 bias 累积的
+#       时间密度 (deposition rate)。
+# 调大 2× → 2000 steps (每 4 ps): deposition rate 0.5×
+#   → 好处: CV 有更多时间在两次 deposit 间松弛 → WT 收敛质量↑
+#   → 代价: 填平同样 basin 需要 2× 真实时间 (50 ns → 100 ns)
+# 调小 2× → 500 steps (每 1 ps): deposition rate 2×
+#   → 代价: CV 来不及松弛 → "nonadiabatic" 污染 → FES 估计有偏
+#   → 不建议偏离 SI 值
+# 推荐区间: SI 明示 1000 steps；偏离必须说明为什么 (例 1-walker 首探可提到
+#   500 来加速初扫)
+# ───────────────────────────────────────────────────────────
+#
+# ─── BIASFACTOR = 10 ───────────────────────────────────────
+# Source: SI-quote (SI p.S3 原文 "well-tempered adaptative bias with a bias
+#         factor of 10")
+# 含义: Well-tempered 温度比 γ = (T+ΔT)/T。CV 空间有效采样温度 = γ·T =
+#       3500 K (原子运动仍是 350 K)。决定 bias 衰减速度和最终 FES 回放系数
+#       F(s) = -γ/(γ-1) · V_bias(s)。
+# 调大 2× → 20: T_eff = 7000 K (CV)
+#   → 好处: 采样能量更高的 barrier，能量阈值 ≈ γ·k_B·T
+#   → 代价: WT 收敛时间 ↑ (deposit 高度衰减更慢)；CV 漂远非物理区
+# 调小 2× → 5: T_eff = 1750 K
+#   → 好处: 更快收敛；bias 更快衰减到 0
+#   → 代价: 采不到 > 5·k_B·T ≈ 3.5 kcal/mol 的 barrier
+#   → 对 TrpB O→C barrier ~5-7 kcal/mol 可能采不全
+# 推荐区间: 5-20 (Barducci 2008 原文区间)；SI 明示 10
+# ───────────────────────────────────────────────────────────
+#
+# ─── TEMP = 350 K ──────────────────────────────────────────
+# Source: SI-quote (SI p.S3 原文 "2 ps of MD simulation at 350 K"；
+#         物理依据: P. furiosus 是 hyperthermophile, 生长温度 75-100°C)
+# 含义: MetaD bias 的物理温度，必须与 metad.mdp 的 ref_t 一致。
+#       影响 WT 公式中 k_B·T 项 (0.628 × 350/300 缩放略有不同)
+#       和 BIASFACTOR 解释。
+# 调大 2× → 700 K: 物理温度上去了，蛋白质可能已经 unfold → 整个模拟失效
+# 调小 2× → 175 K: 低于水的冰点，TIP3P 在此温度下非物理
+# 这个参数**不应该乱调**：必须匹配实验温度或生理温度。
+# 推荐区间: SI 明示 350 K；如果是 E.coli-native 蛋白会用 300 K 或 310 K
+# ───────────────────────────────────────────────────────────
 
-metad: METAD ARG=path.s,path.z SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
+metad: METAD ARG=path.sss,path.zzz SIGMA=0.1 ADAPTIVE=GEOM SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05 HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
+
 
 # ---------------------------------------------------------------------------
-# 第 4 步：输出 COLVAR 文件
+# 第 3 步：把 CV 和 bias 实时写到 COLVAR 文件（用于后续 debug 和可视化）
 # ---------------------------------------------------------------------------
-# 每 500 步输出一行数据到 COLVAR 文件
-# 在 dt=0.002 ps 时，STRIDE=500 表示每 1 ps 输出一次
+# PRINT action 把指定的量按固定步长写出。这是 MetaD 运行期间你唯一能
+# "看到系统在做什么" 的方式（HILLS 只有 bias deposit 事件，COLVAR 是
+# 连续时间序列）。
 #
-# 输出内容：
-#   path.s     - 路径进度（~1 到 ~15），用于判断蛋白在 O/PC/C 哪个状态
-#   path.z     - 路径偏离（越小越好，>2 nm 说明可能跑偏了）
-#   metad.bias - 当前累积偏置势（kJ/mol），用于 reweighting 和 FES 重建
+# ARG=path.sss,path.zzz,metad.bias
+#   要写的三个量：
+#   - path.sss：当前的进度值（1..15 范围）
+#   - path.zzz：当前离路径的距离（0..很大）
+#   - metad.bias：当前点的累积 bias 势能（kJ/mol）
 #
-# COLVAR 文件是后续所有分析的基础：
-#   - 画 s vs time 看构象转变轨迹
-#   - 画 s vs z 看采样覆盖的构象空间
-#   - 用 bias 列做 reweighting 计算无偏自由能
+# FILE=COLVAR
+#   输出文件名。PLUMED 会自动加表头 `#! FIELDS time path.sss path.zzz metad.bias`
 #
-# 为什么 STRIDE=500 而不是每步都输出？
-#   每步输出会产生巨大的文件（50 ns = 25,000,000 行 ≈ 几 GB），
-#   而且相邻步的 CV 值几乎相同，没有额外信息。
-#   每 1 ps 输出一次在分辨率和文件大小之间取得平衡。
+# STRIDE=500
+#   每 500 步写一行。dt=0.002 ps × 500 = 每 1 ps 一行
+#   50 ns 总共 50000 行。这个频率足够画时间序列图，也不会让文件太大。
+#
+# 为什么 STRIDE=500 比 HILLS 的 PACE=1000 更频繁？
+#   因为 HILLS 是 bias 沉积事件（不需要那么密），COLVAR 是监测数据
+#   （希望看清楚 CV 的瞬时涨落）。两者的时间分辨率独立。
+#
+# 最快诊断（job 跑起来后）：
+#   python3 -c "
+#   import numpy as np; d=np.loadtxt('COLVAR',comments='#')
+#   s=d[:,1]; print(f'O(s<5): {(s<5).sum()}  PC(5-10): {((s>5)&(s<10)).sum()}  C(s>10): {(s>10).sum()}')
+#   "
 
-PRINT ARG=path.s,path.z,metad.bias FILE=COLVAR STRIDE=500
+PRINT ARG=path.sss,path.zzz,metad.bias FILE=COLVAR STRIDE=500
+
+
+# ===========================================================================
+# 参数来源总表（给 PI review 用）
+# ===========================================================================
+#
+# | 参数       | 值      | 来源                                          |
+# |-----------|---------|-----------------------------------------------|
+# | PATHMSD   | —       | SI p.S3 "path collective variables"           |
+# | LAMBDA    | 379.77  | 本地重算（2.3 / 0.006056 nm²，per-atom MSD 约定） |
+# | SIGMA     | 0.1     | Cartesian 几何种子（SI 未给，2026-04-15 从 0.05 上调）|
+# | SIGMA_MIN | 0.3,0.005 | per-CV 下限（s 单位 / nm²），FP-024 修复       |
+# | SIGMA_MAX | 1.0,0.05  | per-CV 上限（s 单位 / nm²），FP-024 修复       |
+# | ADAPTIVE  | GEOM    | SI 明示                                        |
+# | HEIGHT    | 0.628   | SI 0.15 kcal/mol × 4.184                       |
+# | PACE      | 1000    | SI 2 ps × (1/dt)                               |
+# | BIASFACTOR| 10      | SI 明示                                        |
+# | TEMP      | 350     | SI 明示（嗜热菌 P. furiosus）                   |
+# | STRIDE    | 500     | 操作选择（1 ps 时间分辨率）                     |
+#
+# SI 没有给 PLUMED 输入文件原文，以上所有 "SI 明示" 的值都是从 SI 正文的
+# 数字段落里读出来的；"PLUMED 默认" 和 "操作选择" 的值是我们自己填的，
+# 没有严格 SI 依据但都是合理默认。
+#
+# LAMBDA 的 379.77 是本地从 generate_path_cv.py 算的，**不是** SI 原值
+# （SI 未给 LAMBDA 具体数字）。我们的 path 是 15 帧 linear interpolation
+# in Cα space；如果路径换了，LAMBDA 也要重新算。
+#
+# ===========================================================================

@@ -1,0 +1,50 @@
+{
+  "_comment": "Copy to reports/tools/groupmeeting_<DATE>.data.json and fill in. Each slide type schema is documented in reports/tools/generate_groupmeeting.js header block.",
+  "meta": {
+    "date": "<YYYY-MM-DD>",
+    "author": "Zhenpeng Liu",
+    "meeting_type": "Week <N> TrpB MetaDynamics progress — 1-on-1 with Yu Zhang",
+    "outputFilename": "GroupMeeting_<YYYY-MM-DD>.pptx"
+  },
+  "slides": [
+    {
+      "type": "title",
+      "title": "TrpB MetaDynamics — Week <N> Progress",
+      "subtitle": "<headline: e.g. SIGMA Floor Fix + Path CV Audit>",
+      "meta": "Zhenpeng Liu | <YYYY-MM-DD> | 1-on-1 with Yu Zhang",
+      "footer": "Replicating Maria-Solano et al., JACS 2019"
+    },
+    {
+      "type": "bullets",
+      "title": "Last week recap",
+      "subtitle": "<one-sentence state-at-end-of-last-week>",
+      "bullets": ["…"],
+      "footer": "<continuation ref>"
+    },
+    {
+      "_comment": "Slides 3-9: problem-diagnosis pattern. Add `sources` array on every slide that makes a borderline claim. Use any of the layout types: bullets / bullets+code / code+bullets / table+bullets / dual-box+bullets / two-column.",
+      "type": "bullets+code",
+      "title": "<problem statement>",
+      "bullets": ["…"],
+      "code": "# example…\n",
+      "sources": [
+        "PLUMED 2.9 <topic> docs: https://www.plumed.org/doc-v2.9/…",
+        "<Paper/DOI>: https://doi.org/…"
+      ],
+      "footer": "FP-<NNN>, see replication/validations/failure-patterns.md"
+    },
+    {
+      "type": "two-column",
+      "title": "Process improvements + next steps",
+      "subtitle": "<headline for next week>",
+      "leftColumn": {
+        "heading": "Process",
+        "bullets": ["…"]
+      },
+      "rightColumn": {
+        "heading": "Next steps",
+        "bullets": ["…"]
+      }
+    }
+  ]
+}

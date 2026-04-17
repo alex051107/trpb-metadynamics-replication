@@ -1,0 +1,62 @@
+# multi_walker/plumed_annotated.dat — 教学版（带 Source + sensitivity）
+# =====================================================================
+#
+# 对应的"干净生产版"是 multi_walker/plumed.dat（byte 相同物理内容）。
+# 验证同步: diff <(grep -v '^#' plumed_annotated.dat | grep -v '^$') plumed.dat
+#   → 输出必须为空
+#
+# 本文件的 10 个共享物理参数（LAMBDA / SIGMA / SIGMA_MIN{s,z} /
+# SIGMA_MAX{s,z} / HEIGHT / PACE / BIASFACTOR / TEMP）和 single_walker
+# 完全相同，详细 Source + 调大/调小 sensitivity 见:
+#   replication/metadynamics/annotated/plumed_annotated.dat
+#
+# 本文件只针对 multi-walker 独有的 4 个 WALKERS_* directives 做注释。
+#
+# 10-walker MetaDynamics 协议 — Osuna et al. JACS 2019 SI p.S3–S4 原文:
+#   "multiple-walkers metadynamics simulations with 10 replicas were computed.
+#    Each replica was run for 50–100 ns, giving a total of 500–1000 ns of
+#    simulation time per system."
+
+# ─── WALKERS_N = 10 ──────────────────────────────────────────────────
+# Source: SI-quote (SI p.S3-S4 直接给"10 replicas")
+# 含义: 所有 walker 分享 HILLS 总数; PLUMED 用这个数做 bias 归一化
+# 调大 → 15: 探索更并行但 GPU 资源翻 1.5×; 每 walker 贡献稀释 → 收敛略慢
+# 调小 → 5 : 单 walker bias 累积更快但覆盖度下降 → FES 精度可能不够
+# 不要改: SI 明确写 10, 改了就不是 replicate SI
+
+# ─── WALKERS_ID = __WALKER_ID__ ─────────────────────────────────────
+# Source: Our-choice (sentinel, 由 setup_walkers.sh 在 Phase 2 sed 替换 0..9)
+# 含义: 每个 walker 的身份标识; PLUMED 用它区分自己写的 HILLS.$ID vs 别人写的
+# 替换方案对比:
+#   BAKED-IN (我们用的): setup_walkers.sh sed 成 walker_i/plumed.dat 里的 0..9
+#     → 3 重验证: sed 完检查 sentinel 没了 + pre-flight 再查一遍 + WALKERS_ID=i 存在
+#   SHELL EXPORT (备选): mpirun 前 export WALKER_ID=$i → PLUMED 读
+#     → 不可靠, MPI rank 之间 env 不一定透传, 风险过高弃用
+# 关键 invariant: submit_array.sh 提交前必须确认每个 walker_i/plumed.dat 里
+#   没有 "__WALKER_ID__" 字样, 且含 "WALKERS_ID=i" (i=0..9)
+
+# ─── WALKERS_DIR = ../ ───────────────────────────────────────────────
+# Source: Our-choice (directory 布局决定, PLUMED 官方支持的 pattern)
+# 含义: 共享 HILLS 放在哪; ../ 表示"父目录 = multi_walker/"
+# 为什么这样布局:
+#   - 每 walker 自己 cd 到 walker_i/ 跑, 输出 COLVAR 在自己目录
+#   - HILLS.0..HILLS.9 全写到 parent (multi_walker/HILLS.N)
+#   - walker 互相读对方的 HILLS.N 做 bias summing → 真正的 shared bias
+# 调到 WALKERS_DIR=.: 每 walker 把 HILLS 写自己目录 → 没法共享 → 退化成 10 个独立 walker, 失去 multi-walker 优势
+# 调到 WALKERS_DIR=../shared_hills: 需要先 mkdir 且所有 path 要跟着改, 没必要复杂化
+
+# ─── WALKERS_RSTRIDE = 1000 ──────────────────────────────────────────
+# Source: Our-choice (SI 沉默; PLUMED tutorial 惯例)
+# 含义: 每多少 PLUMED 步同步一次 HILLS
+#   物理换算: 1000 steps × PACE(1000) × dt(2 fs) = 2 ns / 同步 一次
+# 调大 → 5000 (10 ns/同步): walker 间更独立, 探索更广但收敛慢 (HILLS 共享不及时)
+# 调小 → 500 (1 ns/同步): 同步更密, walker 行为更像 "mean field", 可能失去 diversity
+# 推荐区间: 500~2000 (取决于 per-walker 长度; 50 ns/walker 用 1000 平衡好)
+# 二次验证: Phase 2 第一次跑完后, 检查 10 个 walker 的 COLVAR 是否有合理的
+#   diversity (s(R) range 各不相同), 如果重合度 >80% 说明 RSTRIDE 太小; <20% 说明太大
+
+path: PATHMSD REFERENCE=../path_gromacs.pdb LAMBDA=379.77
+
+metad: METAD ARG=path.sss,path.zzz SIGMA=0.1 ADAPTIVE=GEOM SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05 HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=../HILLS WALKERS_N=10 WALKERS_ID=__WALKER_ID__ WALKERS_DIR=../ WALKERS_RSTRIDE=1000
+
+PRINT ARG=path.sss,path.zzz,metad.bias FILE=COLVAR STRIDE=500

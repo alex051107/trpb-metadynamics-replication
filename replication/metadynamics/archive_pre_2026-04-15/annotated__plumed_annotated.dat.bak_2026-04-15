@@ -1,0 +1,237 @@
+# ===========================================================================
+# PLUMED 2.9 输入文件：PfTrpS(Ain) COMM domain 的 well-tempered MetaD 模拟
+# （带详细中文注释的教学版 — 对应生产文件 plumed.dat，md5 对照 README.md）
+# 复刻来源：Maria-Solano et al., JACS 2019, 141, 13049–13056, SI p.S3
+# ===========================================================================
+#
+# ⚠️ 2026-04-09 重要变更（FP-020 重新诊断）：
+#   本文件现在用的是 PATHMSD（SI 原版协议），不再是之前的 FUNCPATHMSD workaround。
+#
+#   切换背景：
+#     - 2026-04-04 我们第一次试 PATHMSD，在 gmx mdrun 接口下报错
+#     - 当时误诊为 "PATHMSD 不认非连续 atom serial"，切到 FUNCPATHMSD
+#     - 2026-04-08 发现 FUNCPATHMSD 的 LAMBDA convention 有 112× 错误（FP-022），修复
+#     - 2026-04-09 用源码编译版 PLUMED 2.9.2 重新测试 PATHMSD，一次就过
+#       → 真实原因是 conda 版 libplumedKernel.so 模块残缺 + path PDB 尾部多一个 END 行
+#       → PATHMSD 本身从头到尾就能用，FUNCPATHMSD workaround 是不必要的
+#
+#   切回 PATHMSD 的理由：
+#     - 匹配 SI 原版协议（Osuna 用的是 PATHMSD）
+#     - 代码量：1 行 vs 16 行（15 个 RMSD action + 1 个 FUNCPATHMSD）
+#     - 数值稳定：在 46 ns 轨迹上离线重算 0 NaN vs FUNCPATHMSD 的 116 NaN
+#     - 物理合理：z(R) 在 0.004–0.08 nm² vs FUNCPATHMSD 的 1.45–1.92 nm²
+#
+#   历史 bug 完整档案：
+#     - replication/validations/failure-patterns.md (FP-018/020/022/023)
+#     - replication/validations/2026-04-08_path_cv_lambda_bug.md
+#     - reports/TechWalkthrough_2026-04-09.md §5-§6
+# ===========================================================================
+#
+# 概述
+# ----
+# 本文件做三件事：
+#   1. 用 PATHMSD action 一步计算 Path CV，得到两个标量：
+#      path.sss = 沿路径的"进度"（Open→Closed 走到哪了，理论范围 1–15）
+#      path.zzz = 偏离路径的"距离"（离最近参考帧有多远，nm² 单位）
+#   2. 在 path.sss 和 path.zzz 两个方向上施加 well-tempered metadynamics 偏置势，
+#      让蛋白质能跨越自由能垒，从 Open 状态采样到 Closed 状态
+#   3. 每 1 ps 把当前 CV 值 + 累积 bias 写到 COLVAR 文件
+#
+# 输入文件：
+#   path_gromacs.pdb
+#     - 一个 multi-model PDB，包含 15 个 MODEL…ENDMDL 块
+#     - 每个 MODEL 定义一个参考帧（从 Open 到 Closed 的路径插值）
+#     - 每帧 112 个 Cα 原子：COMM domain 残基 97-184 共 88 个
+#                            + base 残基 282-305 共 24 个 = 112 个
+#     - 坐标单位 Å（PDB 惯例）；PLUMED 读入后内部自动转成 nm
+#     - frame 01 = Open 端点（来自 1WDW），frame 15 = Closed 端点（来自 3CEP）
+#     - 中间帧 02–14 通过 Cα 坐标线性插值生成（generate_path_cv.py）
+#     - ⚠️ 文件末尾必须是 ENDMDL，不能有 trailing `END`（FP-023）
+#       否则 PATHMSD 会尝试解析第 16 帧然后崩溃
+#
+# 输出文件：
+#   COLVAR  - 每 500 步输出一行（dt=0.002 ps × 500 = 每 1 ps 一行）
+#             列：time / path.sss / path.zzz / metad.bias
+#             典型大小：50 ns 产生约 50000 行，~2 MB
+#             用途：画 CV 时间序列、看有没有跨 basin
+#   HILLS   - 每 1000 步（每 2 ps）记录一个 deposit 的 Gaussian hill
+#             列：time / path.sss / path.zzz / sigma_s / sigma_z / height / biasfactor
+#             典型大小：50 ns 产生约 25000 行，~4 MB
+#             用途：后续用 `plumed sum_hills` 从这个文件重建 FES
+#
+# 运行环境（重要）：
+#   必须用源码编译版 PLUMED 2.9.2，不能用 conda-forge 版（FP-020）
+#   在 submit.sh 里通过 PLUMED_KERNEL 环境变量指定：
+#     export PLUMED_KERNEL=/work/users/l/i/liualex/plumed-2.9.2/lib/libplumedKernel.so
+#
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# 第 1 步：用 PATHMSD 一步计算 Path CV (s, z)
+# ---------------------------------------------------------------------------
+# 底层公式（Branduardi, Gervasio, Parrinello. J. Chem. Phys. 126, 054103, 2007）：
+#
+#                  Σᵢ i · exp(-λ · MSDᵢ)
+#   path.sss(R) = ————————————————————————      (沿路径的进度，1 到 15)
+#                    Σᵢ exp(-λ · MSDᵢ)
+#
+#                       1
+#   path.zzz(R) = - ———  · log( Σᵢ exp(-λ · MSDᵢ) )   (离路径的距离，nm²)
+#                       λ
+#
+# 其中 MSDᵢ 是当前构象和参考帧 i 之间的 per-atom mean squared displacement
+# （先做 Kabsch 最优叠合去掉刚体平动和转动，再算 (1/N)·Σ|Δrⱼ|²）
+#
+# 和 FUNCPATHMSD 的区别：
+#   PATHMSD 把上面这整个公式封装成一个 action——你只要给它一个 multi-model
+#   PDB 和一个 LAMBDA，它自己算 15 个 MSD、自己套公式、输出 path.sss / path.zzz。
+#   不需要你写 15 个 RMSD action 再拼一个 FUNCPATHMSD。
+#
+# 输出字段命名（PATHMSD 固定约定，改不了）：
+#   path.sss — 对应公式里的 s(R)，进度
+#   path.zzz — 对应公式里的 z(R)，距离
+#   注意：FUNCPATHMSD 输出的是 path.s / path.z（两个字母），两者不兼容！
+#   如果你从 FUNCPATHMSD 切 PATHMSD 忘了改 METAD 的 ARG，会报错。
+#
+# LAMBDA 参数的推导：
+#   PLUMED 文档和 plumed-users mailing list 都推荐让相邻参考帧的 kernel weight
+#   大约等于 exp(-2.3) ≈ 0.10（既能区分相邻帧，又让过渡平滑）：
+#
+#     exp(-λ · ⟨MSD_adjacent⟩) ≈ 0.10
+#   ⟺  λ = 2.3 / ⟨MSD_adjacent⟩
+#
+#   ⟨MSD_adjacent⟩ 是相邻两帧之间的 per-atom MSD，用 generate_path_cv.py 的
+#   calculate_msd() 算出来是：
+#
+#     ⟨MSD_adjacent⟩ = 0.6056 Å² = 0.006056 nm²
+#     → λ = 2.3 / 0.006056 = 379.77 nm⁻²
+#
+#   ⚠️ 必须用 per-atom MSD（即 np.mean(Σ|Δr|²)），不能用 total SD
+#   （即 np.sum(Σ|Δr|²)）。两者差一个因子 N_atoms = 112：
+#     - 用 total SD：λ = 2.3 / 0.67834 = 3.391 nm⁻²（坏的，上周 FP-022）
+#     - 用 per-atom MSD：λ = 379.77 nm⁻²（正确，今天这版）
+#   详见 failure-patterns.md FP-022。
+#
+# REFERENCE 文件的要求：
+#   - 必须是 multi-model PDB（多个 MODEL/ENDMDL 块）
+#   - 每个 MODEL 里的原子数必须完全一致（我们这里都是 112）
+#   - 原子 serial 不必连续（FP-020 原误诊已纠正；PATHMSD 本来就支持）
+#   - 文件尾必须是 ENDMDL，不能有 trailing END（FP-023）
+#   - 坐标可以是 Å（PDB 惯例），PLUMED 读入时自动转 nm
+
+path: PATHMSD REFERENCE=path_gromacs.pdb LAMBDA=379.77
+
+
+# ---------------------------------------------------------------------------
+# 第 2 步：在 (path.sss, path.zzz) 上施加 well-tempered metadynamics bias
+# ---------------------------------------------------------------------------
+# Well-tempered MetaD 是 Barducci, Bussi, Parrinello. PRL 100, 020603, 2008
+# 提出的改进版 MetaD。和原版相比：
+#   - 原版：每个 Gaussian hill 的高度恒定，bias 会无限累积，不收敛
+#   - WT 版：hill 高度随已有 bias 衰减，guarantees 最终 bias 收敛
+#            V(s,t) → -(1 - 1/γ) · F(s)，其中 γ = (T + ΔT) / T = BIASFACTOR
+#
+# ARG=path.sss,path.zzz
+#   bias 施加在这两个 CV 上。二维 MetaD 意味着 Gaussian hill 是一个椭圆，
+#   σ_s 控制 s 方向的宽度，σ_z 控制 z 方向的宽度。
+#   ⚠️ 注意这里用的是 path.sss / path.zzz（PATHMSD 的命名），
+#   不是 path.s / path.z（FUNCPATHMSD 的命名）。
+#
+# SIGMA=0.05
+#   初始 Gaussian hill 的宽度种子（两个方向都是 0.05，单位和 CV 一致）
+#   因为下面开了 ADAPTIVE=GEOM，这个值只在第一个 hill 有效，之后 sigma 会
+#   根据 CV 的局部几何自动调整。SI 没有明确给 initial sigma，0.05 是 PLUMED 默认。
+#
+# ADAPTIVE=GEOM
+#   自适应 sigma 模式之一：按 CV 的几何变化调整 Gaussian 宽度
+#   - GEOM：基于 CV 空间的局部几何（默认）
+#   - DIFF：基于 CV 的时间涨落
+#   SI 用的是 GEOM。作用是让 bias 在 CV 变化快的区域用窄 hill、慢的区域用宽 hill。
+#
+# HEIGHT=0.628
+#   每个 hill 的初始高度，单位 kJ/mol
+#   来源：SI 规定 0.15 kcal/mol，换算：0.15 × 4.184 = 0.6276 ≈ 0.628 kJ/mol
+#   这个值在 WT-MetaD 下会随时间衰减，不是最终实际高度。
+#
+# PACE=1000
+#   每多少 MD 步 deposit 一个 hill
+#   dt = 0.002 ps → PACE=1000 → 每 2 ps 一个 hill
+#   SI 规定 2 ps，和我们一致。50 ns 总共约 25000 个 hill。
+#
+# BIASFACTOR=10
+#   Well-tempered 的温度比 γ = (T + ΔT) / T = 10
+#   意味着有效采样温度 T_eff = γ · T = 10 × 350 = 3500 K（CV 空间）
+#   实际物理温度仍然是 350 K（原子运动层面）
+#   SI 规定 10，和我们一致。γ 越大 bias 衰减越慢、探索越强，但收敛越慢。
+#
+# TEMP=350
+#   物理温度，单位 K
+#   必须和 metad.mdp 里的 ref_t 一致（否则 bias 的物理解释会错）
+#   SI 用 350 K（嗜热菌 P. furiosus 的生长温度）
+#
+# FILE=HILLS
+#   每个 hill 的参数写到这里。后续用 `plumed sum_hills` 从这个文件重建 FES。
+#   ⚠️ 这个文件和 COLVAR 不一样：HILLS 只记录 bias deposit 事件，
+#   不记录每一帧的 CV 值。
+
+metad: METAD ARG=path.sss,path.zzz SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
+
+
+# ---------------------------------------------------------------------------
+# 第 3 步：把 CV 和 bias 实时写到 COLVAR 文件（用于后续 debug 和可视化）
+# ---------------------------------------------------------------------------
+# PRINT action 把指定的量按固定步长写出。这是 MetaD 运行期间你唯一能
+# "看到系统在做什么" 的方式（HILLS 只有 bias deposit 事件，COLVAR 是
+# 连续时间序列）。
+#
+# ARG=path.sss,path.zzz,metad.bias
+#   要写的三个量：
+#   - path.sss：当前的进度值（1..15 范围）
+#   - path.zzz：当前离路径的距离（0..很大）
+#   - metad.bias：当前点的累积 bias 势能（kJ/mol）
+#
+# FILE=COLVAR
+#   输出文件名。PLUMED 会自动加表头 `#! FIELDS time path.sss path.zzz metad.bias`
+#
+# STRIDE=500
+#   每 500 步写一行。dt=0.002 ps × 500 = 每 1 ps 一行
+#   50 ns 总共 50000 行。这个频率足够画时间序列图，也不会让文件太大。
+#
+# 为什么 STRIDE=500 比 HILLS 的 PACE=1000 更频繁？
+#   因为 HILLS 是 bias 沉积事件（不需要那么密），COLVAR 是监测数据
+#   （希望看清楚 CV 的瞬时涨落）。两者的时间分辨率独立。
+#
+# 最快诊断（job 跑起来后）：
+#   python3 -c "
+#   import numpy as np; d=np.loadtxt('COLVAR',comments='#')
+#   s=d[:,1]; print(f'O(s<5): {(s<5).sum()}  PC(5-10): {((s>5)&(s<10)).sum()}  C(s>10): {(s>10).sum()}')
+#   "
+
+PRINT ARG=path.sss,path.zzz,metad.bias FILE=COLVAR STRIDE=500
+
+
+# ===========================================================================
+# 参数来源总表（给 PI review 用）
+# ===========================================================================
+#
+# | 参数       | 值      | 来源                                          |
+# |-----------|---------|-----------------------------------------------|
+# | PATHMSD   | —       | SI p.S3 "path collective variables"           |
+# | LAMBDA    | 379.77  | 本地重算（2.3 / 0.006056 nm²，per-atom MSD 约定） |
+# | SIGMA     | 0.05    | PLUMED 默认（SI 未规定 initial sigma）          |
+# | ADAPTIVE  | GEOM    | SI 明示                                        |
+# | HEIGHT    | 0.628   | SI 0.15 kcal/mol × 4.184                       |
+# | PACE      | 1000    | SI 2 ps × (1/dt)                               |
+# | BIASFACTOR| 10      | SI 明示                                        |
+# | TEMP      | 350     | SI 明示（嗜热菌 P. furiosus）                   |
+# | STRIDE    | 500     | 操作选择（1 ps 时间分辨率）                     |
+#
+# SI 没有给 PLUMED 输入文件原文，以上所有 "SI 明示" 的值都是从 SI 正文的
+# 数字段落里读出来的；"PLUMED 默认" 和 "操作选择" 的值是我们自己填的，
+# 没有严格 SI 依据但都是合理默认。
+#
+# LAMBDA 的 379.77 是本地从 generate_path_cv.py 算的，**不是** SI 原值
+# （SI 未给 LAMBDA 具体数字）。我们的 path 是 15 帧 linear interpolation
+# in Cα space；如果路径换了，LAMBDA 也要重新算。
+#
+# ===========================================================================

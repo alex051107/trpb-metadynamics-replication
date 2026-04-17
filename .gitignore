@@ -5,6 +5,10 @@ __pycache__/
 .env
 venv/
 
+# Local scratch files (non-ASCII names break some review tools)
+.local_scratch/
+*.md.bak
+
 # OS
 .DS_Store
 Thumbs.db

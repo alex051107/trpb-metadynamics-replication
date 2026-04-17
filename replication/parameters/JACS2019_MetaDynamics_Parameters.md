@@ -217,10 +217,14 @@
 | Bias factor | 10 | `BIASFACTOR=10` | — | ✅ | S3 |
 | Temperature | 350 K | `TEMP=350` | — | ✅ | S3 |
 | Gaussian width | Adaptive | `ADAPTIVE=GEOM` | — | ✅ | S3 |
-| Initial SIGMA | **未报告** | `SIGMA=0.05` | — | ⚠️ **UNVERIFIED** | — |
+| Initial SIGMA | **未报告** | `SIGMA=0.1` (Cartesian nm) | PLUMED docs: ADAPTIVE=GEOM takes single nm seed | ⚠️ **UNVERIFIED** (SI silent) | — |
+| Sigma floor   | **未报告** | `SIGMA_MIN=0.3,0.005` (s, z in CV units) | FP-024: without floor, adaptive σ_s collapses to <1% path range | ⚠️ **UNVERIFIED** (SI silent) | — |
+| Sigma ceiling | **未报告** | `SIGMA_MAX=1.0,0.05` (s, z in CV units) | FP-024: prevents runaway adaptive in flat regions | ⚠️ **UNVERIFIED** (SI silent) | — |
 | kT (for sum_hills) | — | `--kt 0.695` | k_B × 350 = 0.695 kcal/mol | ✅ (计算值) | — |
 
-> **⚠️ UNVERIFIED**: SI 只说 "adaptive Gaussian width scheme"，没有报告初始 SIGMA 值。0.05 是 PLUMED 2.9 下 ADAPTIVE=GEOM 的可运行初始值。ADAPTIVE 模式会自适应调整，长期不影响结果，但早期 hill 形状可能有差异。
+> **⚠️ UNVERIFIED (Osuna SI silent, see FP-024/025)**: SI 只说 "adaptive Gaussian width scheme"，**整个 SI PDF 没有任何数值 SIGMA**（Agent-B 2026-04-15 文献审计确认：2021 ACS Catal follow-up / 2024 Faraday / PLUMED-NEST 全部 defer 到 2019 SI）。
+>
+> **2026-04-15 更新（FP-024）**：Job 42679152 用 `SIGMA=0.05` 无 floor 跑了 50 ns，walker 全程卡在 s(R)=1.0-1.6（adaptive σ_s 塌到 0.011-0.072，path 轴 <1%）。primary-source 验证（PLUMED 2.9 METAD docs）后确定：ADAPTIVE=GEOM 下 SIGMA 是单一 Cartesian nm，per-CV control 走 SIGMA_MIN/MAX（in CV units）。已改为 `SIGMA=0.1 SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05`，probe Job 43813633 验证中。
 
 ### Multiple-Walker Protocol
 

@@ -87,20 +87,25 @@
       },
       "started_at": "2026-03-31",
       "verified_by": "pipeline_guard",
-      "notes": "Job 41514529 (single-walker MetaD, FUNCPATHMSD broken) rolled over via FP-022 fix. 2026-04-09 follow-up: PATHMSD verified working on source-compiled PLUMED 2.9.2 + plumed driver. FP-020 re-diagnosed (original 'non-sequential serial' claim was wrong — only the conda .so issue was real). plumed.dat switched to PATHMSD (matches SI protocol). Waiting for re-submission of 50 ns initial run with new plumed.dat."
+      "current_job": "44008381",
+      "current_sim_ns": 27.68,
+      "current_max_s": 3.494,
+      "current_job_status_updated": "2026-04-17T15:32:00Z",
+      "timeline_doc": "replication/validations/2026-04-17_single_walker_timeline.md",
+      "notes": "2026-04-17 single-walker extension in progress — Job 44008381 (extend of probe Job 43813633 via gmx convert-tpr -extend 40000 + plumed_restart.dat RESTART) at 25.56 ns, max s=2.794. 5-ns-window max s trend 1.182→1.393→1.455→1.807→2.794 (last window jumped ~1.0 — walker likely crossing a barrier, not plateaued). Decision gate at 50 ns per replication/validations/2026-04-17_single_walker_timeline.md: max s≥5 → Phase 2 (10-walker); max s<3 → Phase 3 (4HPX-seeded dual-walker). Prior eras: Job 42679152 (PATHMSD, SIGMA=0.05 ADAPTIVE=GEOM) completed 2026-04-12 but stuck at s(R)=1.0-1.6 (FP-024 SIGMA collapse, 25000 hills piled at s≈1). Fix 2026-04-15: SIGMA 0.05→0.1, SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05. Probe Job 43813633 (10 ns) reached max s=1.393 with activated-barrier escape signal in final 2 ns; extended to 50 ns as Job 44008381. Archives: archive_FP022_broken_2026-04-09/ (Job 41514529 FUNCPATHMSD 112× LAMBDA bug) + archive_sigma_stuck_2026-04-15/ (Job 42679152 SIGMA too narrow)."
     },
     "4_skeptic": {
-      "status": "partially_unblocked",
+      "status": "blocked",
       "artifact": "replication/validations/2026-04-08_path_cv_lambda_bug.md",
       "verification": {
         "type": "file_exists",
         "path": "replication/validations/2026-04-08_path_cv_lambda_bug.md",
         "nonempty": true
       },
-      "verified_by": "claude+codex+local_numerical_test+longleaf_plumed_driver",
-      "verdict": "FP-022 fix verified. PATHMSD path chosen as the production setup (2026-04-09). Stage 4 still blocked until a fresh 50 ns initial run with PATHMSD plumed.dat produces usable HILLS/COLVAR on Longleaf.",
-      "blocking_issue": "Pending re-submission of initial MetaD run with PATHMSD plumed.dat",
-      "fix_status": "plumed.dat updated; ready for Longleaf re-submission"
+      "verified_by": "claude+codex+3_parallel_agents+plumed_2.9_docs",
+      "verdict": "FP-024 diagnosed 2026-04-15 (SIGMA collapse under ADAPTIVE=GEOM). Probe Job 43813633 (10 ns) reached max s=1.393 with escape signature (s↔z Pearson +0.49 last 2 ns). Now checkpoint-extended as Job 44008381 (10→50 ns), currently at 25.56 ns, max s=2.794 (2026-04-17 12:33). Stage 4 gate waits for 50 ns result or max s≥5 trigger.",
+      "blocking_issue": "Job 44008381 running on hov. Live @ 2026-04-17 15:32: 27.68 ns, max s=3.494 — first crossing of s=3 threshold (1.41% frames s>3). Monotone climb across 6×5ns windows (1.18→1.39→1.46→1.81→2.79→3.49). Now in 3≤s<5 observation band — let 50 ns finish. Phase 2 probability rising.",
+      "fix_status": "plumed.dat (PATHMSD, LAMBDA=379.77, SIGMA=0.1, SIGMA_MIN=0.3/0.005, SIGMA_MAX=1.0/0.05) deployed to Longleaf 2026-04-15 (md5 aca3f0c4..., two-way identical). Checkpoint restart protocol FP-026 verified: HILLS append-only, no bck.*.HILLS. Job 44008381 RUNNING (25.56/50 ns, ETA ~2026-04-19)."
     },
     "5_journalist": {
       "status": "not_started",
@@ -130,8 +135,24 @@
       "re:\\bfes_analysis\\b"
     ]
   },
-  "last_updated": "2026-04-09T01:20:00+00:00",
+  "last_updated": "2026-04-17T15:32:00Z",
   "active_failure_patterns": [
+    {
+      "id": "FP-024",
+      "discovered": "2026-04-15",
+      "title": "SIGMA=0.05 with ADAPTIVE=GEOM traps walker near path s=1 (Gaussian too narrow)",
+      "severity": "critical",
+      "status": "fix deployed, probe Job 43813633 testing",
+      "see_also": "replication/validations/failure-patterns.md (FP-024); plumed.org/doc-v2.9/user-doc/html/_m_e_t_a_d.html"
+    },
+    {
+      "id": "FP-025",
+      "discovered": "2026-04-15",
+      "title": "Tutorial SIGMA=0.2,0.1 [SI p.S3] citation is fabricated — SI has no numerical SIGMA",
+      "severity": "medium",
+      "status": "documented; tutorial cleanup deferred (non-blocking)",
+      "see_also": "replication/validations/failure-patterns.md (FP-025)"
+    },
     {
       "id": "FP-020",
       "discovered": "2026-04-04",
@@ -155,8 +176,24 @@
       "discovered": "2026-04-09",
       "title": "Trailing bare END in path reference PDB triggers empty-frame error in PATHMSD",
       "severity": "low",
-      "status": "resolved — strip trailing END from path_gromacs.pdb; generate_path_cv.py fix pending",
+      "status": "resolved — generate_path_cv.py write_plumed_path_file() now explicitly omits trailing END (docstring references FP-023); on-disk path_gromacs.pdb was sed-trimmed on Longleaf 2026-04-09 01:01 and matches the local copy byte-for-byte (md5 cbc88225)",
       "see_also": "replication/validations/failure-patterns.md (FP-023)"
+    },
+    {
+      "id": "FP-026",
+      "discovered": "2026-04-16",
+      "title": "Checkpoint restart script missed convert-tpr -extend AND RESTART in plumed.dat (HILLS backed up to bck.0.HILLS, bias lost)",
+      "severity": "critical",
+      "status": "resolved — extend_to_50ns.sh v3 uses convert-tpr + plumed_restart.dat with RESTART; runtime-verified HILLS append-only, no bck.*.HILLS",
+      "see_also": "replication/validations/failure-patterns.md (FP-026)"
+    },
+    {
+      "id": "FP-027",
+      "discovered": "2026-04-16",
+      "title": "Misread SI \"80\" as λ (nm⁻²) when summary.txt line 23-25 already interpreted it as total SD Å²; wasted 3h on alignment-diagnostic worktree",
+      "severity": "medium",
+      "status": "resolved (Codex adversarial review caught before merge); rule 21 added to failure-patterns.md + PARAMETER_PROVENANCE.md single-source-of-truth enforced",
+      "see_also": "replication/validations/failure-patterns.md (FP-027); replication/parameters/PARAMETER_PROVENANCE.md"
     }
   ]
 }

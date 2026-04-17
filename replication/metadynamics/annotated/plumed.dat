@@ -1,0 +1,61 @@
+# WT-MetaD PLUMED input for PfTrpS(Ain) — JACS 2019 benchmark reproduction
+#
+# History (see failure-patterns.md for full context):
+#
+#   FP-018 (2026-04-04): Å⁻² → nm⁻² × 100 unit conversion added for LAMBDA
+#
+#   FP-020 (2026-04-04, re-diagnosed 2026-04-09):
+#     Originally attributed PATHMSD failures to "non-sequential atom serials"
+#     (1614, 1621, 1643, ...). Actual root cause was a broken libplumedKernel.so
+#     in the conda-forge PLUMED 2.9.2 build. With source-compiled PLUMED 2.9.2,
+#     PATHMSD handles non-sequential serials correctly.
+#
+#   FP-022 (2026-04-08): FUNCPATHMSD workaround used per-atom-mean RMSD
+#     semantics, so LAMBDA had to be recomputed from per-atom MSD (379.77)
+#     instead of the original total-SD value (3.391). This was a silent
+#     N_atoms = 112× error in the FUNCPATHMSD path. Now moot — we are
+#     switching back to PATHMSD.
+#
+#   FP-023 (2026-04-09): A trailing bare "END" after the last "ENDMDL" in
+#     the multi-model reference PDB makes PATHMSD try to parse an empty
+#     16th frame and abort with "number of atoms in a frame should be more
+#     than zero". The fix is to strip the trailing END so the file ends
+#     with the last "ENDMDL".
+#
+#   FP-024 (2026-04-15): SIGMA=0.05 with ADAPTIVE=GEOM collapsed to adaptive
+#     widths of 0.011–0.072 s-units (≤0.5% of path axis 1-15). Job 42679152
+#     ran 50 ns, deposited 25000 Gaussians and accumulated 48 kJ/mol of bias,
+#     yet walker stayed in s(R)=1.0-1.6 the entire time (100% in O basin).
+#     Root cause (primary-source verified from PLUMED 2.9 METAD docs at
+#     plumed.org/doc-v2.9/user-doc/html/_m_e_t_a_d.html): with ADAPTIVE=GEOM,
+#     SIGMA is a SINGLE Cartesian length in nm, and the adaptive per-CV
+#     widths can shrink arbitrarily without SIGMA_MIN/SIGMA_MAX floors
+#     (which are per-CV in CV units). Fix (2026-04-15): add
+#     SIGMA_MIN=0.3,0.005 and SIGMA_MAX=1.0,0.05. Also SIGMA 0.05 → 0.1 nm
+#     for a larger geometric seed.
+#
+#   FP-025 (2026-04-15): Prior tutorial copy (TrpB_Replication_Tutorial_*.md)
+#     cited "[SI p.S3]" for SIGMA=0.2,0.1 — but the actual Osuna SI PDF p.S3
+#     has NO numerical SIGMA anywhere. Fabricated citation from early AI draft.
+#
+# 2026-04-09 decision: switch BACK to PATHMSD (matches SI protocol exactly).
+#   - Simpler: 1 path CV line vs 17 (15 RMSD + FUNCPATHMSD)
+#   - More stable numerically: 0 NaN vs 116 NaN over 4631 frames
+#   - Physical z(R) range: 0.004–0.08 nm² vs 1.45–1.92 nm² for FUNCPATHMSD
+#   - Matches SI protocol: Osuna 2019 SI says "path collective variables"
+#     with GROMACS 5.1.2 + PLUMED2 — PATHMSD is the dedicated action.
+#
+# LAMBDA = 379.77 nm⁻² from: λ = 2.3 / <rmsd>² × 100 (per-atom, in Å², × 100
+# for GROMACS nm). Formula confirmed from PLUMED docs and PLUMED users forum.
+# For our 15-frame path of 112 Cα atoms, per-atom RMSD_adjacent = 0.778 Å,
+# so λ = 2.3 / 0.6056 Å² × 100 = 379.77 nm⁻².
+#
+# SIGMA_MIN / SIGMA_MAX (2026-04-15 addition, in CV units per PLUMED docs):
+#   sigma_s ∈ [0.3, 1.0]         (path axis is 1-15, so Gaussian spans 2–7%)
+#   sigma_z ∈ [0.005, 0.05] nm²  (z observed range in Job 42679152: 0.002–0.13 nm²)
+
+path: PATHMSD REFERENCE=path_gromacs.pdb LAMBDA=379.77
+
+metad: METAD ARG=path.sss,path.zzz SIGMA=0.1 ADAPTIVE=GEOM SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05 HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
+
+PRINT ARG=path.sss,path.zzz,metad.bias FILE=COLVAR STRIDE=500

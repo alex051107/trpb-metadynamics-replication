@@ -1,0 +1,55 @@
+# PLUMED 2.9 single-walker WT-MetaD template for PfTrpS(Ain) TrpB benchmark
+#
+# ⚠️ DEPRECATED — DO NOT USE (FP-022 2026-04-08, FP-024 2026-04-15)
+#
+# This template predates FP-022 (path CV LAMBDA convention bug). It uses
+# PATHMSD with LAMBDA=3.3910, which is wrong by factor N_atoms = 112.
+# The PATHMSD path also failed for unrelated reasons (FP-020: PATHMSD does
+# not handle non-sequential atom serials in multi-model PDB through mdrun).
+#
+# CORRECT TEMPLATE: see replication/metadynamics/single_walker/plumed.dat
+# (uses FUNCPATHMSD + RMSD ... SQUARED + LAMBDA=379.77)
+#
+# OR: regenerate with replication/metadynamics/path_cv/generate_path_cv.py
+# which now auto-emits a ready-to-use plumed_path_cv.dat snippet.
+#
+# This file is kept only for historical reference. See:
+#   - replication/validations/2026-04-08_path_cv_lambda_bug.md
+#   - replication/validations/failure-patterns.md (FP-022)
+#
+# Original (broken) content below for reference:
+# ----------------------------------------------------------------------------
+
+# This is the pre-production validation input:
+#   1. confirm PATHMSD wiring
+#   2. confirm converted GROMACS atom indices
+#   3. generate initial biased exploration before 10-walker launch
+#
+# Paper-aligned parameters:
+#   - HEIGHT = 0.628 kJ/mol
+#   - PACE = 1000
+#   - BIASFACTOR = 10
+#   - TEMP = 350 K
+#   - adaptive Gaussian widths
+#
+# FP-004 guard:
+#   Every atom index here must be extracted after AMBER->GROMACS conversion from
+#   the final .gro/.tpr, not inferred from the source PDB or AMBER ordering.
+#
+# ⚠️ FP-024: This template shows SIGMA=0.05 without SIGMA_MIN/SIGMA_MAX, which
+# collapsed the adaptive Gaussian to sub-path-1% widths and trapped Job 42679152
+# at s(R)=1.0-1.6 for 50 ns. Correct usage (in the non-deprecated template) is
+# SIGMA=0.1 ADAPTIVE=GEOM SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05. See
+# single_walker/plumed.dat (the live production file) and FP-024.
+
+# ⚠️ FP-022: LAMBDA=3.3910 is WRONG (off by N_atoms=112). Use 379.77 with
+# FUNCPATHMSD + SQUARED. Do NOT copy this line into a new plumed.dat.
+path: PATHMSD REFERENCE=PLACEHOLDER_PENDING_CONVERSION_PATH_REFERENCE_PDB LAMBDA=3.3910  # ⚠️ DEPRECATED, see header
+
+k82_q2: DISTANCE ATOMS=PLACEHOLDER_PENDING_CONVERSION_K82_NZ_Q2_C
+e104_q2: DISTANCE ATOMS=PLACEHOLDER_PENDING_CONVERSION_E104_OE_Q2_C
+
+# FP-019: all METAD parameters on one line (no backslash continuation for GROMACS 2026 compatibility)
+metad: METAD ARG=path.sss,path.zzz SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
+
+PRINT ARG=path.sss,path.zzz,k82_q2,e104_q2,metad.bias FILE=COLVAR STRIDE=500

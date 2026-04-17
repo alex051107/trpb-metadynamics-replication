@@ -21,7 +21,7 @@ cd $SLURM_SUBMIT_DIR
 echo "=== Environment ==="
 echo "PLUMED_KERNEL: $PLUMED_KERNEL"
 echo "OMP_NUM_THREADS: $OMP_NUM_THREADS"
-echo "LAMBDA: 3.3910 nm^-2 (= 0.033910 A^-2 x 100)"
+echo "LAMBDA: 379.77 nm^-2 (PATHMSD per-atom MSD convention, 2026-04-09 pivot)"
 
 gmx grompp -f metad.mdp -c start.gro -p topol.top -o metad.tpr -maxwarn 2
 gmx mdrun -deffnm metad -plumed plumed.dat -ntmpi 1 -ntomp ${OMP_NUM_THREADS}

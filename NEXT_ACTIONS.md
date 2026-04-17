@@ -12,6 +12,21 @@
 
 ---
 
+## Current (2026-04-17)
+
+- Job 44008381 running, 25.56 ns, max s=2.794, ETA 50 ns ~2026-04-19
+- Decision gate triggers at 50 ns or when max s≥5, whichever first
+- Phase 2 (10-walker) ready: scripts in `replication/metadynamics/multi_walker/`
+- Phase 3 (4HPX-seeded dual walker) is fallback if Phase 2 not triggered
+
+## Next 48 hours
+
+1. Monitor Job 44008381 via hourly cron (see `.claude/cron_registry.json` job 7d28254c)
+2. 50 ns completion check: decide Phase 2 vs Phase 3 per gate rules in `replication/validations/2026-04-17_single_walker_timeline.md`
+3. If Phase 2: launch `bash replication/metadynamics/multi_walker/setup_walkers.sh COLVAR traj.xtc`, then PyMOL visual inspection of 10 candidates, then `sbatch submit_array.sh`
+
+---
+
 ## 🔴 Blocked（做不了，等依赖）
 
 _目前无_
@@ -160,48 +175,36 @@ _目前无_
 
 ---
 
-## 🟡 本周待做（2026-04-09 更新：回到 PATHMSD）
+## 🟡 本周待做（2026-04-15 更新：SIGMA floor fix）
 
-> **❌ Job 41514529 失败**：跑了 46.3/50 ns 后 walltime kill，path CV 数学错误（FP-022）。
+> **⚠️ 2026-04-15 最新状态**：Job 42679152（2026-04-12 跑完）50 ns 全程 walker 卡在 s(R)=1.0-1.6（O basin），**SIGMA 太窄导致 Gaussian 塌成针尖**（FP-024）。从 PLUMED 2.9 官方 METAD 文档逐字验证 + 4 agent 并行调查得出修复：加 SIGMA_MIN=0.3,0.005 + SIGMA_MAX=1.0,0.05，SIGMA 0.05→0.1 nm。已部署到 Longleaf，**探针 Job 43813633 (10 ns) PENDING**（分区 hov，walltime 14h）。5 ns 决策点：max s>3 → 扩到 50-100 ns full initial；max s<2 → path CV 本身可能要重建。详见 FP-024/025。
 >
-> **2026-04-08 初修**：FUNCPATHMSD + SQUARED + LAMBDA=379.77（已 merge 到 master）
->
-> **2026-04-09 更优方案**：在 Longleaf 上用源码编译版 PLUMED 2.9.2 测试 PATHMSD，直接工作。
-> FP-020 原诊断（"PATHMSD 不认非连续 serial"）被证伪——那是 conda 版 .so 残缺的问题。
-> 决定**回到 PATHMSD**（匹配 SI 原版协议，更简洁、数值更稳定、z(R) 更物理）。
-> 详见 FP-020 更正 + FP-023（trailing END 陷阱）+ `2026-04-08_path_cv_lambda_bug.md`。
+> **历史脉络**：
+> - ❌ Job 41514529（FUNCPATHMSD）：FP-022 LAMBDA 112× bug
+> - ❌ Job 42679152（PATHMSD + SIGMA=0.05）：FP-024 Gaussian 过窄
+> - ⏳ Job 43813633（PATHMSD + SIGMA_MIN/MAX 修复）：探针中
 
-### Phase A (更新 2026-04-09)：部署 PATHMSD 修复 + 重跑 initial run
+### Phase A (更新 2026-04-09 evening — deployment complete)：部署 PATHMSD 修复 + 重跑 initial run
 
-- [ ] **A1. Commit 当前改动**（PATHMSD plumed.dat、FP-020 更正、FP-023、PIPELINE_STATE、PPT）并 push
-- [ ] **A2. 同步修复后的文件到 Longleaf**
-  ```bash
-  scp replication/metadynamics/single_walker/plumed.dat \
-      longleaf:/work/users/l/i/liualex/AnimaLab/metadynamics/single_walker/
-  # 注意：path_gromacs.pdb 已在 Longleaf 上用 sed 删过 trailing END
-  # 本地路径文件如果要再重建需要跑 generate_path_cv.py（已加 FP-023 safety check）
-  ```
-- [ ] **A3. 备份旧 Job 41514529 数据**
-  ```bash
-  ssh longleaf
-  cd /work/users/l/i/liualex/AnimaLab/metadynamics/single_walker
-  mkdir -p archive_FP022_FUNCPATHMSD_broken && \
-    mv HILLS COLVAR metad.log metad.xtc metad.tpr archive_FP022_FUNCPATHMSD_broken/
-  ```
-- [ ] **A4. 本地驱动确认新 plumed.dat（PATHMSD 版）能跑通**
-  ```bash
-  cd /work/.../single_walker
-  /work/users/l/i/liualex/plumed-2.9.2/bin/plumed driver \
-      --plumed plumed.dat --mf_xtc archive_FP022_FUNCPATHMSD_broken/metad.xtc \
-      --timestep 0.002 --trajectory-stride 5000
-  # 期望：s(R) ≈ 1.0-1.7，z ≈ 0.004-0.08，0 NaN
-  ```
-- [ ] **A5. 重提交 50 ns initial run with PATHMSD plumed.dat**
-  ```bash
-  cd /work/.../single_walker
-  sbatch submit.sh   # submit.sh 无变化，plumed.dat 已改
-  ```
-- [ ] **A6. 等待 ~3 天**
+- [ ] **A1. Commit 当前改动**（PATHMSD plumed.dat、FP-020 更正、FP-023、PIPELINE_STATE、PPT、annotated/ 重写、TechWalkthrough、bilingual script、submit.sh echo 更新）并 push
+  - ⚠️ 仍未完成 — 本地仍有 uncommitted changes 等组会后一起 commit
+- [x] **A2. 同步修复后的文件到 Longleaf** ✅ 2026-04-09
+  - `scp plumed.dat submit.sh longleaf:...single_walker/`
+  - md5 两边一致：plumed.dat=`ba2dbd89...`，submit.sh=`edf6c00e...`
+- [x] **A3. 备份旧 Job 41514529 数据** ✅ 2026-04-09
+  - 归档目录：`single_walker/archive_FP022_broken_2026-04-09/`
+  - 已归档文件：HILLS, COLVAR, metad.{xtc,log,edr,cpt,tpr}, mdout.mdp, PLUMED.OUT, path_fixed.pdb, 所有 #metad* 备份, 所有 bck.*.PLUMED.OUT, 6 个旧 slurm 日志
+- [x] **A4. PLUMED driver 离线验证** ✅ 2026-04-09（其实在部署前就已经做过）
+  - `rerun/plumed_pathmsd_test.dat` + `rerun/COLVAR_pathmsd`
+  - 结果：0 NaN，s(R) ≈ 1.02-1.06，z ≈ 0.02-0.03 nm²
+- [x] **A5. 重提交 50 ns initial run with PATHMSD plumed.dat** ✅ 2026-04-09 ~17:00
+  - **Job 42679152** submitted
+  - 2026-04-09 ~17:25 切到 **RUNNING** 状态（partition=hov，node=c0301）
+  - 起步 CV 健康度验证：PATHMSD kernel loaded，`path.sss ≈ 1.04`（匹配 offline rerun 预测），`metad.bias` 从 0 爬到 ~0.9 kJ/mol（正常累积），COLVAR FIELDS = `time path.sss path.zzz metad.bias`（PATHMSD 特征命名）
+- [ ] **A6. 等待 ~3 天 — IN PROGRESS**
+  - Job 42679152 started 2026-04-09 ~17:25
+  - ETA ~2026-04-12（50 ns × walltime 72 h）
+  - 监控命令：`ssh longleaf "squeue -u liualex -j 42679152 && tail -3 /work/users/l/i/liualex/AnimaLab/metadynamics/single_walker/COLVAR"`
 
 ### Phase B: MetaD 重跑完成后 FES 分析流程（沿用之前的 B1-B7）
 
@@ -209,11 +212,12 @@ _目前无_
 > `cd /work/users/l/i/liualex/AnimaLab/metadynamics/single_walker`
 > `conda activate trpb-md && export PLUMED_KERNEL=/work/users/l/i/liualex/plumed-2.9.2/lib/libplumedKernel.so`
 
-- [ ] **B1. 确认正常完成**
+- [ ] **B1. 确认正常完成**（Job 42679152，ETA ~2026-04-12）
   ```bash
-  squeue -u liualex | grep 41514529       # 应该不在了
+  squeue -u liualex | grep 42679152       # 应该不在了（跑完后才能做 Phase B）
   wc -l HILLS COLVAR                      # HILLS ~25000, COLVAR ~50000
   grep -i "error\|fatal\|nan" metad.log | head -5
+  tail -5 slurm-trpb_metad-42679152.out   # 检查 === Done === 诊断块
   ```
 
 - [ ] **B2. COLVAR 时间序列**

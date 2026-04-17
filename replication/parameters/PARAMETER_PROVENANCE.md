@@ -144,6 +144,46 @@
 
 ---
 
+## Multi-walker parameters (`multi_walker/plumed.dat` METAD line — Phase 2 only)
+
+### `WALKERS_N = 10`
+
+| Field | Value |
+|-------|-------|
+| Source | SI-quote |
+| SI quote | "multiple-walkers metadynamics simulations with **10 replicas** were computed" (SI p.S3–S4, "Well-tempered MetaDynamics" section) |
+| Status | ✅ direct SI number, no ambiguity |
+
+### `WALKERS_RSTRIDE = 1000` (steps = 2 ns at PACE=1000 / dt=2 fs)
+
+| Field | Value |
+|-------|-------|
+| Source | Our-choice (SI silent on sync stride) |
+| Rationale | PLUMED tutorial convention: sync interval should be several × PACE so HILLS is large enough to matter when shared, but << total per-walker duration (50–100 ns) so walkers don't drift. 2 ns = 1000 Gaussians per sync is the standard choice. |
+| PLUMED docs | https://www.plumed.org/doc-v2.9/user-doc/html/_m_u_l_t_i_p_l_e_w_a_l_k_e_r_s.html |
+| Secondary verification | TBD after Phase 2 first run — if walkers drift apart too much (COLVAR ranges non-overlapping), reduce to 500 |
+| Status | ⚠️ Our-choice, un-tested; flag for review after first 10-walker run |
+
+### `WALKERS_DIR = ../`
+
+| Field | Value |
+|-------|-------|
+| Source | Our-choice (directory layout decision) |
+| Rationale | Shared HILLS.0..HILLS.9 sits in parent `multi_walker/`; each walker reads siblings' HILLS there. Alternative: single shared HILLS file with `WALKERS_DIR=.` — same effect but requires file-locking. The per-walker file pattern (`HILLS.<id>`) is PLUMED's default safe option. |
+| Status | ✅ (standard PLUMED pattern) |
+
+### Initial-structure selection for 10 walkers
+
+| Field | Value |
+|-------|-------|
+| Source | SI-implied + Yu 2026-04-09 directive (L2859) |
+| SI quote | "we extracted ten snapshots for each system **covering approximately all the conformational space available**" (SI p.S3–S4) |
+| Yu directive | "用你的眼睛在 PyMOL 里挑, 不能每隔 N frame 取一个" (2026-04-09 transcript L2859) |
+| Our implementation | Two-phase `multi_walker/setup_walkers.sh`: Phase 1 proposes 10 via KMeans(s,z) on COLVAR; Phase 2 requires user to pass `--commit-frames t1,…,t10` only after PyMOL visual QA. Script refuses to bypass the human-in-the-loop. |
+| Status | ✅ (enforced by script design) |
+
+---
+
 ## MD integration parameters (`metad_probe.mdp`)
 
 ### `dt = 0.002` (ps = 2 fs)
