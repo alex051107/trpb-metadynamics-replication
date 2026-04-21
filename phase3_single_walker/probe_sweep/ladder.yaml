@@ -1,0 +1,22 @@
+probes:
+  - id: P1
+    smin: [0.5, 0.005]
+    smax: [1.0, 0.05]
+    purpose: "Raise s-floor only; directly tests the σ_s=85%-saturation diagnostic from Job 44008381."
+  - id: P2
+    smin: [0.5, 0.005]
+    smax: [1.5, 0.05]
+    purpose: "Fallback if P1 escapes O but stalls mid-path because ceiling starts binding."
+  - id: P3
+    smin: [0.7, 0.005]
+    smax: [1.5, 0.05]
+    purpose: "More aggressive s-floor if P1+P2 still clipped."
+  - id: P4
+    smin: [0.5, 0.005]
+    smax: [1.0, 0.03]
+    purpose: "Tighter z-ceiling if off-path drift is the issue."
+
+notes:
+  - "LAMBDA = 379.77 (PATHMSD per-atom MSD convention; Osuna 2019 SI S3)"
+  - "ADAPTIVE=GEOM, SIGMA=0.1, BIASFACTOR=10, HEIGHT=0.628 kJ/mol, PACE=1000, TEMP=350"
+  - "Success gate (per plan): max_s ≥ 7 AND ≥3 non-empty s-bins AND σ_s saturation < 50%"
