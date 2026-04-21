@@ -1,11 +1,25 @@
 #!/usr/bin/env python3
 """Build the Aex1 OpenMM system for the 5DW0 chain-A pilot.
 
-B4 scope:
-- protein-only cleanup via PDBFixer
-- PM-default PLS chemistry via OpenFF + AM1-BCC
-- GAFF-2.11 primary template generation, SMIRNOFF fallback
-- optional dry run that stops before solvation
+Lab-reference alignment:
+- `hengma1001/md_setup` is a parameterization helper built around complex
+  dissection, explicit ligand-charge handling, AmberTools BCC charges, and
+  AMBER/tleap assembly.
+- This script copies that chemistry stance, but implements it in OpenMM-native
+  form because Phase B explicitly switches cMD platform from AMBER to OpenMM.
+
+Deviations from `hengma1001/md_setup`:
+- Uses `PDBFixer` for protein cleanup because the reference repo does not
+  provide an OpenMM protein-prep path.
+- Uses a curated PM-default PLS graph plus OpenFF/AmberTools AM1-BCC instead of
+  blind ligand PDB bond perception, because `PLS` is a covalent external
+  aldimine and the reference repo has no PLP-specific template logic.
+- Uses `SystemGenerator` with GAFF-2.11 primary and SMIRNOFF fallback instead
+  of `antechamber -> parmchk2 -> tleap`, because this phase needs an OpenMM
+  `System`/XML artifact directly.
+- Uses `padding=1.0 nm` and `ionicStrength=0` because those are the locked
+  Phase B build settings, even though the reference repo's AMBER path targets
+  a 10 A box with added salt/counterions through tleap.
 """
 
 from __future__ import annotations
@@ -56,6 +70,9 @@ PLS_HEAVY_ATOM_TARGET = 22
 PLS_HEAVY_ATOM_TOL = 2
 TOTAL_CHARGE_TOL = 1.0e-3
 FORCE_GATE_TOL = 1.0e-3
+DEFAULT_PDBFIXER_PLATFORM = "Reference"
+DEFAULT_MINIMIZATION_PLATFORM = "auto"
+DEFAULT_CUDA_PRECISION = "mixed"
 
 PLS_SMILES_PM_DEFAULT = (
     "Cc1c(c(c(c[nH+]1)COP(=O)([O-])[O-])/C=[NH+]/[C@@H](CO)C(=O)[O-])[O-]"
@@ -128,6 +145,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dry", action="store_true")
     parser.add_argument("--forcefield-primary", default="gaff-2.11")
     parser.add_argument("--forcefield-fallback", default="openff-2.2.1")
+    parser.add_argument("--pdbfixer-platform", default=DEFAULT_PDBFIXER_PLATFORM)
+    parser.add_argument("--minimization-platform", default=DEFAULT_MINIMIZATION_PLATFORM)
+    parser.add_argument("--cuda-precision", default=DEFAULT_CUDA_PRECISION)
     return parser.parse_args()
 
 
@@ -334,6 +354,17 @@ def choose_safe_platform() -> Platform:
     raise RuntimeError("No safe OpenMM platform available for B4 minimization")
 
 
+def choose_platform(platform_name: str, cuda_precision: str) -> Tuple[Platform, Dict[str, str]]:
+    if platform_name.lower() == "auto":
+        return choose_safe_platform(), {}
+    platform = Platform.getPlatformByName(platform_name)
+    props = {"Precision": cuda_precision} if platform.getName() == "CUDA" else {}
+    print(f"minimization_platform={platform.getName()}")
+    if props:
+        print(f"minimization_platform_props={props}")
+    return platform, props
+
+
 def system_total_charge(system) -> float:
     nonbonded = next(force for force in system.getForces() if isinstance(force, NonbondedForce))
     total = 0.0
@@ -370,7 +401,8 @@ def main() -> int:
         print(f"crystal_pls_heavy_atoms={len(crystal_atoms)}")
 
         fixer = PDBFixer(filename=str(protein_pdb))
-        fixer.platform = Platform.getPlatformByName("Reference")
+        fixer.platform = Platform.getPlatformByName(args.pdbfixer_platform)
+        print(f"pdbfixer_platform={fixer.platform.getName()}")
         fixer.findMissingResidues()
         fixer.findMissingAtoms()
         missing_atom_count = sum(len(v) for v in fixer.missingAtoms.values())
@@ -436,8 +468,8 @@ def main() -> int:
             raise AssertionError(f"System total charge {total_charge} exceeds tolerance {TOTAL_CHARGE_TOL}")
 
         integrator = LangevinIntegrator(350 * kelvin, 1.0 / picosecond, 2.0 * femtosecond)
-        platform = choose_safe_platform()
-        simulation = Simulation(modeller.topology, system, integrator, platform)
+        platform, props = choose_platform(args.minimization_platform, args.cuda_precision)
+        simulation = Simulation(modeller.topology, system, integrator, platform, props)
         simulation.context.setPositions(modeller.positions)
         simulation.minimizeEnergy(
             maxIterations=DEFAULT_MINIMIZATION_MAX_ITER,
