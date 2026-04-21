@@ -23,11 +23,19 @@ Flags:
 - `--no-commit` — dev only.
 - `--no-pr` — dev only.
 
+## Replication scope (hard constraint)
+
+This monitor supports a strict replication of Osuna 2019 JACS SI. The following are **fixed at SI values** and are not tuning surfaces under any circumstance: BIASFACTOR=10, HEIGHT=0.628 kJ/mol, PACE=1000, TEMP=350 K, SIGMA seed=0.1, `ADAPTIVE=GEOM`, LAMBDA=379.77, 15-frame linearly-interpolated PATHMSD.
+
+The **only** knob under investigation here is `SIGMA_MIN / SIGMA_MAX`, which SI does not pin down explicitly. If no floor/ceiling combination produces escape from O, the signal is that we are missing some implicit detail from the SI protocol that we have not yet identified — it is **not** a license to change the SI-locked parameters.
+
 ## Why MIN and MAX both matter
 
 Adaptive Gaussian widths (PLUMED `ADAPTIVE=GEOM`) only respect `SIGMA_MIN`/`SIGMA_MAX` when they try to cross those bounds. If a bound is never touched, tuning it is pointless. If a bound is touched > 50% of the time, that bound is **binding** — the adaptive scheme wants to go past it but can't, and the bias deposition is no longer adapting to local geometry.
 
 The monitor tracks all four (σ_s MIN, σ_s MAX, σ_z MIN, σ_z MAX) so we catch either floor-clipping (the diagnosis from Job 44008381: σ_s pegged at floor 85% of the time) or ceiling-clipping (would mean the ladder needs to widen, not raise).
+
+Caveat: the percentages compare the diagonal HILLS elements (σ_s, σ_zz) to the bounds. PLUMED's stretched-Gaussian kernel has a cross-term (σ_zs) that this diagonal check does not fold in, so the saturation table is a reliable warning indicator, not a literal proof that the effective width equals the floor on every hill.
 
 ## Paper protocol reference
 

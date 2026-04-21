@@ -2,7 +2,7 @@
 
 Auto-written by `routine_check.py` every 2 hours.
 
-_Last tick: 2026-04-21T14:22:50Z_
+_Last tick: 2026-04-21T14:35:03Z_
 
 **Winner:** none yet
 
@@ -38,24 +38,7 @@ Columns show % of hills touching each bound. Anything >50 means that bound is bi
 ## Raw fetch
 
 ```json
-{
-  "P1": {
-    "colvar_lines": 1360,
-    "hills_lines": 682
-  },
-  "P2": {
-    "colvar_lines": 1365,
-    "hills_lines": 685
-  },
-  "P3": {
-    "colvar_lines": 1389,
-    "hills_lines": 697
-  },
-  "P4": {
-    "colvar_lines": 1231,
-    "hills_lines": 618
-  }
-}
+{}
 ```
 
 ## Paper protocol reference

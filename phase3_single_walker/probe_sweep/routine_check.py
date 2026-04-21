@@ -20,6 +20,10 @@ non-empty s-bins AND σ_s saturation < 50%. Main-text SI notes that isolated
 Ain is thermodynamically confined to O, so the realistic goal is seeding
 diverse walkers for Phase 4, not full path coverage.
 
+Replication scope: BIASFACTOR, HEIGHT, PACE, TEMP, SIGMA seed, ADAPTIVE mode,
+LAMBDA, and path geometry are fixed at SI values and are NOT tuning surfaces.
+Only SIGMA_MIN and SIGMA_MAX (not specified in SI) are under investigation.
+
 Idempotent — safe to re-run; only commits status.md on change.
 """
 
