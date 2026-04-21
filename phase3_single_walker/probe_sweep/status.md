@@ -2,7 +2,7 @@
 
 Auto-written by `routine_check.py` every 2 hours.
 
-_Last tick: 2026-04-21T18:47:15Z_
+_Last tick: 2026-04-21T20:51:31Z_
 
 **Winner:** none yet
 
@@ -12,10 +12,10 @@ Columns show % of hills touching each bound. Anything >50 means that bound is bi
 
 | probe | ns | hills | max_s | O/PC/C | σ_s MIN | σ_s MAX | σ_z MIN | σ_z MAX | passes |
 |---|---|---|---|---|---|---|---|---|---|
-| P1 | 7.81 | 3908 | 1.15 | 7815/0/0 | 100.0 | 0.0 | 97.5 | 0.0 | wait |
-| P2 | 7.85 | 3926 | 1.30 | 7847/0/0 | 99.8 | 0.0 | 98.6 | 0.0 | wait |
-| P3 | 8.06 | 4032 | 1.11 | 8061/0/0 | 100.0 | 0.0 | 93.0 | 0.0 | wait |
-| P4 | 7.13 | 3567 | 1.64 | 7134/0/0 | 97.9 | 0.0 | 94.9 | 0.0 | wait |
+| P1 | 10.00 | 5000 | 1.15 | 10001/0/0 | 100.0 | 0.0 | 98.0 | 0.0 | wait |
+| P2 | 10.00 | 5000 | 1.30 | 10001/0/0 | 99.9 | 0.0 | 98.9 | 0.0 | wait |
+| P3 | 10.00 | 5000 | 1.28 | 10001/0/0 | 100.0 | 0.0 | 83.0 | 0.0 | wait |
+| P4 | 9.88 | 4940 | 1.64 | 9879/0/0 | 98.3 | 0.0 | 94.7 | 0.0 | wait |
 | P5 | — | — | — | — | — | — | — | — | missing |
 
 ## Ladder reminder
@@ -43,20 +43,20 @@ Columns show % of hills touching each bound. Anything >50 means that bound is bi
 ```json
 {
   "P1": {
-    "colvar_lines": 7816,
-    "hills_lines": 3911
+    "colvar_lines": 10002,
+    "hills_lines": 5003
   },
   "P2": {
-    "colvar_lines": 7848,
-    "hills_lines": 3929
+    "colvar_lines": 10002,
+    "hills_lines": 5003
   },
   "P3": {
-    "colvar_lines": 8062,
-    "hills_lines": 4035
+    "colvar_lines": 10002,
+    "hills_lines": 5003
   },
   "P4": {
-    "colvar_lines": 7135,
-    "hills_lines": 3570
+    "colvar_lines": 9880,
+    "hills_lines": 4943
   },
   "P5": {
     "colvar_lines": 0,
