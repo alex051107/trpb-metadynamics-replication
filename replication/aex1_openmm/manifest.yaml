@@ -37,33 +37,47 @@ system:
     source: same as Ain campaign (replication/metadynamics/path_cv/path_gromacs.pdb)
 
 chemistry:
-  # B3 gates this block; placeholders until PM signs off
-  ligand_net_charge: null            # literature prior: -2, pending confirmation
-  protonation_schiff_base: null      # expect protonated at physiological pH
-  qm_fragment_definition: null       # for RESP fallback path
-  ligand_vs_capped_residue: null     # does PLS attach to K82 NZ (now free Lys) as separate ligand or as modified residue?
+  # B3 gates this block; placeholders until PM signs off.
+  # Reframed for OpenMM path (AM1-BCC replaces RESP, PDBFixer handles protein).
+  # Only these two decisions survive; see chemistry_memo.md for crossed-off items.
+  ligand_net_charge: null            # proposed -2 (phosphate -2, schiff base +1, pyridine +1, phenolate -1, substrate Ser COO- -1); PM to confirm
+  protonation:
+    schiff_base_N: null              # proposed protonated (pKa ~ 11)
+    pyridine_ring_N1: null           # proposed protonated (active-site H-bond)
+    phosphate: null                  # proposed -2 (fully deprotonated)
+  ligand_treatment: single_molecule  # PLS is a free, closed-valence ligand (external aldimine to substrate Ser, NOT covalent to protein). K82 is free Lys in 5DW0.
 
 parameterization:
-  primary_path: openmm_systemgenerator
+  primary_path: openmm_systemgenerator_am1bcc
   primary_details:
     generator: openmmforcefields.generators.SystemGenerator
     template: GAFF-2.11
+    charge_method: am1bcc        # via openff-toolkit; NO Gaussian, NO RESP, NO antechamber
     protein_ff: amber/ff14SB
     water_ff: amber/tip3p
+    protein_prep: pdbfixer + openmm.app.Modeller   # automatic for 5DW0 standard residues
     env: /work/users/l/i/liualex/conda/envs/md_setup_trpb
     rationale: |
-      Lab standard; openmm-plumed plugin already toy-validated on Longleaf
+      Lab standard (Yu). openmm-plumed plugin already toy-validated on Longleaf
       (Job 44296608, CPU). Byte-compatible plumed.dat reuse.
+      PLS in Aex1 is a closed-valence small molecule (external aldimine to
+      substrate Ser, not covalent to protein), so GAFF2 template generator
+      handles it natively. This is the case where OpenMM's shortcut is real.
     known_risk: |
-      PLS is a covalent Schiff-base adduct (C=N between PLP C4A and Ser N).
-      GAFF2 template generators have mixed records on covalent adducts; may
-      need manual bond/atomtype overrides.
-  fallback_path: gaff_resp_tleap
-  fallback_details:
+      GAFF2 template generation may fail on the extended Schiff-base + pyridinium
+      pi-system perception in rare RDKit cases; fallback is SMIRNOFF
+      (openff-2.x), not Gaussian.
+  fallback_path_1: smirnoff_openff
+  fallback_path_1_details:
+    generator: openmmforcefields.generators.SMIRNOFFTemplateGenerator
+    template: openff-2.x
+    rationale: SMIRNOFF-based, also AM1-BCC; still no Gaussian.
+  fallback_path_2: gaff_resp_tleap
+  fallback_path_2_details:
     rationale: |
-      Matches Osuna 2019 SI chain exactly (Gaussian HF/6-31G(d) RESP -> antechamber
-      -> GAFF+frcmod -> tleap -> ParmEd). 4-7 days. Only invoked if primary_path
-      fails consistency checks.
+      Only if BOTH OpenMM template paths fail. Matches Osuna 2019 SI chain
+      (Gaussian HF/6-31G(d) RESP -> antechamber -> GAFF+frcmod -> tleap ->
+      ParmEd). 4-7 days.
 
 md_engine:
   engine: openmm

@@ -1,59 +1,67 @@
-# PLS chemistry memo (PLACEHOLDER — B3 gate, PM sign-off required)
+# PLS chemistry memo — OpenMM-simplified version (B3 gate)
 
-**Status:** unfilled. Do NOT proceed to B4 parameterization until this memo is populated, reviewed by PM, and marked `approved`.
+**Status:** unfilled. B4 parameterization blocked on items below.
 
-**Purpose:** pin down the chemistry decisions that dominate parameterization validity. Getting any one of these wrong silently corrupts the entire pilot, and will not be caught by downstream assertions.
+**Reframing (2026-04-21):** original draft of this memo was written against the AMBER+RESP+tleap chain and demanded too many decisions. The OpenMM stack the lab actually uses removes several of them. **PDBFixer + Modeller handle the protein, hydrogens, solvent, ions automatically.** **AM1-BCC replaces Gaussian HF/6-31G(d) RESP automatically.** What is left is genuinely small.
 
-## Open decisions
+## What OpenMM does for free (no PM input)
 
-### 1. Ligand identity and connectivity
+- Protein missing atoms / missing residues / residue-level pH-7 hydrogens for standard residues of 5DW0 chain A → `PDBFixer.findMissingAtoms / addMissingAtoms / addMissingHydrogens(pH=7.0)`.
+- Solvation box, Na⁺ neutralization → `Modeller.addSolvent(forcefield, model='tip3p', padding=1.0*nanometer, ionicStrength=0*molar)`.
+- Small-molecule bonded params for PLS → `GAFFTemplateGenerator` (GAFF-2.11) via `openmmforcefields.generators.SystemGenerator`.
+- Small-molecule partial charges for PLS → `openff-toolkit` `assign_partial_charges(partial_charge_method='am1bcc')`; no Gaussian, no antechamber.
 
-- PDB residue code: `PLS` (from 5DW0 chain A).
-- Composition: PLP cofactor covalently linked to serine side chain through an **external aldimine** (C=N Schiff base between PLP C4A and serine backbone N).
-- Heavy-atom count (from PDB, `replication/parameters/JACS2019_MetaDynamics_Parameters.md`): 22 per chain.
-- In the Ain system, LLP bonds covalently to K82 NZ (internal aldimine); **in Aex1, K82 is free Lys**, and PLS carries the Schiff base to serine instead. Confirm this wiring against the actual 5DW0 coordinates before parameterization.
+## Why PLS is a single ligand (not a modified residue)
 
-### 2. Net charge
+In the external aldimine state (Aex1), the Schiff base connects **PLP** to the **substrate α-amino group** (serine as free amino acid, not a residue in the protein chain). K82 is a regular, free lysine in 5DW0. So the covalent C4'=N bond is entirely *inside* PLS; **PLS is a closed-valence, ~22-heavy-atom small molecule**, parameterizable as one ligand. No cross-residue covalent stitching is needed. This is why the OpenMM template generator path works here — the case that breaks it (Ain's internal aldimine, covalent to K82 NZ) is not what we have.
 
-- Literature prior: **-2** (phosphate fully deprotonated = −2; Schiff-base N protonated = +1; pyridine ring N protonated or not depending on tautomer; serine carboxylate −1 counts separately from ligand).
-- Alternative readings exist depending on tautomer and whether serine α-carboxylate is part of the ligand or a separate terminal.
-- **Decision required:** PM confirms literature reference (Caulkins 2014 NMR, as with Ain? Or Aex1-specific NMR?) and the tautomer assumption.
+## What actually needs PM sign-off (2 items, both RDKit-local)
 
-### 3. Protonation states
+Both must be decided before constructing the RDKit `Molecule` handed to `SMILES -> mol -> assign_partial_charges(am1bcc)`.
 
-- Schiff-base N: **expected protonated** at physiological pH for external aldimine (pKa ~ 11 literature).
-- Pyridine ring N: **expected protonated** in active site (H-bond to Asp).
-- Phosphate: **expected −2** (fully deprotonated).
-- Serine hydroxyl: expected neutral.
-- **Decision required:** PM signs off on each of the four.
+### 1. Net charge of PLS
 
-### 4. QM fragment definition (for GAFF+RESP fallback path B4b)
+Default proposal (pending PM confirm):
 
-- Capped fragment: ACE-PLS-NME? Or keep serine backbone explicit? Ain used ACE-LLP-NME; Aex1 likely parallels but needs explicit confirmation since the covalent partner changed.
-- Total capped atom count: projected ~52-56 (vs 54 for Ain capped).
-- Gaussian route line: same as Ain `# HF/6-31G(d) SCF=Tight Pop=MK IOp(6/33=2,6/42=6)` (no `IOp(6/50=1)` per FP-013)?
+| fragment | contribution |
+|---|---|
+| phosphate (fully deprotonated) | −2 |
+| pyridine ring N1 (protonated) | +1 |
+| Schiff base N (protonated, imine C=N⁺H) | +1 |
+| phenolate O3′ (deprotonated at active-site pH) | −1 |
+| substrate Ser α-carboxylate (deprotonated) | −1 |
+| **net** | **−2** |
 
-### 5. Ligand-vs-capped-residue treatment in system build
+Matches Ain charge (−2). Source: Caulkins 2014 ¹³C / ¹⁵N NMR on PfTrpB intermediates (cited in Osuna 2019 SI).
 
-- Option A: treat PLS as a single ligand separate from the protein, K82 as normal Lys.
-- Option B: treat PLS as a modified serine residue bonded into the protein chain.
-- Each has different implications for GAFF generator vs. manual force-field merging.
-- **Decision required:** PM picks one; defensibility to a reviewer matters more than minor ergonomics.
+**PM decision required:** confirm −2 and tautomer assumptions above, or correct.
 
-### 6. Atom name convention
+### 2. Protonation of the three titrating sites
 
-- 5DW0 PDB uses PLS atom naming. Confirm atom names match what `openmmforcefields.generators.SystemGenerator` expects (GAFF2 tolerates arbitrary names; RESP does not).
-- For fallback path, atom names must match `Ain_gaff.mol2`-style convention; may need a renaming pass.
+- Schiff base N → **protonated** (external aldimine pKa ~ 11; active-site pH 7 → fully protonated).
+- Pyridine ring N1 → **protonated** (H-bond to Asp222 backbone / active-site stabilization).
+- Phosphate → **−2** (fully deprotonated, pH > phosphate pKa2).
 
-## Deliverable when approved
+**PM decision required:** confirm or adjust. These get encoded as explicit H atoms + formal charges on the RDKit `Molecule`.
 
-Re-save this file with the null fields filled, status `approved`, and a clear authorship line. Commit to branch `aex1-openmm-parallel` with a message `Aex1 chemistry memo: approved at B3 gate (<date>)`.
+## What does NOT need a decision (crossed off)
 
-## Related artifacts
+- ~~Ligand vs modified residue~~ — PLS is a free ligand (substrate-side Schiff base, not covalent to protein).
+- ~~QM fragment / capped fragment definition~~ — AM1-BCC does not need a QM fragment. Runs on the whole PLS molecule.
+- ~~Gaussian route line / IOp flags / antechamber options~~ — Gaussian is not in the OpenMM path at all.
+- ~~Atom name convention~~ — GAFF2 template generator names internally via RDKit indices; the 5DW0 PDB atom names are only needed to map the coordinates in, which PDBFixer / OpenMM handle via residue template matching.
 
-- Ain analog: `replication/parameters/JACS2019_MetaDynamics_Parameters.md` §1 "Ain/LLP Capped Fragment" — 2026-03-31 ACE-LLP-NME, charge −2, multiplicity 1.
-- 5DW0 PDB: `/work/users/l/i/liualex/AnimaLab/structures/5DW0.pdb` (assumed; verify before use).
+## Fallback (unlikely)
 
-## Explicit non-scope
+If GAFF2 templategen for some reason fails on PLS (e.g., RDKit can't perceive the extended Schiff-base + pyridinium π-system cleanly), fall back to SMIRNOFF (`SMIRNOFFTemplateGenerator`, OpenFF 2.x). If that also fails, only then revert to the AMBER chain (Gaussian RESP → antechamber → tleap). Track separately.
 
-- This memo does NOT prescribe parameterization commands. It decides chemistry. Parameterization (B4 / B4b) is downstream and must read this memo as approved input.
+## When approved
+
+Re-save this file with items 1 and 2 marked `approved: true` and a PM signature line. Commit to `aex1-openmm-parallel` with message `Aex1 chemistry memo: approved at B3 gate (<date>)`. Only then does B4 (parameterization spike) unblock.
+
+## Sources
+
+- OpenMM docs: `http://docs.openmm.org/` (PDBFixer, Modeller, openmmforcefields)
+- openff-toolkit partial charges: `https://docs.openforcefield.org/projects/toolkit/en/stable/api/generated/openff.toolkit.topology.Molecule.html#openff.toolkit.topology.Molecule.assign_partial_charges`
+- Caulkins 2014 ¹³C/¹⁵N NMR on TrpB intermediates: cited in Osuna 2019 SI
+- Ain analog (internal aldimine, covalent to K82, CHARGE=−2): `replication/parameters/JACS2019_MetaDynamics_Parameters.md` §1 "Ain/LLP Capped Fragment"

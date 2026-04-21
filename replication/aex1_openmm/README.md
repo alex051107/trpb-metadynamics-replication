@@ -6,7 +6,18 @@ Chemistry-control pilot running in parallel to the `new_idea_explore` probe swee
 `aex1-openmm-parallel` off `new_idea_explore` at commit `e2f19f4` (path-CV diagnostic suite).
 
 ## Why OpenMM
-Lab standard (Yu's group). OpenMM + `openmm-plumed` plugin already CPU-validated in `replication/openmm_toy/` (Job 44296608). PLUMED syntax is byte-compatible with our GROMACS+PLUMED 2.9 stack, so `plumed.dat` can be reused verbatim. Primary parameterization path = `openmmforcefields.generators.SystemGenerator` with GAFF-2.11 templates. GAFF+RESP+tleap kept as fallback only if the PLS covalent adduct breaks the SystemGenerator template.
+
+Lab standard (Yu's group). OpenMM + `openmm-plumed` plugin already CPU-validated in `replication/openmm_toy/` (Job 44296608). PLUMED syntax is byte-compatible with our GROMACS+PLUMED 2.9 stack, so `plumed.dat` can be reused verbatim.
+
+**What OpenMM removes vs. the AMBER+RESP chain:**
+- `PDBFixer` + `Modeller` → automatic for 5DW0 standard residues (missing atoms, missing residues, pH-7 hydrogens, TIP3P solvation, Na⁺ ions).
+- `openff-toolkit` AM1-BCC → automatic partial charges on PLS; **no Gaussian, no antechamber, no RESP**.
+- `openmmforcefields.generators.SystemGenerator` with GAFF-2.11 → automatic bonded params on PLS.
+
+**Why the OpenMM shortcut is *real* for Aex1 specifically:**
+PLS (external aldimine, 5DW0) is a closed-valence ~22-heavy-atom small molecule. The Schiff base connects PLP to the *substrate* serine (a free amino acid, not a protein residue), and K82 is a regular free Lys. So PLS is parameterizable as a single ligand — no cross-residue covalent stitching — which is the case where GAFF2 template generators work natively. (Ain's internal aldimine, covalent to K82 NZ, would NOT work this way.)
+
+Fallbacks if GAFF2 templategen fails: SMIRNOFF (openff-2.x, still AM1-BCC) first, AMBER+RESP+tleap only as last resort.
 
 ## Reframing
 5DW0 chain A projects to `s ≈ 1.07` on the current 15-frame 1WDW→3CEP path (prior CV audit, `reports/GroupMeeting_2026-04-17_TechDoc_技术文稿.md:665`). So this pilot does NOT bypass the O-endpoint start. It is a **chemistry control**, not a geometry bypass.
