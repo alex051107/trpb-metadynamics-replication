@@ -1,0 +1,117 @@
+# Aex1 + OpenMM chemistry-control pilot manifest (PLACEHOLDER — frozen at B2 with PM sign-off)
+#
+# All values below are PROPOSED, not yet approved. Do not use any `plumed.dat` or system
+# file produced from this manifest for production runs until the `status` field below
+# reads `approved`.
+
+status: draft   # draft | pm_review | approved
+drafted: 2026-04-21
+drafted_by: alex051107 + Claude (designer)
+pm_signoff_required_before: [B2_launch, B3_pls_chemistry, B8_metad_submit]
+
+campaign:
+  id: aex1_openmm_pilot_2026-04-21
+  parent_branch: new_idea_explore
+  work_branch: aex1-openmm-parallel
+  purpose: |
+    Chemistry control for the Ain O-basin stall. Test whether the 21/21
+    OFF-TANGENT signature from probe_P1 (see diagnostic VERDICT_2026-04-21.md)
+    persists when only the intermediate chemistry changes (Ain LLP -> Aex1 PLS),
+    with everything else (path CV, lambda, plumed.dat, SI-locked MetaD params)
+    held fixed.
+  scope_disclaimer: |
+    Does NOT test endpoint-bypass (5DW0 chain A projects to s ~ 1.07, essentially
+    O endpoint). Does NOT speak to chord geometry or piecewise-path pivot.
+
+system:
+  starting_structure: 5DW0
+  chain: A
+  resolution_A: 2.01
+  protein_residues: "1-388"
+  ligand_code: PLS
+  ligand_name: "PLP-Serine external aldimine"
+  missing_regions: "C-terminal tag ~386-396 (outside path selection)"
+  path_cv_selection:
+    residues: "97-184 + 282-305"
+    n_calpha: 112
+    source: same as Ain campaign (replication/metadynamics/path_cv/path_gromacs.pdb)
+
+chemistry:
+  # B3 gates this block; placeholders until PM signs off
+  ligand_net_charge: null            # literature prior: -2, pending confirmation
+  protonation_schiff_base: null      # expect protonated at physiological pH
+  qm_fragment_definition: null       # for RESP fallback path
+  ligand_vs_capped_residue: null     # does PLS attach to K82 NZ (now free Lys) as separate ligand or as modified residue?
+
+parameterization:
+  primary_path: openmm_systemgenerator
+  primary_details:
+    generator: openmmforcefields.generators.SystemGenerator
+    template: GAFF-2.11
+    protein_ff: amber/ff14SB
+    water_ff: amber/tip3p
+    env: /work/users/l/i/liualex/conda/envs/md_setup_trpb
+    rationale: |
+      Lab standard; openmm-plumed plugin already toy-validated on Longleaf
+      (Job 44296608, CPU). Byte-compatible plumed.dat reuse.
+    known_risk: |
+      PLS is a covalent Schiff-base adduct (C=N between PLP C4A and Ser N).
+      GAFF2 template generators have mixed records on covalent adducts; may
+      need manual bond/atomtype overrides.
+  fallback_path: gaff_resp_tleap
+  fallback_details:
+    rationale: |
+      Matches Osuna 2019 SI chain exactly (Gaussian HF/6-31G(d) RESP -> antechamber
+      -> GAFF+frcmod -> tleap -> ParmEd). 4-7 days. Only invoked if primary_path
+      fails consistency checks.
+
+md_engine:
+  engine: openmm
+  version: ">=8.2 <=8.4"
+  plugin: openmm-plumed 2.1
+  platform: CUDA           # requires FP-028 env re-pin before B8
+  precision: mixed
+
+metadynamics:
+  # Everything in this block MUST match Ain production plumed.dat; this pilot
+  # deliberately does NOT touch these numbers.
+  reuse_from: replication/metadynamics/single_walker/plumed.dat
+  expected:
+    cv_type: PATHMSD
+    lambda_nm2: 379.77         # FP-022-settled, do NOT revisit
+    sigma: 0.1
+    sigma_min: [0.3, 0.005]
+    sigma_max: [1.0, 0.05]
+    adaptive: GEOM
+    height_kJ_mol: 0.628
+    pace_steps: 1000
+    biasfactor: 10
+    temp_K: 350
+
+path_cv:
+  reference_pdb: to_be_regenerated_at_B6
+  regeneration_rule: |
+    Re-serial path_gromacs.pdb to match Aex1 system's 1-based atom ordering;
+    Calpha coordinates themselves unchanged (path is protein conformational,
+    not ligand-dependent).
+  self_projection_gate: |
+    After B6, rerun 00b_self_projection_renumbered.sh against the new reference.
+    Expected: s monotonic 1.09 -> 14.91, endpoints match Ain self-projection
+    within noise. Plus: project 5DW0 chain A Calpha onto new path, expect s ~ 1.07.
+
+pilot_run:
+  duration_ns: 10
+  monitor:
+    - s_of_t
+    - sigma_s_of_t
+    - off_tangent_signature_on_first_2ns
+  pass_fail:
+    escape_O: "s(t) reaches > 3 within 10 ns"
+    stall: "s(t) stays within [1.0, 2.0] for full 10 ns"
+    ambiguous: "anything else -> extend to 20-30 ns before concluding"
+
+explicit_non_scope:
+  - Does not touch Ain production files on new_idea_explore
+  - Does not revisit lambda (FP-022/FP-027)
+  - Does not design piecewise path (Phase C decision)
+  - Does not merge back until PM approves a Phase C decision
