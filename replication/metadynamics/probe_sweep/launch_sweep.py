@@ -1,5 +1,6 @@
-"""Purpose: materialize P1..P4 probe directories from ladder.yaml with assertions and per-probe provenance."""
+"""Purpose: materialize probe directories from ladder.yaml with assertions and per-probe provenance."""
 
+import argparse
 import hashlib
 import json
 import shutil
@@ -49,7 +50,7 @@ def range_check(smin, smax):
     assert 0 < smin[1] < smax[1] <= 0.5, f"z-range violated: min={smin[1]} max={smax[1]}"
 
 
-def write_provenance(probe_dir, probe_id, smin, smax, commit):
+def write_provenance(probe_dir, probe_id, smin, smax, commit, mdp_template):
     lines = [
         f"probe_id={probe_id}",
         f"SIGMA_MIN_s={smin[0]}",
@@ -63,6 +64,7 @@ def write_provenance(probe_dir, probe_id, smin, smax, commit):
         "HEIGHT=0.628",
         "PACE=1000",
         "TEMP=350",
+        f"mdp_template={mdp_template.name}",
         f"plan_commit_hash={commit}",
         f"plumed_kernel_path={PLUMED_KERNEL}",
         "restart_source=/work/users/l/i/liualex/AnimaLab/metadynamics/single_walker/start.gro",
@@ -71,26 +73,68 @@ def write_provenance(probe_dir, probe_id, smin, smax, commit):
     (probe_dir / "provenance.txt").write_text("\n".join(lines) + "\n")
 
 
-def main():
-    template_text = TEMPLATE.read_text()
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--probe",
+        help="materialize only one probe ID from ladder.yaml (for example: P5)",
+    )
+    parser.add_argument(
+        "--mdp-template",
+        default=MDP.name,
+        help="MDP template filename relative to probe_sweep/ or absolute path",
+    )
+    return parser.parse_args()
+
+
+def resolve_mdp_template(raw):
+    path = Path(raw)
+    if not path.is_absolute():
+        path = HERE / raw
+    if not path.exists():
+        raise FileNotFoundError(f"missing MDP template: {path}")
+    return path
+
+
+def load_probes(target_probe=None):
     ladder = yaml.safe_load(LADDER.read_text())
+    probes = ladder["probes"]
+    ids = [probe["id"] for probe in probes]
+    assert len(ids) == len(set(ids)), "duplicate probe IDs in ladder.yaml"
+    if target_probe is None:
+        return probes
+    selected = [probe for probe in probes if probe["id"] == target_probe]
+    if not selected:
+        raise KeyError(f"probe {target_probe} not found in ladder.yaml")
+    return selected
+
+
+def materialize_probe(probe, template_text, mdp_template, commit):
+    pid = probe["id"]
+    smin = probe["smin"]
+    smax = probe["smax"]
+    range_check(smin, smax)
+    probe_dir = HERE / f"probe_{pid}"
+    probe_dir.mkdir(exist_ok=True)
+    plumed_text = substitute(template_text, smin, smax)
+    (probe_dir / "plumed.dat").write_text(plumed_text)
+    shutil.copy(mdp_template, probe_dir / "metad.mdp")
+    if PATH_PDB.exists():
+        shutil.copy(PATH_PDB, probe_dir / "path_gromacs.pdb")
+    write_provenance(probe_dir, pid, smin, smax, commit, mdp_template)
+    print(f"[{pid}] SIGMA_MIN={smin} SIGMA_MAX={smax} -> {probe_dir}")
+    return {"id": pid, "smin": smin, "smax": smax, "dir": str(probe_dir)}
+
+
+def main():
+    args = parse_args()
+    template_text = TEMPLATE.read_text()
+    mdp_template = resolve_mdp_template(args.mdp_template)
+    probes = load_probes(args.probe)
     commit = git_head()
     summary = []
-    for probe in ladder["probes"]:
-        pid = probe["id"]
-        smin = probe["smin"]
-        smax = probe["smax"]
-        range_check(smin, smax)
-        probe_dir = HERE / f"probe_{pid}"
-        probe_dir.mkdir(exist_ok=True)
-        plumed_text = substitute(template_text, smin, smax)
-        (probe_dir / "plumed.dat").write_text(plumed_text)
-        shutil.copy(MDP, probe_dir / "metad.mdp")
-        if PATH_PDB.exists():
-            shutil.copy(PATH_PDB, probe_dir / "path_gromacs.pdb")
-        write_provenance(probe_dir, pid, smin, smax, commit)
-        print(f"[{pid}] SIGMA_MIN={smin} SIGMA_MAX={smax} -> {probe_dir}")
-        summary.append({"id": pid, "smin": smin, "smax": smax, "dir": str(probe_dir)})
+    for probe in probes:
+        summary.append(materialize_probe(probe, template_text, mdp_template, commit))
     (HERE / "launch_summary.json").write_text(json.dumps(summary, indent=2))
     print(f"wrote {len(summary)} probes, plan_commit={commit}")
 

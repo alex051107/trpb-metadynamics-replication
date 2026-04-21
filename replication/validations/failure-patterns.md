@@ -399,3 +399,34 @@
 19. **`[SI p.SX]` 引用必须逐字在原 PDF 里找到匹配**：数值参数表里任何引用 "SI" 的数字，都必须能指向 PDF 里一段包含该数字或直接推导它的原文。推断、"按理应该是"、"follow SI spirit" 都不算；引用类型分三种：SI 明示、PLUMED/软件默认（附官方文档链接）、我们选的默认（说明理由）。防范 FP-016 / FP-025 类"权威感假引用"。
 20. **GROMACS+PLUMED MetaD 续跑必须两步 + 两重 assert**：(a) `gmx convert-tpr -s X.tpr -extend <ps> -o X_ext.tpr`；(b) `gmx mdrun -s X_ext.tpr -cpi X.cpt -plumed plumed_restart.dat`，其中 plumed_restart.dat 第一行 `RESTART`；pre-flight `grep '^RESTART' plumed_restart.dat` + post-flight `wc -l < HILLS` 增长且无 `bck.*.HILLS` 生成。声称 "safe resume" 之前查两边官方 restart 文档，不靠经验。（FP-026, 2026-04-16, Codex stop-hook 发现）
 21. **SI 数值重新诠释前必须读本仓库对该数值的既有注释**：summary.txt / failure-patterns.md / parameter 表里已经 interpret 过的 SI 数字，重新诠释前必须读注释并判定"保留"或"推翻+反证"，不能单方面换读法然后据此推理。单位/语义不明时给双读对照表跟用户确认。用户确认过的事实作为 prior，要推翻必须显式说。（FP-027, 2026-04-16, Codex adversarial review 发现）
+
+---
+
+## FP-028: conda-forge openmm 8.4 build 的 CUDA PTX 版本高于 Longleaf A100 驱动
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-18 |
+| 发现者 | Claude Code Terminal (OpenMM toy Job 44295894 / 44296042 连续 fail) |
+| 受影响 env | `/work/users/l/i/liualex/conda/envs/md_setup_trpb` |
+| 错误描述 | `Platform.getPlatformByName("CUDA")` → `Context` 构造时抛 `CUDA_ERROR_UNSUPPORTED_PTX_VERSION (222)`。尝试 `module load cuda/12.2` 和 `cuda/13.0` 都不能救。|
+| 正确事实 | `mamba install -c conda-forge openmm-plumed` 把 openmm 升到 8.4，并拉 `cuda-nvrtc 13.2.78`。openmm 8.4 conda-forge build 的 PTX 针对 CUDA ≥13.2 driver，Longleaf A100 节点驱动最高对应 `cuda/13.0` module → driver 不认 PTX。module load CUDA 工具链不会改驱动版本。|
+| 根因 | 装 openmm-plugin 包时没显式 pin CUDA build。conda-forge 默认给最新 CUDA build，生产集群驱动往往滞后。|
+| 防范措施 | 任何新 env 装 openmm 必须 `mamba install 'openmm=*=*cuda12*' 'openmm-plumed=*=*cuda12*' 'cuda-version=12.*'` 显式钉 CUDA 12 build。`nvidia-smi --query-gpu=driver_version` 在 GPU 节点上查实际驱动版本，和 conda-forge openmm build 的 run-constraint `__cuda >=X` 对比。|
+| Cross-check | PTX error 和 module load 的 CUDA 版本无关——module load 只改 nvcc/cuBLAS/等工具链，不改内核驱动。排查 GPU 问题先 `cat /proc/driver/nvidia/version` 看真实驱动。|
+| 已修复 | ⚠️ 未 — toy 用 `OPENMM_PLATFORM=CPU` 跳过 CUDA 证明链路；生产 TrpB 40k 原子前必须重装 CUDA 12 build 或等 Longleaf 升驱动 |
+
+---
+
+## FP-029: 把 ADAPTIVE=GEOM 误讲成 time-window 语义，并把 well-tempered γ 冷却方向说反
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-21 |
+| 发现者 | ChatGPT Pro review 2026-04-21 |
+| 受影响文件 | 本次 session 内关于 probe sweep saturation 的口头诊断（未写入生产参数文件） |
+| 错误描述 | 我们在解释 probe sweep 的 floor saturation 时，把 `ADAPTIVE=GEOM` 说成了“walker 不动 → time-window / local-diffusion 估计变小 → σ 自然塌缩”的语义；同时又把 well-tempered metadynamics 的 bias factor `γ` 讲成“γ 越大越 aggressive / 冷得更快”。这两句都不对，会把后续诊断带偏到错误的控制轴。 |
+| 正确事实 | (1) `ADAPTIVE=GEOM` 是 **geometry-based**：Gaussian 宽度来自 CV 对 Cartesian 坐标的局部几何/Jacobian 映射，不是 DIFF 模式那种 time-window / local-diffusion 语义。不能用“walker 没动，所以 GEOM 自然缩小”来解释 floor saturation。(2) well-tempered metaD 中 **γ 越大，bias tempering 越慢，系统越不‘冷’**；`γ=10` 是 Osuna 2019 SI 的锁定值，不应该被说成“过于 aggressive 导致太快冷却”。 |
+| 根因 | (1) 把 Branduardi 2012 里 `GEOM` 和 `DIFF` 两种 adaptive 方案的物理意义混在一起；(2) 对 well-tempered metadynamics 的 `γ = (T+ΔT)/T` 温度关系记反了符号方向，只记住了“有 tempering”而没记住 γ 的单调性；(3) probe sweep 压力下先用直觉解释 saturation，没有先回到一手定义。 |
+| 防范措施 | (1) **解释 ADAPTIVE 失败模式前，先明确是 GEOM 还是 DIFF**，不要跨语义借词；(2) **讨论 well-tempered `γ` 时写出单调关系**：γ 大 = slower cooling，γ 小 = faster cooling；(3) 任何“为什么 sigma 会塌缩”的口头诊断，先对照 PLUMED METAD 官方文档里的 scheme 定义，再决定是改 `SIGMA_MIN/MAX`、改 adaptive scheme，还是回到 CV/path audit。 |
+| 已修复 | ✅ 2026-04-21 在 Option A dispatch 中明确锁住 `γ=10`，不再把它作为调参方向；并把 probe sweep 解释改成“GEOM saturation 是局部几何映射 + floor/ceiling 约束的问题”，不再套用 DIFF 的 time-window 叙述。 |

@@ -1,3 +1,7 @@
+# Phase 3 probe sweep tuning surface only:
+#   - smin = [SIGMA_MIN_s, SIGMA_MIN_z]
+#   - smax = [SIGMA_MAX_s, SIGMA_MAX_z]
+# All other MetaD numerics are SI-locked in plumed_template.dat.
 probes:
   - id: P1
     smin: [0.5, 0.005]
@@ -11,3 +15,7 @@ probes:
   - id: P4
     smin: [0.5, 0.005]
     smax: [1.0, 0.03]
+  # Option A orthogonal probe: isolate the sigma_min_z raise from 0.005 -> 0.02.
+  - id: P5
+    smin: [0.5, 0.02]
+    smax: [1.0, 0.05]
