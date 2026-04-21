@@ -1,6 +1,6 @@
 # PLS chemistry memo — OpenMM-simplified version (B3 gate)
 
-**Status:** unfilled. B4 parameterization blocked on items below.
+**Status:** approved-by-default-per-PM-directive-2026-04-21 alex051107
 
 **Reframing (2026-04-21):** original draft of this memo was written against the AMBER+RESP+tleap chain and demanded too many decisions. The OpenMM stack the lab actually uses removes several of them. **PDBFixer + Modeller handle the protein, hydrogens, solvent, ions automatically.** **AM1-BCC replaces Gaussian HF/6-31G(d) RESP automatically.** What is left is genuinely small.
 

@@ -37,15 +37,15 @@ system:
     source: same as Ain campaign (replication/metadynamics/path_cv/path_gromacs.pdb)
 
 chemistry:
-  # B3 gates this block; placeholders until PM signs off.
-  # Reframed for OpenMM path (AM1-BCC replaces RESP, PDBFixer handles protein).
-  # Only these two decisions survive; see chemistry_memo.md for crossed-off items.
-  ligand_net_charge: null            # proposed -2 (phosphate -2, schiff base +1, pyridine +1, phenolate -1, substrate Ser COO- -1); PM to confirm
+  # Defaulted per PM directive 2026-04-21; values below are the chemistry
+  # inputs consumed by the B4 OpenMM SystemGenerator path.
+  ligand_net_charge: -2
   protonation:
-    schiff_base_N: null              # proposed protonated (pKa ~ 11)
-    pyridine_ring_N1: null           # proposed protonated (active-site H-bond)
-    phosphate: null                  # proposed -2 (fully deprotonated)
+    schiff_base_N: protonated
+    pyridine_ring_N1: protonated
+    phosphate: -2
   ligand_treatment: single_molecule  # PLS is a free, closed-valence ligand (external aldimine to substrate Ser, NOT covalent to protein). K82 is free Lys in 5DW0.
+  approved_by_default_per_pm_directive_2026_04_21: alex051107
 
 parameterization:
   primary_path: openmm_systemgenerator_am1bcc
