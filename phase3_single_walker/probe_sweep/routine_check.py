@@ -42,7 +42,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SWEEP_DIR = Path(__file__).resolve().parent
 REMOTE_HOST = "longleaf"
 REMOTE_PATH = "/work/users/l/i/liualex/AnimaLab/metadynamics/probe_sweep/"
-PROBES = ["P1", "P2", "P3", "P4"]
+PROBES = ["P1", "P2", "P3", "P4", "P5"]
 S_BINS = {"O": (1, 5), "PC": (5, 10), "C": (10, 15)}  # SI S4 labels
 PRIMARY_GATE = {"max_s": 7.0, "non_empty_bins": 3, "sigma_sat_pct": 50.0}
 
