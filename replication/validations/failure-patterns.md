@@ -430,3 +430,19 @@
 | 根因 | (1) 把 Branduardi 2012 里 `GEOM` 和 `DIFF` 两种 adaptive 方案的物理意义混在一起；(2) 对 well-tempered metadynamics 的 `γ = (T+ΔT)/T` 温度关系记反了符号方向，只记住了“有 tempering”而没记住 γ 的单调性；(3) probe sweep 压力下先用直觉解释 saturation，没有先回到一手定义。 |
 | 防范措施 | (1) **解释 ADAPTIVE 失败模式前，先明确是 GEOM 还是 DIFF**，不要跨语义借词；(2) **讨论 well-tempered `γ` 时写出单调关系**：γ 大 = slower cooling，γ 小 = faster cooling；(3) 任何“为什么 sigma 会塌缩”的口头诊断，先对照 PLUMED METAD 官方文档里的 scheme 定义，再决定是改 `SIGMA_MIN/MAX`、改 adaptive scheme，还是回到 CV/path audit。 |
 | 已修复 | ✅ 2026-04-21 在 Option A dispatch 中明确锁住 `γ=10`，不再把它作为调参方向；并把 probe sweep 解释改成“GEOM saturation 是局部几何映射 + floor/ceiling 约束的问题”，不再套用 DIFF 的 time-window 叙述。 |
+
+---
+
+## FP-030: `plumed driver --mf_pdb` 自投影时把 multi-model PATH 参考文件当成 112 原子系统，导致高 atom serial 越界；生产 GROMACS 运行不受影响
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-21 |
+| 发现者 | Codex executor diagnostic on Longleaf (`00_self_projection.sh` / `00b_self_projection_renumbered.sh`) |
+| 受影响文件 | `/tmp/00_self_projection.sh`（Longleaf 临时诊断脚本，失败）；`replication/metadynamics/path_cv/diagnostics/00b_self_projection_renumbered.sh`（driver-only 修复脚本） |
+| 错误描述 | 用 `plumed driver --mf_pdb path_gromacs.pdb` 对 production `PATHMSD` 做自投影时，PLUMED 2.9.2 报 `ERROR in input to action PATHMSD with label path : atom 1614 out of range`。原因是 `path_gromacs.pdb` 中 112 个 Cα 的 ATOM serial 继承自完整 ff14SB/GROMACS 系统（例如 1614 ... 4723），而 `driver --mf_pdb` 只把该 multi-model PDB 本身读成一个 **112 原子** 轨迹；PATHMSD 随后用参考文件里的高 serial 作为索引访问当前系统，超出 112 即报错。 |
+| 正确事实 | 这是 **driver-vs-GROMACS 语义差异**，不是生产 PATHMSD bug。Longleaf 生产坐标 `start.gro` / `metad.gro` 的原子数都是 `39268`，因此在 GROMACS+PLUMED 联动时，`path_gromacs.pdb` 里的 serial `1614...4723` 能映射到真实系统原子；但在 standalone `plumed driver --mf_pdb` 诊断里，当前系统只有 112 个原子，必须把参考/轨迹文件临时重编号成 `1..112` 才能自投影。 |
+| 正确做法 | 诊断时新建 driver-local 副本 `/tmp/path_driver.pdb`，对 **每个 MODEL 内** 的 `ATOM` serial 依次重编号为 `1..112`，其余 `MODEL/ENDMDL/TER` 原样保留；然后运行 `plumed driver --plumed plumed_self.dat --mf_pdb /tmp/path_driver.pdb`，其中 `REFERENCE=/tmp/path_driver.pdb`、`LAMBDA=379.77` 不变。验证通过后得到 15 行 `ref_selfproj.dat`，`s` 单调且端点约 `1.091 / 14.909`。 |
+| 根因 | 把 production 参考 PDB 的 **atom serial 语义** 和 standalone driver 的 **local trajectory indexing 语义** 混为一谈。`PATHMSD` 在生产里依赖 MD 引擎传入的完整系统坐标；`driver --mf_pdb` 只知道自己手上的 112 原子 multi-model PDB。 |
+| 防范措施 | (1) **任何用 `plumed driver` 直接读取 production PATH 参考文件的自检**，先检查 `ATOM` serial 是否连续 `1..N`；若不是，先生成 driver-local renumbered copy；(2) 报 `atom XXXX out of range` 时优先检查“参考 serial vs 当前系统 atom count”而不是怀疑 `LAMBDA` 或 atom order；(3) 生产 `plumed.dat` 不要因为 driver 诊断失败而改动，只在诊断脚本里做局部 renumber。 |
+| 已修复 | ✅ 2026-04-21 `00b_self_projection_renumbered.sh` 在 Longleaf 上通过：原始 `path_gromacs.pdb` 自投影报 `atom 1614 out of range`，renumbered `/tmp/path_driver.pdb` 成功输出 15 行 `ref_selfproj.dat`（`s`: 1.091318 → 14.908700，`z` 近 0）。 |

@@ -1,0 +1,32 @@
+# O-end tangent magnitude ‖t_O‖ = 16.471 Å  (reference scale)
+# frame_idx  time_ps    ‖Δx_t‖(Å)    cos(θ)    f_perp    status
+       0        0.0      16.822    -0.112     0.994  OFF-TANGENT (path suspect)
+      10      100.0      18.219    -0.111     0.994  OFF-TANGENT (path suspect)
+      20      200.0      14.649    -0.119     0.993  OFF-TANGENT (path suspect)
+      30      300.0      12.991    -0.110     0.994  OFF-TANGENT (path suspect)
+      40      400.0      13.965    -0.086     0.996  OFF-TANGENT (path suspect)
+      50      500.0      19.243    -0.091     0.996  OFF-TANGENT (path suspect)
+      60      600.0      18.053    -0.125     0.992  OFF-TANGENT (path suspect)
+      70      700.0      21.696    -0.086     0.996  OFF-TANGENT (path suspect)
+      80      800.0      23.106    -0.017     1.000  OFF-TANGENT (path suspect)
+      90      900.0      14.511    -0.001     1.000  OFF-TANGENT (path suspect)
+     100     1000.0      23.029    -0.027     1.000  OFF-TANGENT (path suspect)
+     110     1100.0      16.222    -0.132     0.991  OFF-TANGENT (path suspect)
+     120     1200.0      11.972    -0.156     0.988  OFF-TANGENT (path suspect)
+     130     1300.0      14.462    -0.153     0.988  OFF-TANGENT (path suspect)
+     140     1400.0       7.853    -0.138     0.990  OFF-TANGENT (path suspect)
+     150     1500.0      12.872    -0.152     0.988  OFF-TANGENT (path suspect)
+     160     1600.0       9.782    -0.055     0.998  OFF-TANGENT (path suspect)
+     170     1700.0      13.658    -0.195     0.981  OFF-TANGENT (path suspect)
+     180     1800.0      16.318    -0.206     0.979  OFF-TANGENT (path suspect)
+     190     1900.0      18.357    -0.120     0.993  OFF-TANGENT (path suspect)
+     200     2000.0      23.960    -0.131     0.991  OFF-TANGENT (path suspect)
+
+# SUMMARY
+# n_frames_analysed = 21
+# ‖Δx_t‖ range = [7.85, 23.96] Å   mean = 16.27
+# cos(θ)   range = [-0.206, -0.001]   mean = -0.111
+# f_perp   range = [0.979, 1.000]   mean = 0.992
+# frames flagged OFF-TANGENT = 21 / 21  (100.0%)
+# VERDICT: >50% of early frames have real motion that is ~perpendicular to the O-end chord.
+#          This supports: linear Cartesian path is scientifically weak at the O endpoint.
