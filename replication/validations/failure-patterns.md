@@ -412,9 +412,14 @@
 | 错误描述 | `Platform.getPlatformByName("CUDA")` → `Context` 构造时抛 `CUDA_ERROR_UNSUPPORTED_PTX_VERSION (222)`。尝试 `module load cuda/12.2` 和 `cuda/13.0` 都不能救。|
 | 正确事实 | `mamba install -c conda-forge openmm-plumed` 把 openmm 升到 8.4，并拉 `cuda-nvrtc 13.2.78`。openmm 8.4 conda-forge build 的 PTX 针对 CUDA ≥13.2 driver，Longleaf A100 节点驱动最高对应 `cuda/13.0` module → driver 不认 PTX。module load CUDA 工具链不会改驱动版本。|
 | 根因 | 装 openmm-plugin 包时没显式 pin CUDA build。conda-forge 默认给最新 CUDA build，生产集群驱动往往滞后。|
-| 防范措施 | 任何新 env 装 openmm 必须 `mamba install 'openmm=*=*cuda12*' 'openmm-plumed=*=*cuda12*' 'cuda-version=12.*'` 显式钉 CUDA 12 build。`nvidia-smi --query-gpu=driver_version` 在 GPU 节点上查实际驱动版本，和 conda-forge openmm build 的 run-constraint `__cuda >=X` 对比。|
+| 防范措施 | 任何新 env 装 openmm 必须用 conda-forge 的 `cuda-version` metapackage 显式钉 CUDA 代际，例如 `mamba install 'openmm=8.*' openmm-plumed 'cuda-version=12.4'`。不要再假设 conda-forge 用 `*cuda12*` 这种 build-string 选择器。`nvidia-smi --query-gpu=driver_version` 在 GPU 节点上查实际驱动版本，和目标 `cuda-version` 代际对齐。|
 | Cross-check | PTX error 和 module load 的 CUDA 版本无关——module load 只改 nvcc/cuBLAS/等工具链，不改内核驱动。排查 GPU 问题先 `cat /proc/driver/nvidia/version` 看真实驱动。|
-| 已修复 | ⚠️ 未 — toy 用 `OPENMM_PLATFORM=CPU` 跳过 CUDA 证明链路；生产 TrpB 40k 原子前必须重装 CUDA 12 build 或等 Longleaf 升驱动 |
+| 已修复 | ✅ 部分修复 — 2026-04-21 已把 `md_setup_trpb` 从 `cuda-version=13.2` repin 到 `cuda-version=12.4`，并把 `openmm/openmm-plumed` 一并重解到兼容组合。V100 新 smoke `44951229` 已通过 CUDA probe、完整 solvated build、CUDA minimize，并在 `nvt.log` 里观察到 `305 ns/day`；A100 旧 smoke `44944636` 则是在修复前的旧 env 上失败。 |
+
+Update 2026-04-21:
+- Root cause confirmed: `md_setup_trpb` had `openmm 8.4.0 + cuda-version 13.2 + cuda-nvrtc 13.2`. On Longleaf V100 (`Tesla V100-SXM2-16GB`, driver `580.105.08`), that produced `nvrtc: error: invalid value for --gpu-architecture (-arch)` in 4 s (`44944995`) because CUDA 13 no longer supports offline nvrtc compilation for `sm_70`. On Longleaf A100 (`NVIDIA A100-PCIE-40GB`, driver `590.48.01`), the same pre-fix env failed with `CUDA_ERROR_UNSUPPORTED_PTX_VERSION (222)` (`44944636`).
+- Remediation: `mamba install -p /work/users/l/i/liualex/conda/envs/md_setup_trpb -c conda-forge 'openmm=8.*' openmm-plumed 'cuda-version=12.4'` with `CONDA_PKGS_DIRS=/work/users/l/i/liualex/conda/pkgs_liualex`. Post-fix inventory: `openmm 8.2.0`, `openmm-plumed 2.1`, `cuda-version 12.4`, `cuda-nvrtc 12.4.127`.
+- Validation: fresh V100 smoke `44951229` now reaches `CUDA_PLATFORM_OK`, full solvated build, neutralized charge `-0.000000 e`, `max_force_kj_mol_nm=2453.232795`, and emits `Speed (ns/day)=305` during NVT. This confirms the env fix for `sm_70`; fresh post-fix A100 confirmation was not yet submitted in this turn.
 
 ---
 
