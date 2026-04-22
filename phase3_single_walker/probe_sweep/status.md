@@ -2,7 +2,7 @@
 
 Auto-written by `routine_check.py` every 2 hours.
 
-_Last tick: 2026-04-22T16:23:37Z_
+_Last tick: 2026-04-22T16:47:16Z_
 
 **Winner:** none yet
 
@@ -14,7 +14,7 @@ Columns show % of hills touching each bound. Anything >50 means that bound is bi
 |---|---|---|---|---|---|---|---|---|---|
 | P1 | 10.00 | 5000 | 1.15 | 10001/0/0 | 100.0 | 0.0 | 98.0 | 0.0 | wait |
 | P2 | 10.00 | 5000 | 1.30 | 10001/0/0 | 99.9 | 0.0 | 98.9 | 0.0 | wait |
-| P3 | 27.59 | 13797 | 1.28 | 27594/0/0 | 100.0 | 0.0 | 93.2 | 0.0 | wait |
+| P3 | 28.07 | 14035 | 1.28 | 28071/0/0 | 100.0 | 0.0 | 93.3 | 0.0 | wait |
 | P4 | 10.00 | 5000 | 1.64 | 10001/0/0 | 98.3 | 0.0 | 94.8 | 0.0 | wait |
 | P5 | 10.00 | 5000 | 1.33 | 10001/0/0 | 95.5 | 1.6 | 100.0 | 0.0 | wait |
 
@@ -51,8 +51,8 @@ Columns show % of hills touching each bound. Anything >50 means that bound is bi
     "hills_lines": 5003
   },
   "P3": {
-    "colvar_lines": 27597,
-    "hills_lines": 13806
+    "colvar_lines": 28074,
+    "hills_lines": 14044
   },
   "P4": {
     "colvar_lines": 10002,
