@@ -57,10 +57,10 @@ PY
 
 PRE_HILLS_ROWS=$(wc -l < HILLS)
 PRE_COLVAR_ROWS=$(wc -l < COLVAR)
-PRE_HILLS_FIRST=$(grep -v '^#' HILLS | head -1)
-PRE_COLVAR_FIRST=$(grep -v '^#' COLVAR | head -1)
+PRE_HILLS_FIRST=$(grep -m 1 -v '^#' HILLS)
+PRE_COLVAR_FIRST=$(grep -m 1 -v '^#' COLVAR)
 
-gmx convert-tpr -s metad.tpr -extend 20000 -o metad_30ns.tpr
+gmx convert-tpr -s metad.tpr -extend 20000 -o metad_30ns.tpr >> convert_tpr_30ns.log 2>&1
 
 gmx mdrun \
   -s metad_30ns.tpr \
@@ -68,12 +68,12 @@ gmx mdrun \
   -deffnm metad \
   -plumed plumed_restart.dat \
   -ntmpi 1 \
-  -ntomp "${OMP_NUM_THREADS}"
+  -ntomp "${OMP_NUM_THREADS}" >> mdrun_restart_30ns.log 2>&1
 
 POST_HILLS_ROWS=$(wc -l < HILLS)
 POST_COLVAR_ROWS=$(wc -l < COLVAR)
-POST_HILLS_FIRST=$(grep -v '^#' HILLS | head -1)
-POST_COLVAR_FIRST=$(grep -v '^#' COLVAR | head -1)
+POST_HILLS_FIRST=$(grep -m 1 -v '^#' HILLS)
+POST_COLVAR_FIRST=$(grep -m 1 -v '^#' COLVAR)
 
 if [[ ${POST_HILLS_ROWS} -le ${PRE_HILLS_ROWS} ]]; then
   echo "FATAL: HILLS did not grow"
