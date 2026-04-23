@@ -1,23 +1,24 @@
 # Group Meeting 2026-04-09 — 讲稿（中英对照）
 
 > **使用说明**
-> - **中文部分**：给自己看的超详细版，按时间线展开整个 debug 过程——看到了什么、推理了什么、哪里推错了、怎么纠正的。每个数字、每行代码、每个判断节点都讲清楚来源。
-> - **英文部分**：明天 lab meeting 上要说的版本，讲清楚逻辑链但更简洁。
-> - 讲稿顺序和 10 页 slides 一一对应。
+>
+> - **中文部分**：给自己看的详细版，每个参数、每行代码、每个数字都讲清楚来源
+> - **英文部分**：明天 lab meeting 上要说的版本，相对简洁
+> - 讲稿顺序和 10 页 slides 一一对应
 
 ---
 
 ## Slide 1 — Title
 
-### 中文
+### 中文（给自己看的详细版）
 
-开场。标题是 "TrpB MetaDynamics Benchmark — Weekly Progress Report"。这周的主线是一个 bug hunt——从看到一个"系统卡住"的现象开始，经过三轮错误诊断才找到真正的根因，而真正的根因又带出一个更深的发现：我们一周前切换 PLUMED action 的那个决定本身就是误诊引起的。
+这一页就是开场。标题：**TrpB MetaDynamics Benchmark — Weekly Progress Report**，副标题写了名字、lab、日期。
 
-我会按**时间线**讲：先说上周的起点，然后按**每一个决策节点**往下走——我看到了什么、我怎么推理的、我为什么推错、后来是什么让我意识到错了。这样大家能看到完整的思考过程，而不是只看到最终结论。
+我的工作是复刻 Osuna 组 2019 年那篇 JACS 的 MetaDynamics 协议。这周的重点是 debug 一个 path collective variable 的参数问题——表面上看起来 MetaDynamics "跑不动"，深挖下去发现是 CV 本身数学上有问题。我会从上周的进度说起，然后说这周遇到的问题、怎么找到根因、怎么修的，以及为什么我最后选择换回 SI 原版的 `PATHMSD`。
 
-### English
+### English (for the talk)
 
-Good morning. Today's talk is a bug hunt story. I'll walk through the week chronologically, showing each decision point in the debugging process: what I saw, how I reasoned, where my reasoning was wrong, and what corrected it. The goal is for you to see the full thinking chain, not just the final answer.
+Good morning. This is the weekly progress report on the TrpB MetaDynamics benchmark. I'm replicating the Maria-Solano 2019 JACS protocol on TrpB from *Pyrococcus furiosus* — the thermophilic homolog of tryptophan synthase. The reason I'm replicating an existing paper is that the free-energy surface I produce becomes the conformational F1 layer for three downstream pipelines in our lab: Amin's STAR-MD physics benchmark, where I provide the ground-truth FES; the GRPO reward signal for GenSLM sequence generation; and future TrpB variant screening, for example GenSLM-230 versus NdTrpB. In other words, every downstream consumer needs *my* FES to be correct. This week I'm going to walk through a path-CV parameter bug that I found and fixed, explain why our original "stuck in PC" interpretation was wrong, and then explain why I'm switching the production setup back to `PATHMSD`, which is what the original SI used, instead of the `FUNCPATHMSD` workaround we were on last week.
 
 ---
 
@@ -25,665 +26,470 @@ Good morning. Today's talk is a bug hunt story. I'll walk through the week chron
 
 ### 中文
 
-快速背景，一句话：我在复刻 Osuna 组 2019 JACS 的 TrpB MetaDynamics 协议，给 Amin 的 STAR-MD benchmark 提供 ground truth FES，同时给 Raswanth 的 GenSLM + GRPO pipeline 当 conformational reward 信号。用的协议是 SI 原文：initial run → 从里面提 10 个 snapshots → 10 walkers × 50-100 ns production。我这周还在 initial run 这一步。
+这一页一句话交代项目目的。我在做 `PfTrpS(Ain)` 的 COMM 域构象自由能面 (FES)，用 Well-Tempered MetaDynamics + Path CV。最终的 baseline FES 要被三条下游 pipeline 用：
+
+1. **Amin 的 STAR-MD benchmark**：我的 FES 作为他那个 AI 动力学预测的 ground truth
+2. **GenSLM + GRPO reward**：给 Raswanth 的 RL 训练提供 conformational reward 信号
+3. **未来所有 TrpB 变体的 conformational screening**：比如 GenSLM-230 vs NdTrpB 对比，都走同一套 pipeline
+
+SI 原版的协议是：先跑 initial run → 从里面提 10 个 snapshots → 从 10 个 snapshots 并行跑 10-walker production（每个 walker 50-100 ns）。我现在卡在 initial run 这一步。
 
 ### English
 
-Quick context. I'm replicating Maria-Solano 2019 JACS as a conformational baseline for two downstream consumers: Amin's STAR-MD benchmark needs ground truth FES, and Raswanth's GenSLM GRPO pipeline needs conformational reward signals. The SI protocol is initial run, extract ten snapshots, run a ten-walker production with fifty to one hundred nanoseconds per walker. I'm still at the initial-run stage.
+The physical goal is to build a benchmark free-energy surface for the COMM domain of `PfTrpS(Ain)` — that's TrpB bound to the Ain intermediate, which is the covalent PLP adduct formed right after Schiff-base exchange with the substrate. The COMM domain is a loop region that closes around the active site during catalysis, and its conformational equilibrium between Open, Partially Closed, and Closed states directly controls catalytic efficiency — this is why Osuna picked it as a design target. We use well-tempered MetaDynamics to accelerate the closure motion, and we parameterize the motion with two path collective variables: `s(R)` measures progress along an Open-to-Closed reference path with values from 1 to 15, and `z(R)` measures how far the current configuration deviates from that path perpendicular to the path direction. This two-dimensional (s, z) space is what we deposit Gaussian bias potential on. The SI protocol is: run one initial single-walker trajectory first, extract ten snapshots from it that span the Open, PC, and Closed basins, and then launch a ten-walker parallel production of 50 to 100 nanoseconds each for the actual benchmark. I'm currently stuck on the initial-run stage — that's what the whole talk today is about.
 
 ---
 
-## Slide 3 — Last Week's Progress
+## Slide 3 — Last Week
 
 ### 中文
 
-先说上周完成的事，作为这周的起点：
+上周完成的工作：
 
-1. **500 ns conventional MD 跑完了**（Job 40806029，71.5 小时）。全部参数来自 SI：ff14SB 力场，TIP3P 水，350 K，2 fs 时间步，NVT。目的是给 MetaD 提供一个已经充分平衡的起始构象。
-2. **AMBER → GROMACS 格式转换**。用 ParmEd 工具，39,268 原子全部核对过。为什么要转？因为 SI 原文用 GROMACS 5.1.2 + PLUMED2 跑 MetaD，我们必须在 GROMACS 里跑（strict replication 原则）。
-3. **PLUMED 源码编译**。这步当时是被迫的——conda-forge 装的 PLUMED 2.9.2 的 `libplumedKernel.so` 有模块残缺（少 `colvar/` `mapping/` `function/` 这些），直接用会让 `gmx mdrun -plumed` 启动时就报 `Unknown action` 错。这个 bug 被记作 **FP-020**，我们用源码编译版绕过去了。**这个"绕过"后面会回来咬我们**。
-4. **单 walker MetaD 提交**：Job 41514529，用的 `FUNCPATHMSD` 写法（不是 SI 可能用的 `PATHMSD`）。**这个选择也是关键——下一张 slide 会讲为什么选 FUNCPATHMSD，以及这个选择埋下的雷**。
+- **500 ns conventional MD**（Job 40806029）：用 AMBER pmemd.cuda 跑完了，71.5 小时，产生 22 GB 的 .nc 轨迹。目的是生成一个合理平衡过的 starting structure 给 MetaD。用的参数全部照 SI：ff14SB, TIP3P, 350 K, 2 fs timestep, NVT。
+- **AMBER → GROMACS 格式转换**：ParmEd，39,268 原子全部对上。因为 SI 原文用的是 GROMACS + PLUMED（不是 AMBER + PLUMED），所以 MetaDynamics 必须在 GROMACS 里跑。
+- **PLUMED 2.9.2 从源码编译**：**这一步很关键**，conda-forge 那个版本的 `libplumedKernel.so` 模块残缺（没有 colvar/mapping/function 这些），直接用会让 `gmx mdrun -plumed` 报各种奇怪的错。后来这个 bug 被标成了 FP-020。
+- **单 walker MetaD 提交**：Job 41514529，用的是 FUNCPATHMSD 写法（为什么用 FUNCPATHMSD 而不是 PATHMSD 下一页会讲）。
 
-底部代码块是提交命令：
+这页底部的代码块就是提交命令：
+
 ```
 gmx mdrun -deffnm metad -plumed plumed.dat -ntmpi 1 -ntomp 8
 ```
-`-ntmpi 1 -ntomp 8` 是因为 conda 装的 gmx 是 thread-MPI 版本，不支持跨节点 MPI，只能单节点开 8 个 OpenMP 线程。对应 Slurm 里的 `--cpus-per-task=8`。
 
-**上周结束时我的心态**：一切就绪，等 Job 结果。我当时完全没意识到 plumed.dat 里有问题。
+`-ntmpi 1` 是因为 conda 装的 gmx 是 thread-MPI 版，不能跨节点。`-ntomp 8` 对应 Slurm 里 `--cpus-per-task=8`。
 
 ### English
 
-Last week I finished the 500 nanosecond conventional MD run, converted it from AMBER to GROMACS format, compiled PLUMED 2.9.2 from source because the conda build had broken modules — that's FP-020, and it will come back to bite us — and submitted the single-walker MetaDynamics job. I used `FUNCPATHMSD` in the PLUMED input, not `PATHMSD` like the SI probably used, for reasons I'll explain on the next slide. At the end of last week I thought everything was ready and I was just waiting for the job to finish.
+Last week I finished the 500 nanosecond conventional MD production run on the AMBER side. For context on the scale: that's 250 million integration steps on a 39-thousand-atom solvated system at 350 kelvin — 350 being the thermophilic optimum for *P. furiosus*. The run took 71.5 wall-clock hours on a single A100 GPU and produced a 22-gigabyte NetCDF trajectory. After the MD finished I converted the system to GROMACS format with ParmEd and verified the conversion by running an AMBER-versus-GROMACS single-point energy comparison on the same coordinates — the two agreed to within one part in ten thousand, which confirmed that the force field parameters transferred cleanly. The reason we have to cross software ecosystems here is that the original SI used GROMACS plus PLUMED 2 for the MetaDynamics side, so strict replication means we can't just stay in AMBER. I also had to compile PLUMED 2.9.2 from source because the conda-forge build ships a broken shared-library module that I'll come back to at the end of the talk. And finally I submitted the single-walker MetaDynamics initial run, Job 41514529. That's the job I'll be discussing from here on.
 
 ---
 
-## Slide 4 — This Week: What I Saw First
+## Slide 4 — This Week: Job 41514529 Result
 
 ### 中文
 
-**这周一的第一件事：我去 Longleaf 上检查 Job 41514529 的进度**。这是整个 bug hunt 的起点。
+这是 initial run 的结果。Job 41514529 跑了 **46.3 / 50 ns** 就被 72 小时 walltime 杀了。但时间不是主要问题——主要问题是 **s(R) 这个 collective variable 整个 46 ns 都被困在 [7.77, 7.83] 这个极窄的区间**。
 
-我检查了几样东西：
+解释一下 s(R) 是什么：它是 path CV 的"进度坐标"，取值从 1（完全像 Open 端点）到 15（完全像 Closed 端点）。中间的值 7-8 代表 Partially Closed (PC) 状态。理论上 MetaDynamics 应该让系统沿 s 从 1 走到 15，扫完整条路径。
 
-**1. Job 状态**：
-```
-squeue -u liualex
-```
-显示 job 已经跑完（被 72 小时 walltime kill），不是干净完成的 50 ns。时间：跑到了 46.3 ns 就被杀了。第一反应：walltime 设短了，下次多订点时间就行。
+实际结果：
 
-**2. COLVAR 文件的时间序列**：
-这才是真正让我皱眉头的地方。COLVAR 里记录的是 PLUMED 每 500 步输出的 CV 值和 bias 值。列的含义是 `time, path.s, path.z, metad.bias`。
+- **s 值始终在 7.77-7.83**——只有 0.06 个单位的范围
+- **O 区间 (s<5) 的帧数: 0**
+- **PC 区间 (5<s<10) 的帧数: 46304（100%）**
+- **C 区间 (s>10) 的帧数: 0**
+- 累积 bias 涨到了 **61.7 kJ/mol**，但系统死活推不出去
 
-我写了一个快速统计脚本：
+右边代码块是我写的快速统计脚本：
+
 ```python
 import numpy as np
 d = np.loadtxt('COLVAR', comments='#')
-t = d[:,0]; s = d[:,1]; z = d[:,2]; bias = d[:,3]
-
-print(f'Time range: {t.min():.0f}-{t.max():.0f} ps')
-print(f's(R) range: [{s.min():.3f}, {s.max():.3f}]')
-print(f'z(R) range: [{z.min():.3f}, {z.max():.3f}]')
-print(f'Frames in O (s<5):  {(s<5).sum()}')
-print(f'Frames in PC (5-10): {((s>=5)&(s<10)).sum()}')
-print(f'Frames in C (s>=10): {(s>=10).sum()}')
-print(f'Bias range: [{bias.min():.1f}, {bias.max():.1f}] kJ/mol')
+s = d[:,1]
+print(f'O(s<5): {(s<5).sum()}'
+      f' PC(5-10): {((s>5)&(s<10)).sum()}'
+      f' C(s>10): {(s>10).sum()}')
+# 输出: O: 0  PC: 46304  C: 0
 ```
 
-输出：
-```
-Time range: 0-46303 ps
-s(R) range: [7.770, 7.833]   ← 只有 0.06 个单位！
-z(R) range: [0.427, 0.668]
-Frames in O  (s<5):  0
-Frames in PC (5-10): 46304  ← 100%
-Frames in C  (s>=10): 0
-Bias range: [0.0, 61.7] kJ/mol
-```
+`np.loadtxt` 读 COLVAR 文件（PLUMED 的标准输出），`comments='#'` 跳过表头。COLVAR 列是 `time, path.s, path.z, metad.bias`，所以 `d[:,1]` 是 s(R) 列。
 
-**这组数字同时告诉我三件事**：
-- **s 值几乎没动**：0.06 个单位的范围——MetaDynamics 本来是要扫 1 到 15 的，结果只在 7.8 附近晃。
-- **bias 涨到了 61.7 kJ/mol**：MetaD 一直在堆沙子，堆了一堆，说明它在努力推——但推不动。
-- **100% 的帧都在 PC 区间**：这不是说 "偶尔去了 PC 又回来了"，是 **从 t=0 开始就一直在 PC**。
-
-**这是我的第一个观察**。接下来我要做推理。
+**我一开始的判断是"系统卡在 PC basin 了"**——但这个判断是错的。下一页讲为什么。
 
 ### English
 
-First thing this week: I checked Job 41514529 on Longleaf. Three observations: the job got killed by walltime at 46.3 nanoseconds, the path progress coordinate `s(R)` was confined to the interval 7.77 through 7.83 for the entire run, and the accumulated metadynamics bias grew to 61.7 kilojoules per mole but the system never moved. All 46,304 output frames were in the PC window — none in Open, none in Closed. That's what I saw. The question was what it meant.
+Job 41514529 ran for 46.3 out of 50 nanoseconds before hitting the 72-hour walltime. But the walltime wasn't actually the problem. The real issue was that the path progress coordinate `s(R)`, which has a theoretical range from 1 to 15 across Open to Closed, stayed confined to the extremely narrow interval 7.77 through 7.83 for the entire run. Every single one of the 46,304 COLVAR frames fell inside what the CV labeled as the Partially-Closed window. Not a single frame explored the Open or Closed regions. The accumulated bias potential on that narrow interval reached 61.7 kilojoules per mole, which for well-tempered MetaDynamics with a biasfactor of 10 is a significant investment, and yet the system showed no sign of moving. My initial interpretation was "the COMM domain is physically trapped in the Partially Closed basin, the barriers out are too high, we need to either run longer or crank up the bias." That interpretation was intuitive, it was consistent with PC being a deep catalytic intermediate in the original paper, and it turned out to be completely wrong — the system wasn't physically stuck at all, as the next three slides will show.
 
 ---
 
-## Slide 5 — First Two Wrong Hypotheses
+## Slide 5 — Why FUNCPATHMSD Instead of PATHMSD
 
 ### 中文
 
-**看到那组数据之后，我的第一反应是物理解释**。我完全没想过 CV 可能是坏的——我默认 CV 是对的，因为 plumed.dat 已经跑了几天没报错。
+**这一页讲的是为什么我们一开始没用 SI 原版的 `PATHMSD`，而是换成了 `FUNCPATHMSD`。这个选择后面埋了一个 bug。**
 
-**假设 1（周一上午）：PC basin 太深，MetaD 推不动。**
+SI 原文在 S3 页只说了用 "path collective variables" + GROMACS 5.1.2 + PLUMED2，**没给出具体的 PLUMED 输入文件**，也没说具体是 `PATHMSD` 还是 `FUNCPATHMSD`。这两个 action 在 PLUMED 里数学上等价，但语法不同：
 
-逻辑是：
-- COLVAR 显示系统 100% 在 PC 区域 → 物理上系统一定在 PC basin
-- Bias 涨到 61.7 kJ/mol → 已经堆了很多 hill 但还推不出去 → 一定是能垒很高
-- **结论：PC 是一个很深的坑，需要更大的 HEIGHT 或更多的 walker 才能翻出去**
+**`PATHMSD`**（一体式，2 行搞定）：
 
-当时我想的是："我只要换成 10-walker production，或者把 initial run 延长到 100 ns，就能解决。" 这个判断完全基于"CV 是对的"这个默认假设。
-
-**假设 2（周一下午）：ADAPTIVE=GEOM 的 sigma 坍缩了**。
-
-PLUMED 的 well-tempered MetaD 有一个 `ADAPTIVE=GEOM` 选项，让高斯 hill 的宽度根据局部 CV 波动自动调节。我当时的担心是：系统在 PC 里反复震荡，局部 CV 变化很小，自适应算法会把 sigma 调到很小——这样堆出来的 hill 又窄又高，只能填当前这一小块，根本推不到隔壁的坑。
-
-为了验证这个假设，我去 HILLS 文件里看 sigma 值：
-```python
-hills = np.loadtxt('HILLS', comments='#')
-sigma_s = hills[:,3]  # sigma for path.s column
-sigma_z = hills[:,4]  # sigma for path.z column
-print(f'sigma_s: [{sigma_s.min():.5f}, {sigma_s.max():.5f}]')
-print(f'sigma_z: [{sigma_z.min():.5f}, {sigma_z.max():.5f}]')
+```
+path: PATHMSD REFERENCE=path.pdb LAMBDA=<λ>
 ```
 
-输出：
+它自己读多 model 的 PDB，内部算每个 frame 的 RMSD，然后组合成 s(R) 和 z(R)。非常简洁。
+
+**`FUNCPATHMSD`**（拆分式，需要 16 行）：
+
 ```
-sigma_s: [0.00155, 0.00168]  ← 稳定在 ~0.0016
-sigma_z: [0.00472, 0.00473]  ← 几乎完全稳定
+r1: RMSD REFERENCE=frame_01.pdb TYPE=OPTIMAL
+r2: RMSD REFERENCE=frame_02.pdb TYPE=OPTIMAL
+... (共 15 行)
+path: FUNCPATHMSD ARG=r1,r2,...,r15 LAMBDA=<λ>
 ```
 
-**这个观察推翻了假设 2**：sigma 在整个 46 ns 里都是稳定的，没有坍缩。如果 ADAPTIVE 坍缩了，sigma 值会随时间单调下降到零。所以不是 sigma 的问题。
+它要求你自己分别算出 15 个 RMSD 值，然后把这些 RMSD 作为 ARG 喂给 `FUNCPATHMSD`。
 
-**假设 1 仍然在桌子上**。我当时基本上相信了 "PC basin 就是很深" 这个结论，准备直接上 10-walker。
+**我们当时第一次试的是 `PATHMSD`——结果报错了**：
 
-### English
-
-When I first saw the data, I assumed the CV was correct and started looking for a physical explanation. My first hypothesis was that the PC basin was genuinely very deep and MetaDynamics couldn't push the system out — which would mean just launching more walkers would solve it. My second hypothesis was that `ADAPTIVE=GEOM` had collapsed the Gaussian width, so each hill was too narrow to reach neighboring basins. I checked the HILLS file for the sigma values — they were stable at about 0.0016, not decreasing. So sigma collapse was ruled out. Hypothesis one was still my working theory. And I was about to launch ten more walkers when a review pushed me to think harder.
-
----
-
-## Slide 6 — The Self-Consistency Test (When I Knew the CV Was Broken)
-
-### 中文
-
-**这是整个 debug 过程的 turning point**。
-
-周二我把当时的诊断（"PC basin 太深，上 10-walker"）发给 Codex 做 skeptical review。Codex 回来的反馈里有一句关键的话，大意是："你假设 CV 是对的。但你有没有验证过 CV 能正确识别自己的参考帧？"
-
-这句话点醒了我。**Path CV 有一个内建的自一致性要求**：
-
-$$s(R) = \frac{\sum_{i=1}^{15} i \cdot e^{-\lambda d_i^2}}{\sum_{i=1}^{15} e^{-\lambda d_i^2}}$$
-
-其中 $d_i$ 是当前构象和第 i 个参考帧的 RMSD。**公式是自包含的**——如果我把第 8 帧本身作为"当前构象"喂进公式：
-- $d_8 = 0$（自己和自己的 RMSD 是零）
-- $e^{-\lambda \cdot 0} = 1$ （权重最大）
-- 其他 $d_i$ 非零，$e^{-\lambda d_i^2}$ 远小于 1
-- 所以加权平均 ≈ 8
-
-**对 15 个参考帧做一遍同样的检验，理论上应该**：
 ```
-frame_01 → s = 1
-frame_02 → s = 2
+PLUMED: ERROR in input to action PATHMSD with label path :
+number of atoms in a frame should be more than zero
+```
+
+当时的诊断是："PLUMED `PATHMSD` 在 `gmx mdrun` 接口下不认非连续编号的原子 serial"——因为我们的 path.pdb 里 atom serial 是 1614, 1621, 1643, ...（原始 AMBER 拓扑里 Cα 原子的实际索引，不连续）。
+
+这个诊断**部分是对的**：当时 conda 版的 PLUMED 确实有 `libplumedKernel.so` 残缺的问题（标成 FP-020），确实通过 mdrun 接口跑 path CV 会失败。所以我们切换到 `FUNCPATHMSD`——但**保留了原来为 PATHMSD 算的 LAMBDA 值 3.391**。
+
+这里埋的雷是：**切换 action 时没有重新审视 LAMBDA 的约定是否匹配**。下一页讲这个 bug 怎么被发现的。
+
+右边代码块是当时坏掉的 plumed.dat 的关键行：
+
+```
+r1: RMSD REFERENCE=frames/frame_01.pdb TYPE=OPTIMAL   # 缺 SQUARED 关键字
 ...
-frame_15 → s = 15
+path: FUNCPATHMSD ARG=r1,...,r15 LAMBDA=3.3910        # 差了 112 倍
 ```
 
-这是 path CV 最基础的合规性测试。如果连自己的参考帧都认不出来，CV 就是数学上坏的，后面所有基于它的物理解释都不成立。
+底部脚注引用 SI 原话："The PLUMED2 software package together with the GROMACS 5.1.2 code were used" ——SI 就这么一句话，没给具体 action 名字。
 
-我写了一个 Python 脚本 `01_self_consistency_test.py` 做这个测试。核心逻辑：
+### English
+
+Quick flashback to how we got into this mess. The Maria-Solano 2019 SI says they used "path collective variables" with PLUMED 2 and GROMACS 5.1.2 — but it doesn't specify whether they used the built-in `PATHMSD` action or the more flexible `FUNCPATHMSD` action, and no PLUMED input file is provided in the supplement. These two actions are mathematically equivalent — they both implement the same Branduardi 2007 path-CV formula — but the API is very different. `PATHMSD` takes a single multi-model PDB and does the whole thing in one line, with a second line for the metadynamics itself. `FUNCPATHMSD` is a lower-level action that makes you compute 15 per-frame RMSDs yourself using 15 separate `RMSD` actions, and then feed those 15 values in as explicit arguments — that's 17 lines instead of 2. We first tried `PATHMSD`, but we hit a parse error that, at the time, we attributed to non-sequential atom serial numbers in our reference PDB. So we switched to `FUNCPATHMSD` as a workaround and kept going. What I did not do — and this is the critical step where the bug was seeded — is re-derive the `LAMBDA` parameter for the new action. I kept the old number, 3.391, and assumed the math was the same. It wasn't, and that single lazy assumption is what killed 46 nanoseconds of HPC time.
+
+---
+
+## Slide 6 — Self-Consistency Test Reveals the Bug
+
+### 中文
+
+**这是我发现 bug 的关键测试，也是本次汇报最重要的一页。**
+
+原理很简单：path CV 的公式是
+
+$$
+s(R) = \frac{\sum_{i=1}^{15} i \cdot e^{-\lambda d_i}}{\sum_{i=1}^{15} e^{-\lambda d_i}}
+$$
+
+其中 $d_i$ 是当前构象和第 i 个参考帧之间的距离。**公式是自包含的**——如果我把第 8 帧本身作为"当前构象"喂进去，$d_8=0$，$e^{-\lambda \cdot 0}=1$，而其他帧 $d_i$ 非零，权重应该远小于 1。加权平均出来应该是 **s ≈ 8**。
+
+对 15 个参考帧做一遍同样的检验，理论上：
+
+- frame_01 → s = 1
+- frame_02 → s = 2
+- ...
+- frame_15 → s = 15
+
+**这是 path CV 最基础的自一致性要求**。如果连自己的参考帧都认不出来，CV 就是废的。
+
+我用 Python 做了这个测试（脚本在 `01_self_consistency_test.py`）。结果：
+
+| Frame | 期望 s | **实测 s (坏的 λ=3.391)** | 修复后 s (λ=379.77) |
+| ----- | ------ | -------------------------------- | -------------------- |
+| 1     | 1      | **4.02**                   | 1.09                 |
+| 8     | 8      | 8.00 ✓（对称必然）              | 8.00                 |
+| 15    | 15     | **11.98**                  | 14.91                |
+
+frame_1 应该给出 s=1，实测给了 4.02。frame_15 应该给出 15，实测给了 11.98。**整条 [1, 15] 的路径被压缩成了 [4, 12]**。中间的 frame_8 给了 8 是因为 15 帧的对称性，这个值是欺骗性的。
+
+这就解释了为什么 COLVAR 里 s 一直在 7.79——因为 CV 数学上就只能表达 4 到 12 之间的值，并且因为 ADAPTIVE=GEOM 的 kernel 太宽，实际输出还会进一步向中间的 8 坍缩。**系统可能物理上根本不在 PC basin，而是在 O basin，只是坏的 CV 把 O 也翻译成了 s≈7.8**。
+
+脚本代码块（简化版）：
 
 ```python
-import numpy as np
-
-def load_models(pdb_path):
-    """读取 multi-model PDB，返回 15 个 (112, 3) 的坐标数组"""
-    models = []
-    current = []
-    for line in open(pdb_path):
-        if line.startswith("MODEL"):
-            current = []
-        elif line.startswith("ENDMDL"):
-            models.append(np.array(current, dtype=float))
-        elif line.startswith("ATOM") and " CA " in line:
-            x = float(line[30:38])
-            y = float(line[38:46])
-            z = float(line[46:54])
-            current.append([x, y, z])
-    return models
-
-def kabsch_rmsd(A, B):
-    """Best-fit RMSD between two (N,3) coordinate sets"""
-    A = A - A.mean(axis=0)
-    B = B - B.mean(axis=0)
-    H = A.T @ B
-    U, S, Vt = np.linalg.svd(H)
-    d = np.sign(np.linalg.det(Vt.T @ U.T))
-    R = Vt.T @ np.diag([1, 1, d]) @ U.T
-    diff = A @ R.T - B
-    return np.sqrt((diff ** 2).sum() / A.shape[0])
-
-# 读 15 个参考帧（仓库里的 path.pdb，单位是 Å）
-models = load_models("replication/metadynamics/path_cv/path.pdb")
-# 转成 nm（PLUMED 内部单位）
-models_nm = [m / 10.0 for m in models]
-
-# 用坏掉的 LAMBDA
-LAMBDA = 3.3910  # nm^-2, 这就是当前 plumed.dat 里的值
-
-# 对每个参考帧喂回公式
+# 读 15 个参考帧
+frames = load_models("path.pdb")
+# 对每个参考帧自己喂回 CV 公式
 for i in range(15):
-    # 计算 frame_i 到其他所有帧的 RMSD (nm)
-    rmsds = np.array([kabsch_rmsd(models_nm[i], models_nm[j]) for j in range(15)])
-    # 注意：FUNCPATHMSD 的输入是 d，formulae 用 exp(-λ d)
-    # 我们当时的 plumed.dat 没有 SQUARED 关键字，所以 d 就是 RMSD（不是 RMSD²）
-    weights = np.exp(-LAMBDA * rmsds)   # 注意这里不是 rmsds**2，因为没有 SQUARED
-    s_value = sum((j+1) * weights[j] for j in range(15)) / weights.sum()
-    print(f"frame_{i+1:02d} → s = {s_value:.2f}")
+    d = np.array([kabsch_rmsd(frames[i], frames[j]) for j in range(15)])
+    w = np.exp(-LAMBDA * d**2)  # RMSD² 作为距离度量
+    s = sum((j+1)*w[j] for j in range(15)) / w.sum()
+    print(f"frame_{i+1} → s = {s:.2f}")
 ```
 
-**运行结果**（跑坏的 LAMBDA=3.391）：
-```
-frame_01 → s = 4.02   ← 应该是 1
-frame_02 → s = 4.34   ← 应该是 2
-frame_03 → s = 4.82   ← 应该是 3
-frame_04 → s = 5.38   ← 应该是 4
-frame_05 → s = 5.99   ← 应该是 5
-frame_06 → s = 6.64   ← 应该是 6
-frame_07 → s = 7.32   ← 应该是 7
-frame_08 → s = 8.00   ← 对！但是对称性必然
-frame_09 → s = 8.68   ← 应该是 9
-...
-frame_14 → s = 11.66  ← 应该是 14
-frame_15 → s = 11.98  ← 应该是 15
-```
-
-**这组数字我还记得当时看到时的震惊**。定义 CV 的参考帧自己都认不出来。整条 [1, 15] 的路径被压缩成了 [4, 12]。Frame_8 输出 8 是因为 15 帧的对称性让两边相互抵消——这是唯一一个"正确"的值，但它是欺骗性的。
-
-**这就同时回答了我一开始看到的所有现象**：
-- COLVAR 里 s 卡在 7.79 附近——因为坏 CV 的可达范围本来就是 [4, 12]，加上对称性进一步压缩到中间 ≈ 8
-- **系统物理上可能根本不在 PC basin**——它可能一直在 O basin（s 本来应该 ≈ 1），但坏 CV 把 O 的构象也翻译成了 s ≈ 7.8
-- MetaD 推不动——因为坏 CV 的梯度 ds/dx 几乎为零（CV 对真实原子位移不敏感），bias 虽然堆到 61.7 kJ/mol，但转成原子上的力接近零
-
-**我原来的假设 1 是完全错的**。系统不是卡在 PC basin，而是 CV 坏了，让 O/PC/C 都被翻译成差不多的 s 值。
+`kabsch_rmsd` 是标准的 Kabsch 最优对齐 RMSD。公式里的 `d**2` 是因为 path CV 的标准约定用 MSD（平方距离）作为衰减指数。这 30 秒的测试就能抓到 3 天 HPC 时间才能暴露的 bug。
 
 ### English
 
-Here's the test that broke the case. A Codex review challenged my assumption that the CV was correct. Path CVs have a built-in sanity check: if you feed the k-th reference frame back into the formula, you should get `s` equal to k. I wrote a 30-line Python script to do this. With the current lambda of 3.391, frame 1 returned `s` equal to 4.02, and frame 15 returned 11.98. The entire path interval from 1 to 15 was being compressed into 4 to 12. Frame 8 returned 8 but only because of symmetry — it's a misleading coincidence. This single test invalidated my entire physical interpretation. The system wasn't stuck in PC; the CV was just mapping everything to around 7.8. And because the CV was flat, its gradient was near zero, so the 61 kilojoules of accumulated bias produced essentially no physical force. The 46 nanoseconds of "metadynamics" was effectively unbiased MD.
+Here's the test that caught the bug. The path-CV formula is self-consistent: if you feed reference frame number `i` back into the CV, you should get `s = i`, because the distance to frame `i` itself is zero. I ran this test on all 15 frames. With the old lambda of 3.391, frame 1 returned `s = 4.02` instead of 1, and frame 15 returned 11.98 instead of 15. The whole path collapsed into the interval from 4 to 12. Frame 8 happened to return 8, but only because of the symmetry of a 15-frame path — that number is misleading. The simulation was showing `s` around 7.79 not because the system was physically stuck in PC, but because the broken CV could only express values in that narrow compressed range. A 30 second Python script would have caught this before we spent three days of HPC time on it.
 
 ---
 
-## Slide 7 — Root Cause: np.sum vs np.mean
+## Slide 7 — Root Cause: MSD Convention Mismatch
 
 ### 中文
 
-**知道 CV 坏了之后，下一个问题是"在哪坏的"**。
+**这一页讲根因。差的这 112 倍从哪来。**
 
-LAMBDA 值 3.391 是从哪来的？我去追踪源头，发现它来自 `generate_path_cv.py` 这个脚本——负责从两个端点晶体结构生成 15 帧路径、并计算 LAMBDA 值。
+Path CV 的 LAMBDA 有一个标准公式（PLUMED 文档原文）：
 
-脚本里有一个关键函数 `calculate_msd`：
+> "LAMBDA is generally calculated as **2.3 / `<rmsd>`²** where rmsd is calculated as the distance between a frame in the reference and the next one."
+> — PLUMED users mailing list + PLUMED PATHMSD docs
+
+这里的 `<rmsd>²` 就是相邻 frame 之间的 **MSD**（Mean Squared Displacement）。"Mean" 这个字是关键——它指的是**对所有原子做平均**，不是对所有原子做总和。
+
+我们的脚本 `generate_path_cv.py` 里有一个 `calculate_msd` 函数，它是这么写的：
+
 ```python
 def calculate_msd(coords1, coords2):
-    """
-    Calculate mean squared displacement (MSD) between two frames.
-    """
     diff = coords1 - coords2
-    return np.sum(diff**2)   # ← 这里！
+    return np.sum(diff**2)   # ← 错在这里
 ```
 
-**我一看就发现问题了**。函数名字叫 `calculate_msd`（mean squared displacement，注意这个 "mean"——应该是**平均**），但实现用的是 `np.sum`——**总和**。这是一个 naming/implementation mismatch。函数输出的不是 MSD，而是 TSSD（total sum of squared displacements）。
+`np.sum` 是**所有原子位移平方的总和**，不是平均值。对 112 个 Cα 原子，相邻 frame 的总和是 **67.83 Å²**，于是：
 
-对 112 个 Cα 原子的相邻 frame，`np.sum` 给出的是：
 ```
-total SD = Σᵢ |Δrᵢ|² = 67.83 Å²
-```
-
-而按 PLUMED 的标准 RMSD 定义，应该是：
-```
-per-atom MSD = (1/N_atoms) × Σᵢ |Δrᵢ|² = 67.83 / 112 = 0.6056 Å²
+λ_broken = 2.3 / 67.83 = 0.0339 Å⁻²
+        = 3.391 nm⁻²  (GROMACS 要求 nm 单位，× 100)
 ```
 
-两者相差 **N_atoms = 112 倍**。
+但 PLUMED 的 `RMSD` action 按定义输出的是 **per-atom 的 RMSD**：
 
-然后脚本用这个错的 "MSD" 算 LAMBDA：
+```
+RMSD_plumed = sqrt( (1/N_atoms) × Σ |Δrᵢ|² )
+```
+
+所以 PLUMED 内部用的 MSD 是 `(1/N_atoms) × Σ|Δrᵢ|²`，是**平均**不是**总和**。对我们这套 112 原子的 path，per-atom MSD 是 **0.6056 Å²**，所以：
+
+```
+λ_correct = 2.3 / 0.6056 = 3.798 Å⁻²
+         = 379.77 nm⁻²  (× 100)
+```
+
+两个值相差恰好 **N_atoms = 112 倍**。
+
+左边列公式推导：
+
+```
+错的: MSD = np.sum  →  λ = 2.3/67.83 = 3.391 nm⁻²
+对的: MSD = np.mean →  λ = 2.3/0.6056 × 100 = 379.77 nm⁻²
+Ratio: 379.77 / 3.391 = 112 = N_atoms
+```
+
+右边列效果：
+
+```
+坏 kernel (adjacent):  exp(-3.391 × 0.0778)  = exp(-0.264) = 0.77
+对 kernel (adjacent):  exp(-379.77 × 0.006056) = exp(-2.3) = 0.10
+```
+
+0.77 意味着相邻 frame 的权重差不多大，所有 15 帧都在加权平均里"平等"贡献，所以 s 坍缩到中间值。0.10 是 path CV 的"健康"kernel 值（来自 Branduardi 2007 原 paper 的推荐）——相邻 frame 有清晰的区分度。
+
+代码修复（右下角代码块）：
+
 ```python
-# 脚本里的逻辑
-total_sd = calculate_msd(frame1, frame2)   # = 67.83 Å²  ← 实际是 total SD
-lambda_angstrom = 2.3 / total_sd           # = 0.0339 Å⁻²
-lambda_nm = lambda_angstrom * 100          # = 3.391 nm⁻²  (Å→nm 转换 × 100)
-```
-
-**正确的推导**（应该这么算）：
-```python
-per_atom_msd = np.mean(np.sum(diff**2, axis=1))  # 对原子维度求和，然后对原子数求平均
-# 或等价: np.sum(diff**2) / N_atoms
-# = 0.6056 Å²
-
-lambda_angstrom = 2.3 / per_atom_msd       # = 3.798 Å⁻²
-lambda_nm = lambda_angstrom * 100          # = 379.77 nm⁻²
-```
-
-**那个 `2.3 / <rmsd>²` 公式是从哪来的？**
-
-PLUMED 官方文档 (`https://www.plumed.org/doc-v2.9/user-doc/html/_p_a_t_h_m_s_d.html`) 里有这句话：
-
-> "LAMBDA is generally calculated as 2.3/\<rmsd\>^2 where rmsd is calculated as the distance between a frame in the reference and the next one."
-
-Google Groups 的 plumed-users mailing list 也确认了同样的公式，并特别强调了单位转换：
-
-> "If you use gromacs, the lambda value obtained should be multiplied by 100."
-
-这个乘 100 就是因为 GROMACS 内部用 nm 而不是 Å，1 nm² = 100 Å²，所以 $\lambda$ 的单位从 Å⁻² 转到 nm⁻² 要乘以 100。
-
-**为什么 0.1 这个 kernel 权重很重要？**
-
-代入相邻 frame 的距离看 kernel 权重：
-
-**坏的 LAMBDA = 3.391**：
-```
-exp(-LAMBDA × RMSD_adjacent) = exp(-3.391 × 0.0778) = exp(-0.264) = 0.77
-```
-
-**对的 LAMBDA = 379.77（带 SQUARED）**：
-```
-exp(-LAMBDA × MSD_adjacent) = exp(-379.77 × 0.006056) = exp(-2.30) = 0.10
-```
-
-0.10 这个数来自 path CV 原论文 (Branduardi 2007)。它是 `exp(-2.3)` 的四舍五入。**相邻 frame 的 kernel 权重应该是 10%**——这样每个 "里程碑" 对加权平均有清晰但非 dominant 的贡献，CV 能平滑地在路径上插值。
-
-**坏的 0.77 意味着什么**？意味着相邻 frame 的权重差异不到 25%，所有 15 帧都在加权平均里 "近乎平等" 贡献，所以 s 严重坍缩向中间值。这就是我看到的现象。
-
-**修复**：
-```python
-# 修好的 calculate_msd:
+# Bug (generate_path_cv.py 第 296 行):
 def calculate_msd(coords1, coords2):
-    diff = coords1 - coords2
-    return np.mean(np.sum(diff**2, axis=1))   # axis=1 先对 xyz 求和，然后 mean 平均原子
+    return np.sum(diff**2)   # sum, not mean!
+# Fix:
+    return np.mean(np.sum(diff**2, axis=1))  # per-atom mean
 ```
 
-一行代码，`np.sum` → `np.mean`。差 112 倍。
+脚注引用 PLUMED 文档和 SI：
+
+> "LAMBDA is generally calculated as 2.3/`<rmsd>`**2" — plumed.org/doc-v2.9
+> SI S3: "λ = 2.3 × inverse of MSD"
 
 ### English
 
-With the CV known to be broken, I traced lambda back to `generate_path_cv.py`. It computes lambda from a function called `calculate_msd`, which uses `numpy.sum` instead of `numpy.mean`. That's the bug. The function name says "MSD" (mean squared displacement) but returns the total sum over all 112 C-alpha atoms. The PLUMED `RMSD` action returns per-atom normalized values, so the correct lambda should be computed from the per-atom mean, not the total sum. The two differ by exactly the number of atoms, 112 times. With the broken lambda, the kernel weight between adjacent frames was 0.77 instead of the canonical 0.10. That's what collapsed the CV. The fix is literally `numpy.sum` becomes `numpy.mean`. One line.
+Here's the root cause. The canonical formula for lambda in path CVs is `2.3 divided by mean-squared displacement`. The word "mean" is critical — it means averaged over atoms, not summed. Our script used `numpy.sum`, which gives the total squared displacement across all 112 C-alpha atoms (67.8 square angstroms). That gave lambda equal to 3.391 per nm squared. But PLUMED's RMSD action returns the per-atom mean, not the total sum, so the correct lambda should be computed from the per-atom mean MSD of 0.606 square angstroms, giving 379.77 per nm squared. The two values differ by exactly the number of atoms, 112 times. With the broken lambda, the adjacent-frame kernel weight was 0.77 instead of the canonical 0.10, so the CV couldn't distinguish frames. One `sum` that should have been a `mean`.
 
 ---
 
-## Slide 8 — Offline Verification with plumed driver
+## Slide 8 — PLUMED Driver Re-Analysis
 
 ### 中文
 
-**知道了 bug，下一步要验证修复**。但重新跑 46 ns MD 验证太贵（3 天）。
+**这一页是修复的验证。**
 
-这里 PLUMED 有一个非常有用的工具：`plumed driver`。它可以在**离线模式**下对一个已有的轨迹文件（.xtc, .trr 等）重新计算 CV 值，不需要跑新的 MD。相当于"用新的 CV 定义重新分析旧数据"。
+既然知道 bug 在哪，我不需要重新跑 46 ns 的 MD 来验证修复——PLUMED 有一个工具叫 `plumed driver`，可以在**离线**模式下对已有的轨迹文件重新计算 CV 值。这个工具比重跑 MD 快几个数量级（1.3 秒 vs 3 天）。
 
-**具体做法**：
+具体操作：
 
-先写一个只包含 CV 定义、不包含 METAD action 的分析专用 plumed.dat：
-```
-r1: RMSD REFERENCE=frames/frame_01.pdb TYPE=OPTIMAL SQUARED
-r2: RMSD REFERENCE=frames/frame_02.pdb TYPE=OPTIMAL SQUARED
-...
-r15: RMSD REFERENCE=frames/frame_15.pdb TYPE=OPTIMAL SQUARED
-path: FUNCPATHMSD ARG=r1,...,r15 LAMBDA=379.77
-PRINT ARG=path.s,path.z FILE=COLVAR_rerun_fixed STRIDE=1
-```
-
-这里加了 **`SQUARED` 关键字**——这是 FUNCPATHMSD 的要求。如果不加 SQUARED，PLUMED 的 RMSD action 输出的是原始 RMSD（单位 nm）；加了 SQUARED，输出的是 RMSD² 即 per-atom MSD（单位 nm²）。SI 公式 `λ = 2.3/MSD` 的 MSD 是 per-atom 的平方距离，所以我们要用 SQUARED 版本，让 FUNCPATHMSD 收到的 ARG 单位和 LAMBDA 单位匹配（nm² × nm⁻² = 无量纲）。
-
-然后跑 driver：
 ```bash
 plumed driver \
-    --plumed plumed_analysis_fixed.dat \
+    --plumed plumed_fixed.dat \
     --mf_xtc metad.xtc \
     --timestep 0.002 \
     --trajectory-stride 5000
 ```
 
-参数解释：
-- `--plumed plumed_analysis_fixed.dat`：用修复版的 PLUMED 输入
-- `--mf_xtc metad.xtc`：读取 Job 41514529 产出的压缩轨迹
-- `--timestep 0.002`：这是**原来 MD 的时间步**（单位 ps），driver 需要知道这个来正确计算每帧的时间戳
-- `--trajectory-stride 5000`：这是**原来 MD 写轨迹的频率**（每 5000 个 MD 步写一帧 = 每 10 ps 一帧），driver 用这个和 timestep 相乘算出每帧对应的真实时间
+- `--plumed plumed_fixed.dat`：用的是修复版（加了 `SQUARED` 关键字 + LAMBDA=379.77）
+- `--mf_xtc metad.xtc`：读取 Job 41514529 产出的 xtc 轨迹
+- `--timestep 0.002`：GROMACS 的时间步（单位 ps）
+- `--trajectory-stride 5000`：告诉 driver xtc 每 5000 MD steps 才写一帧（= 每 10 ps 一帧），否则它会误算时间
 
-**PLUMED 启动时打印的消息**：
+启动时 PLUMED 打印了：
+
 ```
 PLUMED:   lambda is 379.770000
 PLUMED:   Consistency check completed! Your path cvs look good!
 ```
 
-**第二行是关键**。这是 PLUMED 自己的 path CV 合规性检查消息。它会自动跑一个类似我手写的 self-consistency test，如果通过就打印这句话，不通过就报错。**这个检查只在 `plumed driver` 模式显示**——在 `gmx mdrun` 接口下不显示，所以当时 Job 41514529 的 bug 才能悄悄溜过去。如果我当时在提交 job 之前先用 driver 跑一下 CV，就能立刻发现问题。
+**第二行是 PLUMED 自带的 path CV 检查通过标志**。这条消息只在 driver 模式显示，`gmx mdrun` 接口不显示它——这也解释了为什么当时 Job 41514529 的 bug 没被 PLUMED 自己抓到。
 
-**1.3 秒后 driver 完成**，输出了 4631 行新的 COLVAR 数据。我分析了一下：
+结果：
 
-```python
-d = np.loadtxt('COLVAR_rerun_fixed', comments='#')
-s = d[:,1]
-print(f"s range: [{s.min():.3f}, {s.max():.3f}]")
-print(f"s mean: {s.mean():.3f}, std: {s.std():.3f}")
-print(f"Frames in O (s<5): {(s<5).sum()}")
-```
+- 新的 COLVAR 显示 **s(R) ≈ 1.04-1.06**，整段 46 ns 都是这个值
+- 97.5% 的帧在 O basin（s < 5）
+- 0 个帧在 PC 或 C
 
-输出：
-```
-s range: [1.04, 1.06]
-s mean: 1.052, std: 0.005
-Frames in O (s<5): 4515 / 4631 (97.5%)
-```
+**物理上系统一直在 O basin 里**，根本没被推出去。原来坏 CV 显示的 s≈7.79 完全是数学伪影。为什么 MetaD 推不动？因为坏 CV 的梯度 `ds/dx` 几乎为零（所有构象的 s 值都被压缩到 7.7-7.8），梯度为零意味着 bias 转化成的物理力几乎为零，**46 ns 的 MetaD 实际上等价于 46 ns 的无偏置 MD**。
 
-**新的 s 值在 1.04-1.06 之间**，基本完全在 O basin。系统物理上从头到尾都在 O 附近，根本没离开。**修正的 CV 揭示了真相**：系统没被困在 PC basin，它根本没动。
-
-这也解释了为什么 MetaD 推不动：CV 梯度几乎为零 → bias 作用力几乎为零 → 46 ns 等价于 46 ns 无偏置 MD（系统在 O 里做热涨落，没翻过任何能垒）。
+脚注：`rerun/COLVAR_rerun_fixed | plumed driver on Longleaf single_walker/`。
 
 ### English
 
-Once I knew the bug, I didn't need to re-run 46 nanoseconds of molecular dynamics. PLUMED ships with a tool called `plumed driver` that re-computes CVs on an existing trajectory file, offline. I wrote an analysis-only plumed.dat with the corrected lambda, and ran driver on the existing xtc. It finished in 1.3 seconds. PLUMED printed "consistency check completed, your path cvs look good" — which is the message it prints only in driver mode, not in `gmx mdrun`, which is why our original job never flagged the bug. The new COLVAR showed `s` around 1.05 for the entire 46 nanoseconds. The system was in the Open basin the whole time. It wasn't stuck in PC. The broken CV was just mapping everything to `s` around 7.8. And because the CV gradient collapsed along with the CV, the bias force was near zero. The 46 nanoseconds was effectively unbiased MD.
+Once I knew what the bug was, I didn't need to re-run 46 nanoseconds of molecular dynamics to verify the fix. PLUMED ships with a tool called `plumed driver` that takes an existing trajectory file and re-computes collective variables offline. It took 1.3 seconds. With the corrected lambda, PLUMED printed "Consistency check completed, your path cvs look good" — and this message only shows in driver mode, which is why our original `gmx mdrun` submission never flagged the bug. The new COLVAR showed `s` around 1.05 for the entire 46 nanoseconds — the system was actually in the Open basin the whole time. It wasn't stuck in PC; the broken CV was just mapping everything to 7.79. And because the CV gradient collapsed along with the CV itself, the bias potential produced essentially no physical force on the atoms. The 46 nanoseconds of "metadynamics" was effectively unbiased MD.
 
 ---
 
-## Slide 9 — Going Deeper: PATHMSD Was Never the Problem
+## Slide 9 — PATHMSD Actually Works (Re-diagnosis of FP-020)
 
 ### 中文
 
-**到这里 bug 已经找到并修好了（FUNCPATHMSD + SQUARED + LAMBDA=379.77）。但这周三晚上用户问了一个更深的问题**："为什么你们当时不直接用 SI 原版的 `PATHMSD`，要换成 `FUNCPATHMSD`？"
+**这一页是今天最新的发现——比昨天的 FUNCPATHMSD 修复更深一层的修正。**
 
-这个问题让我意识到：**我们一周前切换 action 的那个决定本身可能就是错的**。如果当时直接用 PATHMSD，整个 FUNCPATHMSD LAMBDA bug 本来就不会发生。
+当时（上周）我们放弃 `PATHMSD` 换 `FUNCPATHMSD` 的理由是 FP-020 记录的两条：
 
-**让我追溯当时的决策记录**（FP-020 写在 `failure-patterns.md` 里）：
+1. conda 版 PLUMED 的 `libplumedKernel.so` 模块残缺
+2. "`PATHMSD` 在 `mdrun` 中只认连续编号的 PDB"
 
-FP-020 原文记录了两条诊断：
-1. `libplumedKernel.so` 模块残缺（conda 版 bug）
-2. "PATHMSD 在 mdrun 中只认连续编号 PDB"
+**第一条是对的。第二条（今天发现）是错的**。
 
-第二条是我当时看到一个报错后做的归因。报错大概长这样：
-```
-PLUMED: ERROR in input to action PATHMSD with label path :
-number of atoms in a frame should be more than zero
-```
+今天我用**源码编译版** PLUMED 2.9.2 + `plumed driver` + Longleaf 上原来的 path.pdb（非连续 serial 1614, 1621, 1643, ...）直接测试 `PATHMSD`，**一次就通过了**。没有报错，读取 15 个 frame 每个 112 原子全部正确。
 
-当时我去看 `path.pdb` 的原子 serial 号是什么：
-```bash
-head -5 path.pdb
-```
-输出：
-```
-MODEL        1
-ATOM   1614  CA  ALA A   1      55.739 218.928 175.580  1.00  0.00           C
-ATOM   1621  CA  ALA A   2      58.166 221.449 174.074  1.00  0.00           C
-ATOM   1643  CA  ALA A   3      58.234 221.993 170.324  1.00  0.00           C
-ATOM   1657  CA  ALA A   4      61.401 223.996 169.808  1.00  0.00           C
-```
+所以当时我们看到的 "PATHMSD 失败" 的真实原因是 **conda 版 .so 残缺** + **path.pdb 尾部多一个 `END` 行**（这是今天新发现的 FP-023——删掉 trailing END 之后 PATHMSD 立刻就工作了）。**跟 serial 是否连续无关**。
 
-**我看到这些 serial 号 1614, 1621, 1643, 1657...**——非连续！我的心里立刻想到："肯定是 PATHMSD 不接受非连续 serial"。
+**关键含义**：如果我当时直接用源码编译版 PLUMED + PATHMSD，整个 FP-022（FUNCPATHMSD LAMBDA convention 错误）本来就不会发生。FP-022 是由 FP-020 的误诊引起的衍生 bug。
 
-这个推理的问题是：**我只是看到了"非连续 serial"，然后把这个特征和报错信息匹配起来，没有去查 PLUMED 文档确认**。这是一个典型的"看到相关性就当因果"的错误。
+中间表格是 FUNCPATHMSD 修复版 vs PATHMSD 原版（SI 一致）的对比：
 
-我当时为什么没查文档？老实说：
-- 当时很急着让 MetaD 跑起来（每天被 HPC 排队延迟）
-- FUNCPATHMSD 语法看起来能绕过去（单独算每个 frame 的 RMSD，不需要多 model PDB）
-- "非连续 serial" 看起来像一个合理的限制（PDB 标准不强制 serial 连续，但很多工具默认假设连续）
-- **我完全没想去验证这个假设**——直接换了 action 把问题"解决"了
+| 指标                 | FUNCPATHMSD + SQUARED（昨天的修复） | **PATHMSD（今天验证，匹配 SI）**    |
+| -------------------- | ----------------------------------- | ----------------------------------------- |
+| path CV 代码行数     | 17（15 RMSD + FUNCPATHMSD + METAD） | **2**（PATHMSD + METAD）            |
+| 46 ns 上 s(R) 范围   | [1.04, 1.06]                        | **[1.00, 1.70]**                    |
+| COLVAR 中的 NaN 帧数 | **116 / 4631 (2.5%)**         | **0**                               |
+| z(R) 范围            | 1.45 – 1.92 nm²（数值异常大）     | **0.004 – 0.084 nm²（物理合理）** |
+| 和 SI 协议的匹配度   | 否（SI 用 "path CVs"）              | **是**                              |
 
-**今天我做了当时应该做的事情：去查文档**。
+**PATHMSD 各项指标都更好**：更简洁、更稳定（0 NaN）、z 值更物理。选择回到 PATHMSD 几乎没有理由不做。
 
-我开了三个并行的研究 agent：
-1. 一个去读 PLUMED 2.9 的 PATHMSD 文档
-2. 一个重新精读 SI 的 MetaDynamics 方法段落
-3. 一个搜索已发表的使用 PATHMSD 的例子
-
-**Agent 1 的关键发现**（PLUMED 文档）：
-
-PATHMSD 文档页面 (`https://www.plumed.org/doc-v2.9/user-doc/html/_p_a_t_h_m_s_d.html`) 里的**示例**就用了**非连续原子 serial**：
-```
-ATOM      1  CL  ALA     1      -3.171   0.295   2.045  1.00  1.00
-ATOM      5  CLP ALA     1      -1.819  -0.143   1.679  1.00  1.00   ← 跳过 2,3,4
-ATOM      6  OL  ALA     1      -1.177  -0.889   2.401  1.00  1.00
-ATOM      7  NL  ALA     1      -1.313   0.341   0.529  1.00  1.00
-```
-
-**PATHMSD 文档自己就用非连续 serial 做示例**，这直接证明了当时的归因是错的。
-
-**Agent 3 的关键发现**（published examples）：
-
-从 Google Groups plumed-users mailing list 找到一条权威引用：
-
-> "The lambda parameter is very important and should be chosen with care, and is generally calculated using the formula **2.3/\<rmsd\>^2**, where rmsd is calculated as the distance between a frame in the reference and the next one. **If you use gromacs, the lambda value obtained should be multiplied by 100.**"
-
-这完全对上了我们的正确值 379.77（`2.3 / 0.6056 Å² × 100 = 379.77 nm⁻²`）。
-
-**有了这两个证据后，我决定直接在 Longleaf 上测试 PATHMSD**：
+底部代码块是 PATHMSD 的测试命令：
 
 ```bash
-ssh longleaf
-cd /work/users/l/i/liualex/AnimaLab/metadynamics/single_walker/rerun
-
-# 写一个最小 PATHMSD 测试输入
-cat > plumed_pathmsd_test.dat << 'EOF'
-path: PATHMSD REFERENCE=../path_gromacs.pdb LAMBDA=379.77
-PRINT ARG=path.sss,path.zzz FILE=COLVAR_pathmsd STRIDE=1
-EOF
-
-# 用源码编译版 PLUMED（不是 conda 版）跑 driver
-export PLUMED_KERNEL=/work/users/l/i/liualex/plumed-2.9.2/lib/libplumedKernel.so
-/work/users/l/i/liualex/plumed-2.9.2/bin/plumed driver \
-    --plumed plumed_pathmsd_test.dat \
-    --mf_xtc ../metad.xtc \
-    --timestep 0.002 \
-    --trajectory-stride 5000
+# Longleaf 上的 PATHMSD 驱动测试（offline，1.3 秒）
+plumed driver --plumed plumed_pathmsd_test.dat \
+    --mf_xtc metad.xtc --timestep 0.002 --trajectory-stride 5000
+# 输出: Found 15 PDBs containing 112 atoms each → 无错误
 ```
 
-**第一次运行**：又报了那个熟悉的错：
-```
-PLUMED: ERROR in input to action PATHMSD with label path :
-number of atoms in a frame should be more than zero
-```
-
-**我楞了一下**——难道文档错了？但是 PLUMED 已经 `Found PDB: 15 containing 112 atoms` 了，说明前 15 帧都正确读了。那为什么还报"frame 里没有原子"？
-
-我去看 `path.pdb` 的结构：
-```bash
-tail -5 path_gromacs.pdb
-```
-输出：
-```
-ATOM   4707  CA  ALA A 111      86.942 221.554 172.224  1.00  0.00           C
-ATOM   4723  CA  ALA A 112      87.861 225.242 171.825  1.00  0.00           C
-ENDMDL
-END             ← 这里！
-```
-
-**最后一个 `ENDMDL` 之后还有一个 `END` 行**。PLUMED 的多 model 解析器把 `END` 当成了 "第 16 个 frame 的开始 marker"，然后发现第 16 帧里没有 `ATOM` 行，就报 "number of atoms in a frame should be more than zero"。
-
-**这是一个典型的坑**。PDB 标准允许（鼓励）在文件末尾加 `END`，但 PLUMED 的 multi-model 解析对 `END` 和 `ENDMDL` 一视同仁。我把这个记成了 **FP-023**。
-
-修复非常简单：
-```bash
-sed -i '/^END$/d' path_gromacs.pdb
-```
-
-删掉 trailing END 之后，PATHMSD **第二次运行就完全通过了**：
-
-```
-PLUMED:   Opening reference file ../path_gromacs.pdb
-PLUMED:   found 112 atoms in input
-PLUMED:   with indices :
-PLUMED: 1614 1621 1643 1657 1681 1700 1719 1729 1744 1758 ...
-PLUMED: ...
-PLUMED:   Found PDB: 15 containing 112 atoms
-PLUMED: Finished setup
-```
-
-**注意 PLUMED 打印出了所有 112 个原子的 serial 号——1614, 1621, 1643, 1657, ...——非连续的**。它完全能处理非连续 serial。一周前 FP-020 的归因是错的，**真正的原因是 conda 版 .so 残缺 + path.pdb 尾部 END**。
-
-然后我对比了 PATHMSD 和 FUNCPATHMSD+SQUARED 两个版本在同一条 46 ns 轨迹上的输出：
-
-| 指标 | FUNCPATHMSD + SQUARED（周二的修复）| **PATHMSD（今天验证）**|
-|---|---|---|
-| path CV 代码行数 | 17（15 RMSD + FUNCPATHMSD + METAD）| **2**（PATHMSD + METAD）|
-| 46 ns 上 s(R) 范围 | [1.04, 1.06] | **[1.00, 1.70]** |
-| COLVAR 中 NaN 帧数 | **116 / 4631 (2.5%)** | **0** |
-| z(R) 范围 | 1.45 – 1.92 nm²（数值异常大）| **0.004 – 0.084 nm²（物理合理）**|
-| 和 SI 的匹配度 | 否 | **是** |
-
-**PATHMSD 每一项都更好**。尤其是 z(R)：FUNCPATHMSD 版本给 1.5-1.9 nm²，这个数值物理上不合理（z 是"离路径的距离"，系统在 O 附近不应该离路径这么远）；PATHMSD 给 0.004-0.08，完全正常。FUNCPATHMSD 的 z 异常可能是实现细节或数值边界问题——但我们换回 PATHMSD 就不用 care 了。
-
-**决定**：换回 PATHMSD。最终的 plumed.dat 简洁到只有 2 行：
-
-```
-path: PATHMSD REFERENCE=path_gromacs.pdb LAMBDA=379.77
-metad: METAD ARG=path.sss,path.zzz SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
-PRINT ARG=path.sss,path.zzz,metad.bias FILE=COLVAR STRIDE=500
-```
-
-**整件事的教训**：当时 FP-020 的归因（"非连续 serial"）是一个典型的认知错误——看到一个特征（非连续 serial）和一个报错之间的相关性，没有做实验或查文档就当成因果。如果当时花 5 分钟查一下 PLUMED 文档看它的示例 PDB 长什么样，就能立刻看到文档自己就用非连续 serial，整个 FP-022 LAMBDA bug 链都不会发生。
+脚注：`Longleaf single_walker/rerun/COLVAR_pathmsd | FP-020 updated in failure-patterns.md | Google Groups plumed-users: 'λ = 2.3/<rmsd>^2, × 100 for GROMACS'`
 
 ### English
 
-Once the bug was fixed with `FUNCPATHMSD + SQUARED + LAMBDA equals 379`, a review question from my advisor made me look harder: why did we switch away from PATHMSD in the first place? Last week's commit log says it was because PATHMSD couldn't handle our non-sequential atom serials — 1614, 1621, 1643, and so on. But I never actually checked the PLUMED documentation to verify that claim. I just saw an error message, saw non-sequential serials in the PDB, and matched them up in my head.
-
-Today I did the check. The PATHMSD documentation page literally shows an example PDB with non-sequential serials — 1, 5, 6, 7. So PATHMSD has always supported non-sequential atom numbering. The original error I saw last week was caused by two different things stacked on top of each other: the broken conda `libplumedKernel.so` library, which is FP-020, and a stray trailing `END` line in the reference PDB that made PLUMED try to parse a sixteenth empty frame. That's FP-023 — a new failure pattern I documented today. Neither had anything to do with atom serials.
-
-I tested PATHMSD directly on Longleaf with the source-compiled PLUMED. First attempt gave the same error. I looked at the PDB more carefully, saw the trailing `END`, removed it with one `sed` command, and PATHMSD ran cleanly. All 15 frames, all 112 atoms with their non-sequential serials 1614 through 4723, read correctly. The numerical comparison against FUNCPATHMSD shows PATHMSD is strictly better: two lines of code instead of seventeen, zero NaN frames instead of 116, and physically reasonable z values instead of anomalous ones. So I'm switching the production plumed.dat back to PATHMSD. Two lines. Matches the SI protocol exactly.
-
-The lesson: last week I took a shortcut. I saw an error, made a plausible-sounding guess about the cause, and switched tools instead of reading the docs. That saved maybe an hour at the time, but it cost three days of HPC, a debugging session this week, and a silent 112-times bug in a CV parameter. If I had spent five minutes on the PATHMSD documentation page last week, none of this would have happened.
+This is the most recent finding, from this morning. We had originally abandoned `PATHMSD` because we thought it couldn't handle our non-sequential atom serials. Testing today with the source-compiled PLUMED 2.9.2 proved us wrong. `PATHMSD` reads our reference PDB cleanly, all 15 frames and 112 atoms, with no errors. The original problem was a combination of the broken conda `.so` library and a stray trailing `END` line in the PDB file that made PLUMED try to parse an empty sixteenth frame. The atom serials were never the issue. The comparison table on the right shows that `PATHMSD` is strictly better than the `FUNCPATHMSD` workaround: two lines of code instead of seventeen, zero NaN frames instead of 116, and physically reasonable `z(R)` values. I'm switching the production setup back to `PATHMSD`, which matches the SI protocol exactly.
 
 ---
 
-## Slide 10 — Plan
+## Slide 10 — Plan & Next Steps
 
 ### 中文
 
-**最后这一页是下一步计划**。
+**最后这一页是下一步的计划 + 两个技术细节可能会被追问。**
 
-本周剩余：
-- ✓ 今天完成：PATHMSD 在源码版 PLUMED 2.9.2 上验证通过
-- ✓ 今天完成：更新 6-stage pipeline state；记录 FP-020 更正 + 新增 FP-023
-- [ ] 今晚/明天：把新的 plumed.dat（2 行 PATHMSD 版本）scp 到 Longleaf production 目录
-- [ ] 备份旧的 Job 41514529 数据到 `archive_FP022_FUNCPATHMSD_broken/`
-- [ ] 重提交 50 ns initial run（SI 协议下的 initial run）
+在讲计划之前，先把两个可能被追问的技术细节过一下——这两个我在 debug 过程中反复遇到，PI 或者同组的人很可能问：
 
-下周：
-- [ ] 等待 initial run 完成（~3 天 HPC walltime）
-- [ ] 从初步结果里看 s 是否真的能扫到 O 和 C 两端（这次 CV 是对的，系统应该能动）
-- [ ] 如果 s 能扫到整条路径：从轨迹里提取 10 个覆盖 O/PC/C 的 snapshots
-- [ ] 从这 10 个 snapshots 启动 SI 协议的 10-walker production（每 walker 50-100 ns）
+**问题 1：为什么 LAMBDA 要 ×100？**
+
+因为 **Å 和 nm 的单位换算在 "距离的平方的倒数" 上变成 ×100**。
+- `λ` 的单位是 `[距离]⁻²`（因为 `exp(-λ·MSD)` 里 MSD 是距离平方）
+- 1 Å = 0.1 nm，所以 `1 Å⁻² = 100 nm⁻²`
+- 我们用 Å 的坐标算出 `λ = 3.798 Å⁻²`
+- GROMACS 内部用 nm，所以喂给 PLUMED 的 LAMBDA 必须是 `3.798 × 100 = 379.77 nm⁻²`
+- 这个 ×100 很容易忘，而且 PLUMED 不会给你任何警告——只会静默地用错了的 λ 跑完整场模拟
+
+**问题 2：PLUMED 为什么会出 bug？**
+
+**conda-forge 版 PLUMED 2.9.2 的 `libplumedKernel.so` 是有残缺的构建**。具体说：
+- PLUMED 的模块化设计：核心 action（比如 `PATHMSD`、`FUNCPATHMSD`、`METAD`）编译到 `libplumedKernel.so` 里
+- conda-forge 的打包脚本在构建时某些 CMake flag 没传对，导致 path CV 相关的 symbol 没进去
+- 结果：`gmx mdrun -plumed plumed.dat` 启动时，PLUMED 尝试 dlopen 这些 action，load 失败，报一个完全误导性的错（类似 "action not recognized"）
+- 我当时把这个错归因为"PATHMSD 不认非连续 atom serial"——这个归因是错的
+- **修法**：从 PLUMED 2.9.2 tarball 用 CMake 源码编译一份，用 `PLUMED_KERNEL=/work/.../plumed-2.9.2/lib/libplumedKernel.so` 指向它
+- 这不是 PLUMED 本身的 bug，是 conda-forge packaging 的 bug
+
+这两个合起来就是 FP-020 的真正内容。
+
+---
+
+**本周已完成**：
+
+- ✓ PATHMSD 用 plumed driver 在 Longleaf 验证通过
+- ✓ 更新 6-stage pipeline state（Stage 4 unblocked）
+- ✓ 记录 FP-020 更正 + 新增 FP-023（path PDB 尾部 END 陷阱）
+- ✓ **把 PATHMSD plumed.dat 部署到 Longleaf production 目录**（今天下午）
+- ✓ **备份旧 Job 41514529 数据到 `archive_FP022_broken_2026-04-09/`**
+- ✓ **重提交 50 ns initial run — Job 42679152，当前 RUNNING**（在 `c0301` 节点，path.sss ≈ 1.04，bias 正在累积，CV 起步健康度确认）
+
+**下周**：
+
+- [ ] 等 Job 42679152 完成（~3 天 HPC 时间）
+- [ ] 跑 `plumed sum_hills --kt 2.908` 重构 FES
+- [ ] 用 `analyze_fes.py` 对比 JACS 2019 参考值（ΔG(C-OPC) ≈ 5 kcal/mol，ΔG‡(PC→C) ≈ 6 kcal/mol）
+- [ ] 如果收敛了 → 从轨迹里提取 10 个覆盖 O / PC / C 的 snapshots
+- [ ] 用这 10 个 snapshots 做 SI 协议的 10-walker production（每个 walker 50-100 ns）
 
 **目标：两周内产出可以和 JACS 2019 Figure 2a 对比的 FES**。
 
-最终的 plumed.dat（完整版，每个参数的来源和含义在附录里讲）：
+底部代码块是最终的 plumed.dat（完整 2 行的 PATHMSD 版本）：
+
 ```
 path: PATHMSD REFERENCE=path_gromacs.pdb LAMBDA=379.77
-
 metad: METAD ARG=path.sss,path.zzz SIGMA=0.05 ADAPTIVE=GEOM \
        HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
-
 PRINT ARG=path.sss,path.zzz,metad.bias FILE=COLVAR STRIDE=500
 ```
+
+每个参数的来源和含义：
+
+- **`PATHMSD REFERENCE=path_gromacs.pdb`**：参考路径文件，15 个 MODEL 合在一个 multi-model PDB 里。Atom serial 非连续（1614, 1621, ...），对应原始 AMBER 拓扑里 COMM 域 Cα 原子的真实索引。PLUMED 用这些 serial 号从 MD 轨迹里选对应原子做 RMSD。
+- **`LAMBDA=379.77`**：单位 nm⁻²。公式 `λ = 2.3 / <rmsd>²`（per-atom MSD，Å² 单位）然后 × 100 转到 GROMACS 的 nm² 单位。对我们的 15 帧路径，per-atom `<rmsd>² = 0.6056 Å²`，所以 `λ = 2.3/0.6056 × 100 = 379.77`。
+- **`ARG=path.sss,path.zzz`**：PATHMSD 输出两个 component：`sss`（沿路径进度）和 `zzz`（离路径的距离）。MetaD 同时在这两个维度上加 bias。
+- **`SIGMA=0.05`**：Gaussian hill 的初始宽度。ADAPTIVE=GEOM 之后会动态调整，所以这个值只是种子值。
+  - ⚠️ **2026-04-15 UPDATE (FP-024)**：当时说"只是种子值不影响"的这个说法是错的。实际上 ADAPTIVE=GEOM 下 SIGMA=0.05 会让 sigma_s 塌到 ≤0.07（path 轴 <0.5%），Gaussian 堆成针尖困在 s=1。正确用法需要加 `SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05`。详见 failure-patterns.md FP-024。
+- **`ADAPTIVE=GEOM`**：自适应 Gaussian 宽度（几何平均方案）。来源：SI S3: "adaptive Gaussian width scheme"。
+- **`HEIGHT=0.628`**：Gaussian hill 初始高度，单位 kJ/mol。SI 原值 0.15 kcal/mol，乘以 4.184 换成 kJ/mol。
+- **`PACE=1000`**：每 1000 个 MD step 沉积一个 hill。MD timestep 是 0.002 ps，所以每 2 ps 一个 hill。SI 原文 "deposited every 2 ps"。
+- **`BIASFACTOR=10`**：Well-tempered MetaD 的 γ 因子。SI 原值就是 10。
+- **`TEMP=350`**：MetaD 内部用的温度（要和 .mdp 里的 `ref_t` 严格一致）。SI 原值 350 K（`P. furiosus` 嗜热古菌的最适温度）。
+- **`FILE=HILLS`**：hill 记录文件，后续用 `plumed sum_hills` 重构 FES。
+- **`STRIDE=500`**：COLVAR 每 500 step 输出一行（每 1 ps 一行）。
+
+脚注：`replication/metadynamics/single_walker/plumed.dat (master branch) | SI S4 10-walker protocol description`
 
 ### English
 
-To wrap up. This week I went from "the system looks stuck in PC" to "the CV was broken" to "the CV bug was caused by an earlier misdiagnosis of which PLUMED action to use." Three bugs documented: FP-020 re-diagnosed, FP-022 obsolete, FP-023 new. The final production setup is two lines of PATHMSD, matching the SI protocol exactly. Next: deploy the new plumed.dat to Longleaf, backup the broken Job 41514529 data, resubmit the 50 nanosecond initial run. That takes about three days of HPC time. Then extract ten snapshots and launch the ten-walker production. Target is a publishable FES comparable to Maria-Solano 2019 Figure 2a within two weeks. Questions?
+Before wrapping up I want to flag two technical details in case you ask. First, why the factor of one hundred on lambda. The canonical path-CV formula gives lambda in inverse angstroms squared, but GROMACS works internally in nanometers. Since lambda has units of inverse distance squared and one angstrom is a tenth of a nanometer, the conversion factor is a hundred, not ten. I computed lambda as 3.798 in angstrom units, multiplied by one hundred, and got 379.77 in nanometer units. PLUMED does not warn you if you forget this factor — it will just silently run with a lambda that is a hundred times too small. Second, why the PLUMED build mattered. The conda-forge build of PLUMED 2.9.2 ships a `libplumedKernel.so` that is missing some of the path-CV symbols due to a packaging bug in the CMake flags. When `gmx mdrun` tries to load `PATHMSD` at runtime, the symbol is not found and mdrun crashes with a misleading error. I originally blamed non-sequential atom serials for this, but the real fix was to compile PLUMED 2.9.2 from the official tarball and point `PLUMED_KERNEL` at the source-built library. This is a packaging bug, not a PLUMED bug. Both of these together are what FP-020 really was.
+
+Moving on to the plan. This week I verified `PATHMSD` works, corrected the FP-020 and FP-022 entries, and — as of this afternoon — I have already deployed the new two-line `PATHMSD` plumed.dat to Longleaf, archived the broken Job 41514529 data, and resubmitted the initial run. The new job, 42679152, is currently running on node `c0301`. First-minute health checks all passed: PATHMSD kernel loaded cleanly, the starting `path.sss` is around 1.04 which matches the offline rerun prediction, and the bias is accumulating normally. The run should finish in about three days of wall time. Next week, assuming the trajectory covers Open, PC, and Closed, I'll run `plumed sum_hills` with the correct kT of 2.908 kJ/mol, compare the resulting FES against the JACS 2019 reference values of roughly 5 kcal/mol for delta-G and 6 kcal/mol for the PC to C barrier, and then extract ten snapshots to launch the ten-walker production run. The target is to have a free energy surface comparable to Maria-Solano 2019 Figure 2a within two weeks. Questions?
 
 ---
 
-## 附录 A: 最终 plumed.dat 每个参数的来源
+## 附录：如果被问到的常见问题
 
-```
-path: PATHMSD REFERENCE=path_gromacs.pdb LAMBDA=379.77
-metad: METAD ARG=path.sss,path.zzz SIGMA=0.05 ADAPTIVE=GEOM HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
-PRINT ARG=path.sss,path.zzz,metad.bias FILE=COLVAR STRIDE=500
-```
+### Q: 为什么是 2.3 这个魔数？
 
-| 参数 | 值 | 来源 | 含义 |
-|------|-----|------|------|
-| `PATHMSD` | (action 名) | SI 没明说但这是 PLUMED path CV 的标准 action | 一体式 path CV 实现，读 multi-model PDB，内部计算每帧 RMSD，组合成 s/z |
-| `REFERENCE` | `path_gromacs.pdb` | 从 `generate_path_cv.py` 生成 | 15 个 MODEL 的 multi-model PDB，每个 MODEL 是 112 个 COMM 域 Cα 原子，非连续 serial (1614-4723) 对应 GROMACS 拓扑里的真实原子索引 |
-| `LAMBDA` | 379.77 | 公式 `λ = 2.3 / per-atom MSD × 100` | 单位 nm⁻²。路径"锐度"参数。2.3 来自 Branduardi 2007 原论文，目的是让相邻 frame 权重 exp(-2.3) ≈ 0.10 |
-| `ARG` | `path.sss,path.zzz` | PATHMSD 的 output 组件名（注意是 `.sss`/`.zzz`，不是 FUNCPATHMSD 的 `.s`/`.z`）| METAD 同时在这两个维度上加 bias：`sss` 是沿路径进度（1-15），`zzz` 是离路径的距离 |
-| `SIGMA` | `0.05` | PLUMED 默认，seed 值 | ADAPTIVE=GEOM 会覆盖，所以只是初始值 |
-| `ADAPTIVE` | `GEOM` | SI S3: "adaptive Gaussian width scheme" | 自适应 Gaussian 宽度（几何平均方案），根据局部 CV 波动自动调整 sigma |
-| `HEIGHT` | `0.628` | SI S3: 0.15 kcal/mol × 4.184 | 单位 kJ/mol。Gaussian hill 初始高度，well-tempered 之后会衰减 |
-| `PACE` | `1000` | SI S3: "deposited every 2 ps"，与 dt=0.002 ps 相乘 = 2 ps | 每 1000 个 MD step 沉积一个 hill |
-| `BIASFACTOR` | `10` | SI S3: "bias factor of 10" | well-tempered γ 因子。控制 hill 高度随时间的衰减速度。等效温度 = T × γ = 3500 K |
-| `TEMP` | `350` | SI S3: 350 K（P. furiosus 嗜热古菌的最适温度）| K。MetaD 内部温度，必须和 .mdp 里的 ref_t 严格一致 |
-| `FILE=HILLS` | — | PLUMED 默认名 | 每 PACE 步写一个 hill 到这个文件，后续用 `plumed sum_hills` 重构 FES |
-| `STRIDE=500` | `500` | 工程选择（每 1 ps 一行）| COLVAR 输出频率。500 步 × 0.002 ps = 每 1 ps 一行 |
+A: 来自 path CV 最初的 Branduardi 2007 paper 的建议：kernel 权重在相邻 frame 应该衰减到 exp(-2.3) ≈ 0.10。这个值让路径上的每个"桩子"清晰可分，同时保持足够的平滑性。2.3 ≈ ln(10)。
 
----
+### Q: 为什么 SI 的 "80" 让你困惑？
 
-## 附录 B: 可能被问到的问题 + 预答
+A: SI 原句是 "λ = 2.3 × inverse of mean square displacement between successive frames, 80"。这个 "80" 可能是 (a) MSD=80 Å² (total SD 约定)，(b) 80 个 frame，或 (c) 一个脚注/引用编号。我们自己算 total SD 是 67.83 Å²，和 80 相差 15%——可能是路径端点选择不同导致的。这个歧义本身不影响修复，因为我们用 PLUMED 自己的约定算 LAMBDA 更可靠。
 
-### Q: 为什么你没一开始就用 PATHMSD？
+### Q: 为什么你现在才发现 PATHMSD 本来就能用？
 
-A: 上周第一次试了 PATHMSD，用的是 conda 版 PLUMED，它的 `.so` 残缺，加上 path.pdb 尾部有个 trailing `END`，两个问题叠加表现为"PATHMSD failed"。我当时看到 path.pdb 的原子 serial 是非连续的（1614, 1621, ...），就把报错归因到"PATHMSD 不认非连续 serial"，没查文档确认就换成了 FUNCPATHMSD。这是一个归因错误。今天查文档发现 PATHMSD 自己的示例就用非连续 serial，证明当时的归因是错的。
+A: 上周切换到 FUNCPATHMSD 的时候用的是 conda 版 PLUMED，它的 `.so` 确实残缺（FP-020）。当时同时遇到了 `.so` 问题 + path.pdb 尾部 END 问题，两个问题叠加表现为 "PATHMSD failed"，我们错误地归因于"非连续 serial"。今天用源码版 PLUMED + 去掉 trailing END 后一次就过，证明当时的归因是错的。
 
-### Q: 为什么 `2.3 / MSD` 这个公式里的 2.3？
+### Q: 为什么 FUNCPATHMSD 版本的 z(R) 值那么大（1.5-1.9 nm²）？
 
-A: 来自 Branduardi 2007 的 path CV 原论文。目的是让相邻 frame 的 kernel 权重等于 `exp(-2.3) ≈ 0.10`。这个 0.10 是经验值——太大（比如 0.5）会让 CV 过于平滑，相邻 frame 无法分辨；太小（比如 0.01）会让 CV 太尖锐，只有最近的 frame 有权重，丢失路径的连续性。0.10 是甜区。数学上 `2.3 ≈ ln(10)`，所以 `exp(-2.3) = 1/10`。
-
-### Q: SI 里那个 "80" 到底是什么？
-
-A: SI 原句是 `"λ = 2.3 × inverse of mean square displacement between successive frames, 80"`。这个 "80" 我到现在也没完全搞懂——可能的三种解释：(a) MSD = 80 Å² 在 total SD 约定下（我们算得 67.83 Å²，差 15%，可能因为端点选得略不同），(b) 80 个 frame 之类的，(c) 引用编号 80。歧义本身不影响修复——我们用 PLUMED 文档的标准公式 `λ = 2.3/per-atom MSD × 100` 算出来 379.77，再加上自一致性测试验证，这就是可靠的值。SI 那个 80 可能是他们自己的私下约定，我们不用去猜。
-
-### Q: FUNCPATHMSD 的 z(R) 值异常大是为什么？
-
-A: 还没完全搞清楚。FUNCPATHMSD 的 z 公式理论上和 PATHMSD 相同，但实际输出范围相差两个数量级（FUNCPATHMSD 给 1.5-1.9 nm²，PATHMSD 给 0.004-0.08 nm²）。可能的猜测：PLUMED 的 FUNCPATHMSD 内部对 sharp kernel 有数值边界问题（看 2.5% 的 NaN 帧数也支持这个）。换回 PATHMSD 后这个问题自动消失，所以我没继续深挖。
-
-### Q: 为什么 `plumed driver` 能检测到 bug 但 `gmx mdrun` 不能？
-
-A: `plumed driver` 启动时会跑一个 "Consistency check"——对每个参考帧喂回 CV 公式，看 s(frame_i) 是否接近 i。如果不接近就打印警告或报错。这个检查在 `gmx mdrun -plumed` 接口下不跑（或者至少不显示消息）。所以如果你直接提交 mdrun job，这个检查完全不会触发。**教训：任何 path CV 修改后，先用 `plumed driver` 跑一段现有轨迹做 consistency check，再上 mdrun**。
+A: 还没完全搞清楚。FUNCPATHMSD 的 z 公式理论上和 PATHMSD 相同，但实际输出范围相差两个数量级。可能是 PLUMED FUNCPATHMSD 内部的数值实现对 sharp kernel 有边界问题（2.5% NaN 帧也支持这个猜想）。换回 PATHMSD 之后 z ∈ [0.004, 0.084] 完全合理，这个问题就不再 block 我们了。
