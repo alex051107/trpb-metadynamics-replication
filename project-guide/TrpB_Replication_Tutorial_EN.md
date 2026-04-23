@@ -5,7 +5,19 @@
 **DOI**: 10.1021/jacs.9b03646  
 **Supporting Information**: ja9b03646\_si\_001.pdf  
 **Author**: Zhenpeng Liu (<your-onyen>@ad.unc.edu), UNC Chapel Hill  
-**Last updated**: 2026-04-02
+**Last updated**: 2026-04-23 (Miguel 2026-04-23 email override; see banner below)
+
+> **⚠️ 2026-04-23 MIGUEL IGLESIAS-FERNÁNDEZ CONTRACT**: the original Osuna 2019 first author emailed the definitive MetaD recipe. If any later section of this tutorial (especially the `plumed.dat` template, the Path-CV λ, `ADAPTIVE=GEOM`, `SIGMA_MIN/MAX`, or the single-walker 50 ns framing) conflicts with the following, **the Miguel contract wins**:
+>
+> - `UNITS LENGTH=A ENERGY=kcal/mol` (SI numbers are Å / kcal·mol⁻¹ — no nm/kJ rescaling)
+> - `ADAPTIVE=DIFF SIGMA=1000` (a 1000-step time window ≈ 2 ps; this is NOT a Gaussian width)
+> - `HEIGHT=0.15 kcal/mol`, `BIASFACTOR=10`, `PACE=1000`, `TEMP=350`
+> - `WALKERS_N=10` parallel (SI always meant 10 walkers; single-walker is fallback only)
+> - `UPPER_WALLS ARG=p1.zzz AT=2.5 KAPPA=800` (Å, kcal/mol)
+> - `WHOLEMOLECULES ENTITY0=1-39268` every step
+> - `PATHMSD LAMBDA=3.77 Å⁻²` (= 379.77 nm⁻²) for our 15-frame path; Miguel's `LAMBDA=80 Å⁻²` is correct only for his denser path and is 21× too sharp for ours (see FP-032).
+>
+> Authoritative source: `replication/metadynamics/miguel_2026-04-23/miguel_email.md` + FP-031/FP-032 in `replication/validations/failure-patterns.md`. All remaining `ADAPTIVE=GEOM` / `SIGMA_MIN,MAX` narrative in this tutorial is historical and preserved for record only.
 
 > **IMPORTANT**: Throughout this tutorial, paths use `$WORK` as shorthand for your working directory on Longleaf. Before starting, set this variable:
 > ```bash
@@ -2025,7 +2037,7 @@ EOF
 > | `PACE=1000` | every 1000 steps | Deposit a new hill every 1000 MD steps. At dt=0.002 ps, this is every 2 ps. | `[SI p.S3]` |
 > | `BIASFACTOR=10` | 10 | Well-tempered MetaD bias factor. The effective temperature of the CV is T_eff = T * (1 + 1/gamma) = 350 * 1.1 = 385 K. Higher = more exploration, less precise free energies. | `[SI p.S3]` |
 > | `TEMP=350` | 350 K | System temperature (must match MD thermostat). | `[SI p.S3]` |
-> | `SIGMA=0.2,0.1` | 0.2 (s), 0.1 (z) | Gaussian widths for the s and z CVs respectively. | `[SI p.S3]` |
+> | `SIGMA=0.1 ADAPTIVE=GEOM SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05` | Cartesian seed 0.1 nm, per-CV floors/ceilings | ADAPTIVE=GEOM back-projects one Cartesian length onto each CV; SIGMA_MIN/MAX cap the adaptive width in CV units. | `[PLUMED 2.9 METAD docs]`; SI p.S3 has NO numerical SIGMA — see FP-025 |
 > | `LAMBDA=3.3910` | 3.3910 nm^-2 | FUNCPATHMSD smoothing parameter. Controls how sharply each reference frame "attracts" structures. **Converted from 0.033910 A^-2 x 100 = 3.3910 nm^-2 for GROMACS.** | Calculated from our MSD; SI reports 0.029 A^-2 |
 
 > **LAMBDA unit conversion (CRITICAL)**: The smoothing parameter LAMBDA has units of inverse-length-squared. Our calculated value is 0.033910 A^-2. GROMACS uses nanometers internally, so all distances fed to PLUMED are in nm. Since 1 nm = 10 A, we have 1 nm^-2 = 0.01 A^-2, therefore **multiply by 100**: 0.033910 A^-2 x 100 = **3.3910 nm^-2**. Using the unconverted value (0.033910) would make all frames appear nearly equidistant and the path CV would not discriminate conformations.
@@ -2084,7 +2096,7 @@ r15: RMSD REFERENCE=frames/frame_15.pdb TYPE=OPTIMAL
 path: FUNCPATHMSD ARG=r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15 LAMBDA=3.3910
 
 # Well-tempered MetaDynamics biasing s(R) and z(R) simultaneously
-metad: METAD ARG=path.s,path.z SIGMA=0.2,0.1 HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
+metad: METAD ARG=path.s,path.z SIGMA=0.1 ADAPTIVE=GEOM SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05 HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
 
 # Print CVs and bias for analysis
 PRINT ARG=path.s,path.z,metad.bias FILE=COLVAR STRIDE=500
@@ -2177,7 +2189,7 @@ r15: RMSD REFERENCE=frames/frame_15.pdb TYPE=OPTIMAL
 
 path: FUNCPATHMSD ARG=r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15 LAMBDA=3.3910
 
-metad: METAD ARG=path.s,path.z SIGMA=0.2,0.1 HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=../shared_bias/HILLS WALKERS_N=10 WALKERS_ID=__WALKER_ID__ WALKERS_DIR=../shared_bias WALKERS_RSTRIDE=1000
+metad: METAD ARG=path.s,path.z SIGMA=0.1 ADAPTIVE=GEOM SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05 HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=../shared_bias/HILLS WALKERS_N=10 WALKERS_ID=__WALKER_ID__ WALKERS_DIR=../shared_bias WALKERS_RSTRIDE=1000
 
 PRINT ARG=path.s,path.z,metad.bias FILE=COLVAR STRIDE=500
 EOF

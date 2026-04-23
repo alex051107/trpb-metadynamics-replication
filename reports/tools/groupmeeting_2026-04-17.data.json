@@ -1,0 +1,217 @@
+{
+  "meta": {
+    "date": "2026-04-17",
+    "author": "Zhenpeng Liu",
+    "meeting_type": "1-on-1 with Yu Zhang",
+    "outputFilename": "GroupMeeting_2026-04-17.pptx"
+  },
+  "slides": [
+    {
+      "type": "title",
+      "title": "TrpB MetaDynamics — Week 6 Progress",
+      "subtitle": "SIGMA Floor Fix + Path CV Audit",
+      "meta": "Zhenpeng Liu  ·  2026-04-17  ·  1-on-1 with Yu Zhang",
+      "footer": "Replicating Maria-Solano et al., JACS 2019, 141, 13049-13056"
+    },
+    {
+      "type": "bullets",
+      "title": "Last week: PATHMSD + fixed LAMBDA, Job 42679152 submitted",
+      "subtitle": "Where we left off at 2026-04-09",
+      "bullets": [
+        "λ corrected 3.3910 → 379.77 nm⁻² (per-atom MSD convention, FP-022)",
+        "Switched FUNCPATHMSD → PATHMSD (source-compiled PLUMED 2.9.2 fixes FP-020 conda .so)",
+        "Job 42679152 submitted 2026-04-09: 50 ns single walker, ETA ~04-12",
+        "Carried action items: run → FES reconstruction → 10-walker"
+      ],
+      "footer": "Slide 2 / 10  ·  Context recap  ·  see FP-020/022 in replication/validations/failure-patterns.md"
+    },
+    {
+      "type": "bullets+code",
+      "title": "Job 42679152 ran cleanly — but walker stayed 100 % in O basin",
+      "subtitle": "Mechanically healthy, physically stuck: classic FP-024 signature",
+      "bullets": [
+        {"text": "Mechanics (healthy)", "bold": true, "color": "ACCENT"},
+        {"text": "    50 ns completed · 25 000 Gaussians (PACE=1000 × dt=2 fs = 2 ps/Gaussian)", "color": "GOOD"},
+        {"text": "    Total bias 48 kJ/mol · 0 NaN · no crashes", "color": "GOOD"},
+        {"text": "Physics (stuck)", "bold": true, "color": "ACCENT"},
+        {"text": "    s(R) ∈ [1.00, 1.63] for the full 50 ns — walker never left O basin", "color": "BAD"},
+        {"text": "    Adaptive σ_s (HILLS col 4) collapsed to 0.011–0.072 — just 0.07–0.5 % of path axis", "color": "BAD"},
+        {"text": "Diagnosis = FP-024 (adaptive-σ collapse under ADAPTIVE=GEOM without SIGMA_MIN)", "bold": true}
+      ],
+      "bulletsBox": {"y": 1.6, "h": 3.1},
+      "code": "# Re-derive s-range from COLVAR:\npython3 -c \"import numpy as np; d=np.loadtxt('COLVAR',comments='#'); \\\n  print(f's range: [{d[:,1].min():.3f}, {d[:,1].max():.3f}]')\"\n# Output: s range: [1.002, 1.631]",
+      "codeBox": {"y": 4.8, "h": 1.7},
+      "footer": "Slide 3 / 10  ·  Job 42679152 result  ·  Longleaf /work/.../single_walker/COLVAR"
+    },
+    {
+      "type": "bullets",
+      "title": "Root cause — SIGMA=0.05 is a Cartesian nm scalar, not a CV-unit floor",
+      "subtitle": "PLUMED 2.9 METAD docs (primary source): \"Sigma is one number that has distance units\"",
+      "bullets": [
+        {"text": "Mechanism", "bold": true, "color": "ACCENT"},
+        "    SIGMA is a single Cartesian length (nm); ADAPTIVE=GEOM re-projects it per CV",
+        "    Without SIGMA_MIN, per-CV σ can shrink to ≈0 on slow axes (here: the s-axis)",
+        {"text": "Consequence in Job 42679152", "bold": true, "color": "ACCENT"},
+        "    25 000 needle-Gaussians pile at s≈1 → deep narrow well (48 kJ/mol bottom)",
+        "    Gradient outside the well ≈ 0 → no net force on atoms → walker cannot leave O",
+        {"text": "Verification", "bold": true, "color": "ACCENT"},
+        "    4 parallel Explore agents (physics / literature / Longleaf forensics / PLUMED source) independently confirmed"
+      ],
+      "sources": [
+        "https://www.plumed.org/doc-v2.9/user-doc/html/_m_e_t_a_d.html (SIGMA_MIN / ADAPTIVE keywords)",
+        "Branduardi et al., J. Chem. Theory Comput. 2012, 8, 2247 — DOI 10.1021/ct3002464 (adaptive Gaussians)"
+      ],
+      "footer": "Slide 4 / 10  ·  FP-024 root cause  ·  PLUMED 2.9 METAD docs + source inspection"
+    },
+    {
+      "type": "code+bullets",
+      "title": "Fix — explicit per-CV SIGMA floor + ceiling (deployed 2026-04-15)",
+      "subtitle": "Production METAD line, md5 aca3f0c4… on Longleaf",
+      "code": "metad: METAD ARG=path.sss,path.zzz \\\n    SIGMA=0.1 ADAPTIVE=GEOM \\\n    SIGMA_MIN=0.3,0.005   SIGMA_MAX=1.0,0.05 \\\n    HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS",
+      "codeBox": {"y": 1.55, "h": 1.45, "fontSize": 13},
+      "bullets": [
+        {"text": "Changes vs pre-fix plumed.dat", "bold": true, "color": "ACCENT"},
+        "    SIGMA: 0.05 → 0.1 nm (geometric seed, 2× wider)",
+        "    SIGMA_MIN=[0.3, 0.005]  per-CV floor in CV units  (s ≈ 2% of path axis; z above thermal noise)",
+        "    SIGMA_MAX=[1.0, 0.05]   per-CV ceiling to prevent over-smoothing of basin shape",
+        {"text": "Validation", "bold": true, "color": "ACCENT"},
+        "    10 ns probe (Job 43813633) submitted same day",
+        {"text": "Bookkeeping", "bold": true, "color": "ACCENT"},
+        "    FP-025: prior tutorial cited `[SI p.S3]` for SIGMA=0.2,0.1 — SI has no numerical SIGMA; citation was fabricated"
+      ],
+      "bulletsBox": {"y": 3.2, "h": 3.2},
+      "sources": [
+        "https://www.plumed.org/doc-v2.9/user-doc/html/_m_e_t_a_d.html (SIGMA_MIN / SIGMA_MAX syntax)",
+        "replication/parameters/PARAMETER_PROVENANCE.md (internal SIGMA floor derivation)"
+      ],
+      "footer": "Slide 5 / 10  ·  SIGMA floor fix  ·  see FP-024 / FP-025 in failure-patterns.md"
+    },
+    {
+      "type": "table+bullets",
+      "title": "Probe: 10 ns, max s = 1.393 — stuck, or starting to escape?",
+      "subtitle": "s↔z correlation flips from -0.31 (orthogonal) to +0.49 (aligned escape) in last 2 ns",
+      "table": {
+        "rows": [
+          ["Window", "max s(R)", "s↔z correlation", "Interpretation"],
+          ["t = 0–2 ns", "1.182", "+0.14", "weak thermal coupling"],
+          ["t = 4–6 ns", "1.182", "-0.31", "orthogonal fluctuation"],
+          ["t = 8–10 ns", "1.393", "+0.49", "Aligned — consistent with barrier-crossing onset"]
+        ],
+        "box": {"y": 1.6, "colW": [1.6, 1.4, 2.0, 7.333], "rowH": 0.35}
+      },
+      "bullets": [
+        {"text": "Quantitative signals in last 2 ns", "bold": true, "color": "ACCENT"},
+        "    d(max s)/dt doubled: 8.6×10⁻⁵ → 1.9×10⁻⁴ ps⁻¹",
+        "    Local bias at s≈1 reached 55.5 kJ/mol (≈19 kT; ~2× typical protein barrier)",
+        {"text": "Interpretation", "bold": true, "color": "ACCENT"},
+        "    Signal is consistent with barrier-crossing onset, NOT a confirmed escape (only 2 ns of data)",
+        "    10 ns too short to reject either hypothesis → motivates 50 ns extension (Slide 9)"
+      ],
+      "bulletsBox": {"y": 3.4, "h": 3.0},
+      "sources": [
+        "Branduardi, Gervasio, Parrinello, J. Chem. Phys. 2007, 126, 054103 — DOI 10.1063/1.2432340 (original path CV s(R), z(R))"
+      ],
+      "footer": "Slide 6 / 10  ·  Job 43813633 · see Drill_Prep 6D Q2 for \"escape or noise?\""
+    },
+    {
+      "type": "dual-box+bullets",
+      "title": "Wrong turn — Codex adversarial review caught an SI re-interpretation error",
+      "subtitle": "FP-027: logged + systemic fix to prevent recurrence",
+      "leftBox": {
+        "heading": "My misread (3 h wasted)",
+        "headingColor": "BAD",
+        "body": "SI p.S3: \"λ = 2.3 / MSD = 80\"\n→ read \"80\" as λ = 80 nm⁻²\n→ concluded we're 4.75× off\n→ started alignment-method diagnostic"
+      },
+      "rightBox": {
+        "heading": "Correct reading (already in repo)",
+        "headingColor": "GOOD",
+        "body": "summary.txt L23-25:\n\"Reported MSD: ~80 Å² (interpreted as total SD)\nOur total SD: 67.826 Å² (ratio 0.85×)\"\n→ SI \"80\" is total SD Å², not λ"
+      },
+      "bullets": [
+        "Codex pushback (verbatim): \"comparing different quantities, core premise unsound\"",
+        "Logged as FP-027 + new rule 21: \"SI numeric re-interpretation must read repo's existing notes first\"",
+        "Systemic fixes: PARAMETER_PROVENANCE.md, Codex review gate for diagnostic pivots, transcript-as-prior"
+      ],
+      "bulletsBox": {"y": 3.55, "h": 2.8},
+      "sources": [
+        "replication/parameters/summary.txt lines 23-25 (repo's own reading of SI \"80\" as total SD Å²)",
+        "replication/parameters/PARAMETER_PROVENANCE.md row \"Known alternate interpretation of SI 80\" (line 41)"
+      ],
+      "footer": "Slide 7 / 10  ·  FP-027 · see Drill_Prep 6E for \"won't misread again\" defense"
+    },
+    {
+      "type": "table+bullets",
+      "title": "Offline CV audit — path CV is physically correct (4HPX projects to s=14.91)",
+      "subtitle": "Per Codex recommendation: project known structures onto PATHMSD with LAMBDA=379.77",
+      "table": {
+        "rows": [
+          ["PDB", "Chain", "CV cov.", "s(R)", "z(R) nm²", "Note"],
+          ["1WDW", "B", "112/112", "1.09", "-0.00025", "O endpoint (frame 1 source)"],
+          ["3CEP", "B", "112/112", "14.91", "-0.00025", "C endpoint (frame 15 source)"],
+          ["4HPX", "B", "112/112", "14.91", "-0.00005", "Pf A-A intermediate ≈ StTrpS C (cross-species!)"],
+          ["5DW0", "A", "112/112", "1.07", "+0.02451", "Pf + L-Ser (Aex1), O-like"],
+          ["5DVZ", "A", "112/112", "1.07", "+0.01734", "Pf holo, O-like"],
+          ["5DW3", "A", "111/112", "—", "—", "partial CV coverage (informational)"]
+        ],
+        "box": {"y": 1.55, "colW": [1.1, 0.9, 1.4, 1.2, 1.6, 6.133], "rowH": 0.3}
+      },
+      "bullets": [
+        {"text": "Strongest evidence: Pf A-A (4HPX) → s=14.91 matches St closed (3CEP) → cross-species validation", "bold": true, "color": "GOOD"},
+        "All endpoints project correctly; z values all ≤ 0.025 nm² (structures ARE on the path)",
+        "Conclusion: CV physics is correct — problem is kinetic timescale, not CV pathology"
+      ],
+      "bulletsBox": {"y": 4.5, "h": 2.2},
+      "footer": "Slide 8 / 10  ·  CV audit script: .worktrees/cv-audit/project_structures.py (exit 0 / 2 / 3 / 4 gate)"
+    },
+    {
+      "type": "code+bullets",
+      "title": "Job 44008381 — safe checkpoint restart, 10 → 50 ns (running now)",
+      "subtitle": "Two-step GROMACS+PLUMED restart protocol (Codex stop-hook caught 2 bugs → FP-026)",
+      "code": "# Step 1: extend .tpr nsteps (can't override with -nsteps alone)\ngmx convert-tpr -s metad.tpr -extend 40000 -o metad_ext.tpr\n\n# Step 2: mdrun with -cpi; plumed_restart.dat has RESTART directive\ngmx mdrun -s metad_ext.tpr -cpi metad.cpt \\\n          -deffnm metad -plumed plumed_restart.dat \\\n          -ntmpi 1 -ntomp 8",
+      "codeBox": {"y": 1.55, "h": 2.0, "fontSize": 12},
+      "bullets": [
+        {"text": "Restart protocol (FP-026 safe)", "bold": true, "color": "ACCENT"},
+        "    plumed_restart.dat = plumed.dat + RESTART directive (PLUMED 2.9 docs)",
+        "    Runtime checks passed: HILLS append-only, no bck.*.HILLS",
+        {"text": "Live status (2026-04-17 16:33, 28.75 / 50 ns)", "bold": true, "color": "ACCENT"},
+        "    max s(R) = 3.494, peaked near 28 ns; walker since fluctuating in s ≈ 2.2–2.8",
+        "    Fraction of frames with s > 3: 1.74 % (barrier probed, not stably crossed)",
+        {"text": "Decision rule (at 50 ns, or earlier if max s ≥ 5)", "bold": true, "color": "ACCENT"},
+        "    max s ≥ 5 → Phase 2 (10-walker SI protocol, 50–100 ns / walker)",
+        "    3 ≤ max s < 5 → current band; let 50 ns finish",
+        "    max s < 3  → Phase 3 (4HPX-seeded dual-walker, ≈1 day setup)"
+      ],
+      "bulletsBox": {"y": 3.6, "h": 3.4, "fontSize": 12},
+      "sources": [
+        "https://manual.gromacs.org/current/onlinehelp/gmx-convert-tpr.html (-extend flag required for nsteps bump)",
+        "https://www.plumed.org/doc-v2.9/user-doc/html/_r_e_s_t_a_r_t.html (\"if unsure, always put RESTART\")"
+      ],
+      "footer": "Slide 9 / 10  ·  Job 44008381 running on partition=hov  ·  FP-026 fixed in extend_to_50ns.sh v3"
+    },
+    {
+      "type": "two-column",
+      "title": "Process improvements + next steps",
+      "subtitle": "Per-parameter provenance, hardened audit gates, private repo",
+      "leftColumn": {
+        "heading": "This week's process improvements",
+        "bullets": [
+          "PARAMETER_PROVENANCE.md — every number has source tag (SI-quote / SI-derived / PLUMED-default / Our-choice / Legacy-bug) + verification status",
+          "failure-patterns.md: FP-001..FP-027 + 21 general rules (4 new FPs + 2 new rules this week)",
+          "project_structures.py CV audit is a hard gate: exit 0 / 2 / 3 / 4 with AuditError class; malformed input → exit 3 (not crash)",
+          "Repo privatized; 3 branches pushed to origin (fix/fp024-sigma-floor · feature/probe-extension-50ns · diag/cv-audit)"
+        ]
+      },
+      "rightColumn": {
+        "heading": "Next steps",
+        "bullets": [
+          "2026-04-18 AM — read Job 44008381 @ 25 ns, decide Phase 2 / Phase 3",
+          "If Phase 2: pick 10 snapshots by visual inspection in PyMOL (Yu's 2026-04-09 directive: NOT strided). Workflow: Python bins (s, z) → candidate medoids → PyMOL eye-verify → final 10",
+          "If Phase 3: build 4HPX-seeded Ain-PLP system (~1 day) → dual-seed multi-walker",
+          "Target: FES reconstruction + JACS 2019 Fig 2a comparison by 2026-04-24",
+          "OpenMM migration: defer (Yu's 2026-04-09 note: e-track pipeline has outdated packages + memory issues)"
+        ]
+      },
+      "footer": "Slide 10 / 10  ·  next meeting 2026-04-24 target"
+    }
+  ]
+}

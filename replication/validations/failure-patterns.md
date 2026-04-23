@@ -298,6 +298,7 @@
 | 根因 | (1) `generate_path_cv.py` 里 `calculate_lambda` 默认 `convention="total_sd"`，main 流程用 `calculate_lambda(total_sd)`，得到 λ ≈ 0.0339 Å⁻²。(2) FP-018 修复时把 0.0339 Å⁻² × 100 = 3.391 nm⁻² 作为最终 LAMBDA 写入 plumed.dat，但没有同时切换 RMSD action 到 SQUARED。(3) FP-020 之前我们用过 PATHMSD（PATHMSD 内部可能用 total-SD 兼容公式），切换到 FUNCPATHMSD 时没意识到约定不同。(4) 没有做 self-consistency test（喂参考帧给 CV 公式，看 frame_i 是否输出 s=i），所以 bug 没被早期发现。(5) PLUMED 自己在 driver 启动时会打印 "Consistency check completed!"，但这条消息只在 driver 模式可见，mdrun 模式下没有，bug 悄悄通过。 |
 | 防范措施 | **三层保护**：(1) `generate_path_cv.py` 默认 convention 已改为 `"plumed"`，同时加 assertion 检查 λ ∈ [0.1, 100] Å⁻²（旧的 0.0339 现在会立即报错）；(2) 脚本自动生成 `plumed_path_cv.dat` snippet，包含正确的 SQUARED 关键字 + LAMBDA 数值，**不要再手动从 summary.txt 复制 λ**；(3) 任何新的 plumed.dat 提交前必须跑 self-consistency test (`replication/validations/path_cv_debug_2026-04-08/01_self_consistency_test.py`)，确认 s(frame_i) ≈ i。**通用规则**：path CV 修改后必须用 PLUMED driver 短跑一段已有轨迹（不需要新 MD），看 PLUMED 是否打印 "Your path cvs look good!" 消息，并人工检查 COLVAR 输出范围是否合理。 |
 | 已修复 | ✅ 2026-04-08 FUNCPATHMSD + SQUARED + LAMBDA=379.77；**2026-04-09 更优方案**：直接回到 PATHMSD（见 FP-020 更正和 FP-023）。FP-022 的根源是错误地切换到 FUNCPATHMSD，如果当时用源码版 PLUMED + PATHMSD，FP-022 本来就不会出现。 |
+| 2026-04-23 corrigendum | Miguel 邮件 (FP-031/032) 触发重新审视 λ。Codex 独立核对（2026-04-23）确认：在我们 15-frame 路径 + PATHMSD 默认 per-atom MSD 约定下，`λ=379.77 nm⁻²` 就是 Branduardi 2007 教科书值（相邻帧权重 ≈ exp(-2.3) ≈ 0.10）。Miguel 的 `80 Å⁻²` 是他**4.6× 更密路径**的对应值，不可直接转移（见 FP-032）。新 plumed 模板把 λ 写成 Å⁻² 下的 `3.77`（= 379.77 nm⁻²），并配 `UNITS LENGTH=A ENERGY=kcal/mol`，物理含义与 FP-022 的结论完全一致。 |
 
 ---
 
@@ -430,6 +431,7 @@
 | 根因 | (1) 把 Branduardi 2012 里 `GEOM` 和 `DIFF` 两种 adaptive 方案的物理意义混在一起；(2) 对 well-tempered metadynamics 的 `γ = (T+ΔT)/T` 温度关系记反了符号方向，只记住了“有 tempering”而没记住 γ 的单调性；(3) probe sweep 压力下先用直觉解释 saturation，没有先回到一手定义。 |
 | 防范措施 | (1) **解释 ADAPTIVE 失败模式前，先明确是 GEOM 还是 DIFF**，不要跨语义借词；(2) **讨论 well-tempered `γ` 时写出单调关系**：γ 大 = slower cooling，γ 小 = faster cooling；(3) 任何“为什么 sigma 会塌缩”的口头诊断，先对照 PLUMED METAD 官方文档里的 scheme 定义，再决定是改 `SIGMA_MIN/MAX`、改 adaptive scheme，还是回到 CV/path audit。 |
 | 已修复 | ✅ 2026-04-21 在 Option A dispatch 中明确锁住 `γ=10`，不再把它作为调参方向；并把 probe sweep 解释改成“GEOM saturation 是局部几何映射 + floor/ceiling 约束的问题”，不再套用 DIFF 的 time-window 叙述。 |
+| 2026-04-23 corrigendum | Miguel 邮件 (FP-031) 证明 **Osuna 2019 用的是 `ADAPTIVE=DIFF`，不是 GEOM**。本 FP 的 GEOM-vs-DIFF 判别核心仍然成立（两种语义不可互换），但方向搞反了：我们以为 SI 是 GEOM，实为 DIFF。`probe_sweep` 所有 P1–P5 全在 GEOM 下做的 σ-floor/ceiling 扫描，因此对 Osuna 协议不具参考性，需整体标记 deprecated。 |
 
 ---
 
@@ -446,3 +448,34 @@
 | 根因 | 把 production 参考 PDB 的 **atom serial 语义** 和 standalone driver 的 **local trajectory indexing 语义** 混为一谈。`PATHMSD` 在生产里依赖 MD 引擎传入的完整系统坐标；`driver --mf_pdb` 只知道自己手上的 112 原子 multi-model PDB。 |
 | 防范措施 | (1) **任何用 `plumed driver` 直接读取 production PATH 参考文件的自检**，先检查 `ATOM` serial 是否连续 `1..N`；若不是，先生成 driver-local renumbered copy；(2) 报 `atom XXXX out of range` 时优先检查“参考 serial vs 当前系统 atom count”而不是怀疑 `LAMBDA` 或 atom order；(3) 生产 `plumed.dat` 不要因为 driver 诊断失败而改动，只在诊断脚本里做局部 renumber。 |
 | 已修复 | ✅ 2026-04-21 `00b_self_projection_renumbered.sh` 在 Longleaf 上通过：原始 `path_gromacs.pdb` 自投影报 `atom 1614 out of range`，renumbered `/tmp/path_driver.pdb` 成功输出 15 行 `ref_selfproj.dat`（`s`: 1.091318 → 14.908700，`z` 近 0）。 |
+
+---
+
+## FP-031: 把 SI "adaptive Gaussian width scheme" 读成 `ADAPTIVE=GEOM`，实为 `ADAPTIVE=DIFF`
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-23 |
+| 发现者 | Miguel Iglesias-Fernández（Osuna 2019 原作者）email 回复 Zhenpeng Liu |
+| 受影响文件 | `replication/metadynamics/single_walker/plumed.dat`（旧）；`replication/metadynamics/probe_sweep/**`；`replication/metadynamics/pilot_matrix/**`；`replication/validations/failure-patterns.md` FP-029；`project-guide/TrpB_Replication_Tutorial_{EN,CN}.md` |
+| 错误描述 | Osuna 2019 SI 只写 "adaptive Gaussian width scheme to reach a better sampling"，我们读成了 `ADAPTIVE=GEOM`（Branduardi 2012 几何缩放方案），进而围绕 SIGMA/SIGMA_MIN/SIGMA_MAX 做了大量探针扫描（probe_sweep P1–P5 和 pilot_matrix 2×2 设计）。 |
+| 正确事实 | Miguel 2026-04-23 邮件给出作者示例 plumed.dat：`METAD ... ADAPTIVE=DIFF SIGMA=1000 ...`。`DIFF` 是 time-window / local-diffusion 方案，`SIGMA=1000` 是**步数**（1000 × 2 fs = 2 ps 局部时间窗），不是 Gaussian 宽度。PLUMED 内部用 walker 近期轨迹估计局部扩散张量，据此自动确定 Gaussian 形状。 |
+| 根因 | "adaptive Gaussian width" 在 PLUMED 里有两种独立实现（GEOM, DIFF），SI 未指明；我们没有去查原作者或读 2007/2012 两篇方法论，直接按 PLUMED 文档头条 `GEOM` 的描述推断。 |
+| 防范措施 | (1) SI 若对某关键字**只给描述不给语法**，必须找作者确认或在 PR 里明标 `UNVERIFIED`；(2) `ADAPTIVE` 的两个取值语义差异巨大（SIGMA 一个是长度一个是步数），未来遇到同类关键字先列举所有可能再缩小；(3) 涉及 MetaD 复刻的探针/扫描前必须 email 作者一次。 |
+| 已修复 | ✅ 2026-04-23 新契约 `replication/metadynamics/miguel_2026-04-23/`：`ADAPTIVE=DIFF SIGMA=1000` 全面替换。`probe_sweep/` 和 `pilot_matrix/` 将标记 DEPRECATED（任务 #36）。FP-029 corrigendum 见其条目新增段落。 |
+
+---
+
+## FP-032: PATHMSD λ 跨 UNITS/nm-vs-Å 不能直接换算，必须 per-path 推导；Miguel 的 λ=80 Å⁻² 不可转移到我们系统
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-23 |
+| 发现者 | Codex peer review (2026-04-23) on a user-posed question |
+| 受影响文件 | `replication/metadynamics/miguel_2026-04-23/plumed_template.dat`（第一版草稿）；临时 SLURM 作业 `45312786`（已 scancel） |
+| 错误描述 | 初读 Miguel 邮件时，把他提供的 `LAMBDA=80` + `UNITS LENGTH=A` 当作"权威值"直接拷进我们的 `plumed_template.dat`，并提交了 10-walker 作业 `45312786`。忽略了 λ 同时依赖**单位**和**路径密度**两个变量。 |
+| 正确事实 | λ 的 Branduardi 2007 启发式选法是 `λ ≈ 2.3 / ⟨MSD_adjacent⟩`。Miguel 的 `80 Å⁻²` 反推 ⟨MSD_adj⟩ ≈ 0.029 Å² → 相邻帧 Cα-RMSD ≈ 0.17 Å（他的路径比我们密 ~4.6×）。我们 15 帧路径相邻 Cα-RMSD ≈ 0.78 Å → MSD ≈ 0.61 Å² → λ 应为 `2.3/0.61 = 3.77 Å⁻²`（= 379.77 nm⁻²）。两者即使做单位换算后仍差 ~21×，完全来自路径密度差异。 |
+| 根因 | λ 不是一个"作者给的固定常数"，而是**路径相关**的校准量。不同作者的路径（帧数、帧间结构距离、构象跨度）不同，λ 就不同。单位换算（1 Å⁻² = 100 nm⁻²）只是纯尺度；路径密度是物理内容。 |
+| 防范措施 | (1) 任何从外部作者拿到的 PATHMSD λ，先用 `plumed driver` 做 self-projection + 核对 `exp(-λ·⟨MSD_adj⟩)` 是否接近 0.1（Branduardi 启发式）；(2) "好看的 self-projection 整数 snap" 不是 validation——过 sharp 核也会给整数投影，需看帧间梯度是否连续；(3) 移植作者脚本时，单位和 λ 要**同时**核对，不要假设换算后就通用。 |
+| FP-022 / Miguel email corrigendum | 本项目原先在 FP-022 将 λ 锁定在 `379.77 nm⁻²`（per-atom MSD 约定），该值在当前 15-frame 路径下经 Codex 独立核对确认为 Branduardi 2007 教科书值。Miguel 的 `80 Å⁻²` 是**他系统**的正确值，但不能直接转移。重提交作业 `45320189` 使用 `λ=3.77 Å⁻²`（= 379.77 nm⁻² 换单位版），其余参数 100% Miguel contract。 |
+| 已修复 | ✅ 2026-04-23 `plumed_template.dat` / `plumed_single.dat` / `single_walker/plumed.dat` 全部更新为 `LAMBDA=3.77`（Å⁻² 下）；`materialize_walkers.py` 断言也同步更新（`LAMBDA_LITERAL = "LAMBDA=3.77"`）。自投影 gate 通过：`s` 从 1.092 → 14.907 单调，`z ≈ -0.05 Å²`（非零但小，符合 kernel-average 边界效应）。 |

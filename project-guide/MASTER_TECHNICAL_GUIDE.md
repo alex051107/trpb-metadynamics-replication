@@ -1,5 +1,17 @@
 # TrpB MetaDynamics 复刻项目：完整技术指南
 
+> **⚠️ 2026-04-23 Miguel Iglesias-Fernández 直接确认 MetaD 方案**：原文作者邮件给出权威版本。若本文其余章节（尤其 §MetaDynamics 参数、Path CV λ、`ADAPTIVE=GEOM`、`SIGMA_MIN/MAX`、single-walker 50 ns）与以下合同矛盾，**以 Miguel 合同为准**：
+>
+> - `UNITS LENGTH=A ENERGY=kcal/mol`（SI 数值本就是 Å + kcal/mol，不要再乘 100 或 4.184）
+> - `ADAPTIVE=DIFF SIGMA=1000`（1000 **步** 的时间窗，≈ 2 ps；不是 Gaussian 宽度）
+> - `HEIGHT=0.15 kcal/mol`、`BIASFACTOR=10`、`PACE=1000`、`TEMP=350`
+> - `WALKERS_N=10` 并行（SI 原文即 10 walker，single-walker 只是 fallback）
+> - `UPPER_WALLS ARG=p1.zzz AT=2.5 KAPPA=800`（Å, kcal/mol）
+> - `WHOLEMOLECULES ENTITY0=1-39268` 每步重拼
+> - `PATHMSD LAMBDA=3.77 Å⁻²`（= 379.77 nm⁻²，基于我们 15 帧路径的 ⟨MSD⟩ ≈ 0.61 Å² 所得。Miguel 自己的 `LAMBDA=80 Å⁻²` 是给他更密集路径用的，不能照搬。）
+>
+> 权威来源：`replication/metadynamics/miguel_2026-04-23/miguel_email.md` + FP-031 + FP-032（`replication/validations/failure-patterns.md`）。所有旧版 `ADAPTIVE=GEOM / SIGMA_MIN,MAX` 叙述都是基于 SI 含糊措辞的误读，已记录为 failure pattern 不再展开。
+
 这份文档回答一个核心问题：如果你现在加入这个项目，如何从科学背景一路走到可以在 Longleaf 上提交 TrpB 的 MetaDynamics 复刻任务。本文以仓库内已经确认的 `Runner` 阶段事实为准，特别是 Ain/LLP 的 `RESP` 参数化、`Path CV` 定义和 `Longleaf` 实操约束。
 
 本文默认读者具备基础的物理化学、蛋白质结构和命令行能力，但不预设你已经做过 `MD` 或 `MetaDynamics`。中文负责解释逻辑与化学原因，英文负责技术术语、命令、文件名与引用。
@@ -582,8 +594,9 @@ METAD ...
   BIASFACTOR=10
   TEMP=350
   ADAPTIVE=GEOM
-  SIGMA_MIN=0.1
-  SIGMA_MAX=3.0
+  SIGMA=0.1
+  SIGMA_MIN=0.3,0.005   # per-CV (s, z) in CV units; FP-024
+  SIGMA_MAX=1.0,0.05    # per-CV (s, z) in CV units; FP-024
   FILE=HILLS
   STRIDE=500
 ... METAD

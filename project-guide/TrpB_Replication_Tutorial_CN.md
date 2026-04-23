@@ -5,7 +5,19 @@
 **DOI**: 10.1021/jacs.9b03646  
 **Supporting Information**: ja9b03646\_si\_001.pdf  
 **作者**：Zhenpeng Liu (liualex@ad.unc.edu), UNC Chapel Hill  
-**最后更新**：2026-04-02
+**最后更新**：2026-04-23（Miguel 2026-04-23 邮件覆盖，详见下方 banner）
+
+> **⚠️ 2026-04-23 Miguel Iglesias-Fernández 合同覆盖**：原文一作直接给了 MetaD 权威版本。本教程后文若出现 `ADAPTIVE=GEOM / SIGMA=0.1 / SIGMA_MIN,MAX / LAMBDA=379.77 nm⁻²` 等旧表述，**以下 Miguel 合同为准**：
+>
+> - `UNITS LENGTH=A ENERGY=kcal/mol`（SI 数值本来就是 Å + kcal/mol，**不要** 再乘 100 或 4.184）
+> - `ADAPTIVE=DIFF SIGMA=1000`（1000 步的时间窗 ≈ 2 ps；这不是 Gaussian 宽度）
+> - `HEIGHT=0.15 kcal/mol`、`BIASFACTOR=10`、`PACE=1000`、`TEMP=350`
+> - `WALKERS_N=10` 并行（SI 原意就是 10 walker，single-walker 只是备选）
+> - `UPPER_WALLS ARG=p1.zzz AT=2.5 KAPPA=800`（Å, kcal/mol）
+> - `WHOLEMOLECULES ENTITY0=1-39268` 每步重拼
+> - `PATHMSD LAMBDA=3.77 Å⁻²`（= 379.77 nm⁻²）是我们 15 帧路径的正确值；Miguel 自己给的 `LAMBDA=80 Å⁻²` 只适用他更密的路径，对我们偏窄 21×（详见 FP-032）。
+>
+> 权威来源：`replication/metadynamics/miguel_2026-04-23/miguel_email.md` + FP-031/FP-032（`replication/validations/failure-patterns.md`）。正文中残留的 `ADAPTIVE=GEOM / SIGMA_MIN,MAX` 叙述仅作为历史记录保留，勿按其部署。
 
 > **重要提示**：本教程中所有路径使用 `$WORK` 作为你在 Longleaf 上的工作目录简写。开始之前，请先设置这个变量：
 > ```bash
@@ -2086,7 +2098,7 @@ EOF
 > | `PACE=1000` | 每 1000 步 | 每 1000 个 MD 步沉积一个新山丘。在 dt=0.002 ps 下，即每 2 ps。 | `[SI p.S3]` |
 > | `BIASFACTOR=10` | 10 | Well-tempered MetaD 偏置因子（bias factor）。CV 的有效温度为 T_eff = T * (1 + 1/gamma) = 350 * 1.1 = 385 K。值越高探索越广，但自由能精度越低。 | `[SI p.S3]` |
 > | `TEMP=350` | 350 K | 体系温度（必须与 MD 恒温器匹配）。 | `[SI p.S3]` |
-> | `SIGMA=0.2,0.1` | 0.2 (s), 0.1 (z) | 分别对应 s 和 z 两个 CV 的高斯宽度。 | `[SI p.S3]` |
+> | `SIGMA=0.1 ADAPTIVE=GEOM SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05` | Cartesian 种子 0.1 nm，各 CV 上下限 | ADAPTIVE=GEOM 下 SIGMA 是单一 Cartesian nm 标量；SIGMA_MIN/MAX 是每个 CV 单位的 floor/ceiling。 | `[PLUMED 2.9 METAD docs]`；SI p.S3 没有任何数值 SIGMA — 详见 FP-025 |
 > | `LAMBDA=3.3910` | 3.3910 nm^-2 | FUNCPATHMSD 平滑参数。控制每个参考帧"吸引"结构的锐度。**从 0.033910 A^-2 x 100 = 3.3910 nm^-2 转换，适配 GROMACS 的 nm 单位。** | 由我们的 MSD 计算；SI 报告 0.029 A^-2 |
 
 > **LAMBDA 单位转换（关键）**：平滑参数 LAMBDA 的单位是长度的反平方。我们计算的值是 0.033910 A^-2。GROMACS 内部使用纳米，因此传给 PLUMED 的所有距离都是 nm。因为 1 nm = 10 A，所以 1 nm^-2 = 0.01 A^-2，因此**乘以 100**：0.033910 A^-2 x 100 = **3.3910 nm^-2**。如果使用未转换的值（0.033910），所有帧看起来距离几乎相等，path CV 将无法区分不同构象。
@@ -2145,7 +2157,7 @@ r15: RMSD REFERENCE=frames/frame_15.pdb TYPE=OPTIMAL
 path: FUNCPATHMSD ARG=r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15 LAMBDA=3.3910
 
 # Well-tempered MetaDynamics biasing s(R) and z(R) simultaneously
-metad: METAD ARG=path.s,path.z SIGMA=0.2,0.1 HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
+metad: METAD ARG=path.s,path.z SIGMA=0.1 ADAPTIVE=GEOM SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05 HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
 
 # Print CVs and bias for analysis
 PRINT ARG=path.s,path.z,metad.bias FILE=COLVAR STRIDE=500
@@ -2238,7 +2250,7 @@ r15: RMSD REFERENCE=frames/frame_15.pdb TYPE=OPTIMAL
 
 path: FUNCPATHMSD ARG=r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15 LAMBDA=3.3910
 
-metad: METAD ARG=path.s,path.z SIGMA=0.2,0.1 HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=../shared_bias/HILLS WALKERS_N=10 WALKERS_ID=__WALKER_ID__ WALKERS_DIR=../shared_bias WALKERS_RSTRIDE=1000
+metad: METAD ARG=path.s,path.z SIGMA=0.1 ADAPTIVE=GEOM SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05 HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=../shared_bias/HILLS WALKERS_N=10 WALKERS_ID=__WALKER_ID__ WALKERS_DIR=../shared_bias WALKERS_RSTRIDE=1000
 
 PRINT ARG=path.s,path.z,metad.bias FILE=COLVAR STRIDE=500
 EOF

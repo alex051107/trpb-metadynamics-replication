@@ -1,5 +1,19 @@
 # TrpB MetaDynamics 复刻：完整操作流程指南
 
+> **⚠️ 2026-04-23 Miguel 合同覆盖** — 原 Osuna 2019 一作 Miguel Iglesias-Fernández 直接邮件确认 MetaD 方案。下面的 `plumed.dat` 示例片段里所有 `ADAPTIVE=GEOM / SIGMA=0.1 / SIGMA_MIN,MAX / LAMBDA=379.77 nm⁻²` 写法**已被正文级别替换**：
+>
+> ```
+> UNITS LENGTH=A ENERGY=kcal/mol
+> WHOLEMOLECULES ENTITY0=1-39268
+> p1: PATHMSD REFERENCE=path_gromacs.pdb LAMBDA=3.77 NEIGH_STRIDE=100 NEIGH_SIZE=6
+> METAD ARG=p1.sss,p1.zzz ADAPTIVE=DIFF SIGMA=1000 HEIGHT=0.15 PACE=1000 \
+>       BIASFACTOR=10.0 TEMP=350.0 \
+>       WALKERS_DIR=HILLS_DIR WALKERS_RSTRIDE=3000 WALKERS_ID=__WALKERS_ID__ WALKERS_N=10
+> UPPER_WALLS ARG=p1.zzz AT=2.5 KAPPA=800
+> ```
+>
+> 权威来源：`replication/metadynamics/miguel_2026-04-23/miguel_email.md`。详细修正原因见 FP-031（GEOM→DIFF 误读）+ FP-032（λ 单位/路径密度）。
+
 ## 文档说明
 
 本文档整合了以下所有信息源，形成一份可复现的端到端操作手册：
@@ -637,24 +651,18 @@ print(f"MSD = {mean_msd:.3f} Å², λ = {lam:.6f} Å⁻²")
 # All parameters from JACS 2019 SI p.S3
 
 # Path CV: COMM domain O→C
-path: PATHMSD REFERENCE=path_frames.pdb LAMBDA=0.029
+# ⚠️ NOTE: FP-018 (LAMBDA unit nm⁻²) + FP-019 (no \ continuation through gmx mdrun)
+#          + FP-022 (per-atom MSD convention, λ=379.77) + FP-024 (SIGMA floor)
+# Live production version at replication/metadynamics/single_walker/plumed.dat
+path: PATHMSD REFERENCE=path_gromacs.pdb LAMBDA=379.77
 
 # Diagnostic distances (NOT biased, for post-hoc analysis)
-k82_q2: DISTANCE ATOMS=xxxx,yyyy    # K82 NZ — Q2 Cα (after conversion)
+k82_q2: DISTANCE ATOMS=xxxx,yyyy    # K82 NZ — Q2 Cα (after conversion, see topology)
 
-# Well-Tempered MetaDynamics on (s, z)
-metad: METAD ARG=path.sss,path.zzz \
-  SIGMA=0.05 \
-  ADAPTIVE=GEOM \
-  HEIGHT=0.628 \
-  PACE=1000 \
-  BIASFACTOR=10 \
-  TEMP=350 \
-  FILE=HILLS
+# Well-Tempered MetaDynamics on (s, z) — all keywords on one line (FP-019)
+metad: METAD ARG=path.sss,path.zzz SIGMA=0.1 ADAPTIVE=GEOM SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05 HEIGHT=0.628 PACE=1000 BIASFACTOR=10 TEMP=350 FILE=HILLS
 
-PRINT ARG=path.sss,path.zzz,k82_q2,metad.bias \
-  FILE=COLVAR \
-  STRIDE=500
+PRINT ARG=path.sss,path.zzz,k82_q2,metad.bias FILE=COLVAR STRIDE=500
 ```
 
 ### 10.2 参数对照表

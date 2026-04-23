@@ -12,18 +12,49 @@
 
 ---
 
-## Current (2026-04-17)
+## Current (2026-04-23 — Miguel pivot)
 
-- Job 44008381 running, 25.56 ns, max s=2.794, ETA 50 ns ~2026-04-19
-- Decision gate triggers at 50 ns or when max s≥5, whichever first
-- Phase 2 (10-walker) ready: scripts in `replication/metadynamics/multi_walker/`
-- Phase 3 (4HPX-seeded dual walker) is fallback if Phase 2 not triggered
+### Miguel Iglesias-Fernández email 2026-04-23 — ground-truth contract
+Original Osuna 2019 author clarified the MetaD recipe directly. Paper contract (authoritative, supersedes SI re-read):
+- `UNITS LENGTH=A ENERGY=kcal/mol` (SI values are Å / kcal·mol⁻¹, not nm / kJ·mol⁻¹)
+- `ADAPTIVE=DIFF SIGMA=1000` — time window in integrator steps (≈ 2 ps), NOT a geometry Gaussian width
+- `HEIGHT=0.15 kcal/mol` BIASFACTOR=10 PACE=1000 TEMP=350
+- 10 parallel walkers, not single-walker
+- `UPPER_WALLS ARG=p1.zzz AT=2.5 KAPPA=800` (Å, kcal/mol)
+- `WHOLEMOLECULES ENTITY0=1-39268` every step
+- Email + annotated template at `replication/metadynamics/miguel_2026-04-23/miguel_email.md`
+
+### λ=3.77 Å⁻² (= 379.77 nm⁻²) — Codex-confirmed
+Miguel's `LAMBDA=80` is correct for HIS denser path (adjacent MSD ~0.03 Å²); our 15-frame path has adjacent MSD ~0.61 Å², so Branduardi textbook λ = 2.3 / 0.61 ≈ 3.77 Å⁻². Miguel's 80 would be 21× too sharp for our path (neighbor weight 10⁻²¹, integer-snap artifact). FP-022 was CORRECT all along; FP-027 re-opening was the error. See FP-032 + `replication/metadynamics/miguel_2026-04-23/lambda_audit_2026-04-23.md`.
+
+### Initial 10-walker production — LAUNCHED 2026-04-23
+**Job `45320189` (array 0-9) RUNNING** on volta-gpu, 10-walker WALKERS_DIR sync, path_gromacs.pdb 15 frames, all-PATHMSD-atoms λ=3.77 Å⁻². 3-day walltime; ETA depends on convergence, not hard wall.
+- Driver self-projection gate PASS under UNITS=A + λ=3.77 (s: 1.092 → 14.907 monotonic, z ≈ −0.049 Å²).
+- COLVAR / HILLS shared via `HILLS_DIR/`; per-walker provenance.txt records Miguel-email source + λ contract.
+- Monitor cadence: every 2 h (per user request). Metrics: max_s per walker, HILLS σ columns (verify DIFF populates non-zero), first COLVAR s seed ≈ 1, wall-clock progress.
+
+### Superseded directories (DEPRECATED, do not launch from)
+- `replication/metadynamics/probe_sweep/` — P1–P5 were GEOM scans, invalidated by DIFF. `DEPRECATED.md` points at Miguel dir.
+- `replication/metadynamics/pilot_matrix/` — 2×2 (anchor × SIGMA seed) scaffold built on GEOM assumption. Nothing launched. `DEPRECATED.md` points at Miguel dir.
+- Anchor-set question (1WDW→3CEP vs 1WDW→5DW0) is still scientifically legitimate but must be re-posed under the Miguel contract, not inside the old 2×2 scaffold.
+
+### Aex1 cMD — running (parallel, not Miguel-gated)
+Job `45186335` on a100-gpu, ~13 h / 500 ns target, ~273 ns/day. Chemistry-control line: 5DW0 chain A (PLS external aldimine), unbiased. Not affected by Miguel pivot (no MetaD contract in cMD phase).
+- stale-XML preflight bug fixed; FP-028 (openmm CUDA PTX) resolved.
+- Post-cMD Aex1 MetaD prep will use Miguel contract (UNITS=A, DIFF SIGMA=1000, WALKERS_N=10, λ per Aex1 path density) once cMD completes.
 
 ## Next 48 hours
 
-1. Monitor Job 44008381 via hourly cron (see `.claude/cron_registry.json` job 7d28254c)
-2. 50 ns completion check: decide Phase 2 vs Phase 3 per gate rules in `replication/validations/2026-04-17_single_walker_timeline.md`
-3. If Phase 2: launch `bash replication/metadynamics/multi_walker/setup_walkers.sh COLVAR traj.xtc`, then PyMOL visual inspection of 10 candidates, then `sbatch submit_array.sh`
+1. **Monitor 45320189 at 2 h cadence** — log max_s, σ-column population (DIFF sanity), s-seed (~1), wall-clock; first checkpoint at first HILLS row (~1 ps). If all walkers stall <s=2 through 10 ns under Miguel contract → anchor-set / piecewise-path becomes the surviving live hypothesis. If any walker crosses s>3 → Miguel contract vindicates and the whole GEOM/σ-ladder story was the wrong axis.
+2. **Docs sweep** — tutorials, MASTER_TECHNICAL_GUIDE, TrpB_MetaDynamics_Complete_Workflow, JACS2019 parameters doc all still quote old (GEOM, SIGMA=0.1 nm, 50 ns single-walker, λ=3.798 nm⁻²) contract. Replace with Miguel contract. Do NOT rewrite failure-patterns.md (FP-031/032 already land the correction in place).
+3. **Aex1 cMD monitor** — hourly cron; post-cMD Aex1 MetaD prep (path-CV self-projection + λ derivation on 5DW0-seeded path) queue-able once cMD crosses 50 ns.
+4. **Miguel reply draft** — acknowledge contract, report our λ path-density derivation (so Miguel knows we did not blindly copy his 80), attach 45320189 first 10 ns COLVAR when available.
+5. **Commit + push Miguel pivot** — single commit covering plumed.dat/plumed_template/single/materialize_walkers/submit/provenance + FP-031/FP-032/FP-022 corrigendum + DEPRECATED.md × 2 + this NEXT_ACTIONS rewrite + tutorial doc sweep. Author `alex051107 <2476939435@qq.com>`, NO Claude attribution. Target `trpb-metadynamics-replication.git` branch `new_idea_explore`; update PR #2.
+
+### Will NOT do now
+- **Revisit λ scheme** — FP-022 + FP-032 + Codex λ audit all landed. Not re-opening.
+- **1WDW→5DW0 path build** — legitimate but contingent on Miguel-contract initial run's verdict. If 45320189 escapes, anchor change is not the pivot. If it stalls, anchor build becomes B-priority.
+- **Launch piecewise path** — same reasoning; defer until Miguel initial returns a verdict.
 
 ---
 
