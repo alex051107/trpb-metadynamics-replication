@@ -1,0 +1,30 @@
+# Pilot matrix (anchor set x initial SIGMA seed)
+# Unlike ../probe_sweep/ladder.yaml, here SIGMA seed is a tunable axis.
+# anchor_set: identifier for the path reference file.
+#   - current: 1WDW->3CEP 15-frame path_gromacs.pdb (reuses probe_sweep path)
+#   - dw5dw0:  1WDW->5DW0 (chain A) new 15-frame path (requires build)
+# sigma_seed: initial METAD SIGMA (Gaussians rescale via ADAPTIVE=GEOM after
+# first accumulation but the first few hundred ps seed the surface).
+# smin / smax: SIGMA_MIN / SIGMA_MAX for ADAPTIVE=GEOM (same schema as probe).
+pilots:
+  - id: Pilot2
+    anchor_set: current
+    sigma_seed: 0.3
+    smin: [0.5, 0.005]
+    smax: [1.0, 0.05]
+    lambda: 379.77
+    notes: "Probe_P1 config + SIGMA seed 0.3. Pro's cheapest untested axis."
+  - id: Pilot3
+    anchor_set: dw5dw0
+    sigma_seed: 0.1
+    smin: [0.5, 0.005]
+    smax: [1.0, 0.05]
+    lambda: UNDERIVED
+    notes: "5DW0 anchor + probe_P1 SIGMA. LAMBDA must be re-derived from new path."
+  - id: Pilot4
+    anchor_set: dw5dw0
+    sigma_seed: 0.3
+    smin: [0.5, 0.005]
+    smax: [1.0, 0.05]
+    lambda: UNDERIVED
+    notes: "Both axes changed. Only launch if Pilot 2 or 3 escapes at 3 ns gate."
