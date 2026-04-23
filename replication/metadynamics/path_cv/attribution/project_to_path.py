@@ -50,6 +50,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 import MDAnalysis as mda
+from MDAnalysis import transformations as mdat
 
 
 PATH_N_MODELS_EXPECTED = 15
@@ -278,6 +279,21 @@ def main() -> int:
     u = mda.Universe(str(args.top), str(args.traj))
     print(f"[load] n_atoms={u.atoms.n_atoms} n_frames={len(u.trajectory)} "
           f"dt={u.trajectory.dt:.3f}ps")
+
+    # PBC unwrap: if the protein spans a periodic boundary, raw Cα coords
+    # can have >100 Å inter-atomic gaps that break PATHMSD Kabsch alignment
+    # and produce NaN s/z. Apply per-frame unwrap on the protein backbone.
+    # Uses the "protein" selection since AMBER .nc / OpenMM .dcd don't always
+    # store bonds reliably; we unwrap via COM-following instead.
+    protein = u.select_atoms("protein")
+    if protein.n_atoms > 0 and u.dimensions is not None:
+        try:
+            u.trajectory.add_transformations(mdat.unwrap(protein))
+            print(f"[pbc] unwrap transformation applied to {protein.n_atoms} "
+                  f"protein atoms")
+        except Exception as exc:
+            print(f"[pbc] unwrap transformation NOT applied ({exc}); "
+                  f"relying on raw coordinates")
 
     ag = select_matching_atoms(u, pattern)
     print(f"[select] resolved {len(ag)}/{PATH_N_ATOMS_PER_MODEL_EXPECTED} atoms")

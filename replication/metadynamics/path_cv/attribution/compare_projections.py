@@ -38,10 +38,21 @@ DEFAULT_GRID_DS = 0.1
 DEFAULT_GRID_DZ = 0.01
 
 P95_CHEMISTRY_DELTA = 0.5
+# Density-normalized area ratio (bins / sqrt(n_frames)). Raw bin count is
+# confounded by sample density: Ain cMD is 10 ps/frame, Aex1 cMD is 100 ps/
+# frame — a 5 ns window gives Ain 10x more frames, so raw-count ratio is
+# meaningless. sqrt(n) normalization approximates the coverage plateau
+# (Codex review 2026-04-22, BLOCKING).
 AREA_CHEMISTRY_RATIO = 2.0
 MEDIAN_GEOM_DELTA = 0.2
 IQR_GEOM_RATIO_MAX = 1.25
 P95_GEOM_DELTA_MAX = 0.3
+# z-twin thresholds: geometry-strengthened verdict requires both s- and
+# z-distribution overlap, because probe-sweep failure mode (FP-024/025/027)
+# is sigma-floor pressure on both axes (Codex review 2026-04-22, WARN).
+MEDIAN_Z_GEOM_DELTA = 0.02
+IQR_Z_GEOM_RATIO_MAX = 1.25
+P95_Z_GEOM_DELTA_MAX = 0.03
 
 
 def parse_colvar(path: Path) -> Tuple[List[float], List[float], str]:
@@ -110,15 +121,18 @@ def occupied_bins(s_vals: List[float], z_vals: List[float],
 
 def analyze(path: Path, ds: float, dz: float) -> Dict:
     s_vals, z_vals, prov = parse_colvar(path)
+    n = len(s_vals)
+    bins = occupied_bins(s_vals, z_vals, ds, dz)
     return {
         "source": str(path),
         "provenance": prov,
-        "n_frames": len(s_vals),
+        "n_frames": n,
         "s": stats(s_vals),
         "z": stats(z_vals),
         "frac_s_gt_1p5": fraction_above(s_vals, 1.5),
         "frac_s_gt_2p0": fraction_above(s_vals, 2.0),
-        "occupied_bins": occupied_bins(s_vals, z_vals, ds, dz),
+        "occupied_bins": bins,
+        "occupied_bins_density_normalized": bins / math.sqrt(max(n, 1)),
         "grid_ds": ds,
         "grid_dz": dz,
     }
@@ -138,10 +152,15 @@ def verdict(ain: Dict, aex1: Dict) -> Tuple[str, List[str]]:
     if p95_delta >= P95_CHEMISTRY_DELTA:
         chemistry_signal = True
 
-    area_ratio = aex1["occupied_bins"] / max(ain["occupied_bins"], 1)
+    # Density-normalized area ratio: raw bins/bins confounds sample density
+    # (Ain at 10 ps vs Aex1 at 100 ps gives 10x more Ain frames per ns).
+    ain_area_norm = ain["occupied_bins_density_normalized"]
+    aex1_area_norm = aex1["occupied_bins_density_normalized"]
+    area_ratio = aex1_area_norm / max(ain_area_norm, 1e-6)
     reasons.append(
-        f"occupied-bin ratio Aex1/Ain = {area_ratio:.2f} "
-        f"(chemistry threshold: >= {AREA_CHEMISTRY_RATIO:.1f})"
+        f"density-normalized area ratio Aex1/Ain = {area_ratio:.2f} "
+        f"(bins/sqrt(n): Ain={ain_area_norm:.2f}, Aex1={aex1_area_norm:.2f}; "
+        f"chemistry threshold: >= {AREA_CHEMISTRY_RATIO:.1f})"
     )
     if area_ratio >= AREA_CHEMISTRY_RATIO:
         chemistry_signal = True
@@ -160,11 +179,37 @@ def verdict(ain: Dict, aex1: Dict) -> Tuple[str, List[str]]:
         f"|p95(s) delta| = {abs(p95_delta):.3f} "
         f"(geometry threshold: < {P95_GEOM_DELTA_MAX:.2f})"
     )
-    if (
+    s_geom_pass = (
         median_delta < MEDIAN_GEOM_DELTA
         and 1.0 / IQR_GEOM_RATIO_MAX <= iqr_ratio <= IQR_GEOM_RATIO_MAX
         and abs(p95_delta) < P95_GEOM_DELTA_MAX
-    ):
+    )
+
+    # z-twin: probe-sweep failures bind sigma floor on BOTH s and z, so an
+    # s-only geometry rule would mis-tag an Aex1 line that broadens purely
+    # in z.
+    z_median_delta = abs(aex1["z"]["median"] - ain["z"]["median"])
+    z_iqr_ratio = aex1["z"]["iqr"] / max(ain["z"]["iqr"], 1e-6)
+    z_p95_delta = abs(aex1["z"]["p95"] - ain["z"]["p95"])
+    reasons.append(
+        f"|median_z delta| = {z_median_delta:.4f} "
+        f"(geometry threshold: < {MEDIAN_Z_GEOM_DELTA:.3f})"
+    )
+    reasons.append(
+        f"IQR_z ratio Aex1/Ain = {z_iqr_ratio:.2f} "
+        f"(geometry threshold: {1.0 / IQR_Z_GEOM_RATIO_MAX:.2f}..{IQR_Z_GEOM_RATIO_MAX:.2f})"
+    )
+    reasons.append(
+        f"|p95(z) delta| = {z_p95_delta:.4f} "
+        f"(geometry threshold: < {P95_Z_GEOM_DELTA_MAX:.3f})"
+    )
+    z_geom_pass = (
+        z_median_delta < MEDIAN_Z_GEOM_DELTA
+        and 1.0 / IQR_Z_GEOM_RATIO_MAX <= z_iqr_ratio <= IQR_Z_GEOM_RATIO_MAX
+        and z_p95_delta < P95_Z_GEOM_DELTA_MAX
+    )
+
+    if s_geom_pass and z_geom_pass:
         geometry_signal = True
 
     if chemistry_signal and geometry_signal:

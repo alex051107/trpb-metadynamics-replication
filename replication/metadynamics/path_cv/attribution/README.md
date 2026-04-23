@@ -64,10 +64,16 @@ comparison.json       # structured
 | Signal | Threshold | Interpretation |
 |---|---|---|
 | p95(s) Aex1 - Ain ≥ +0.5 | chemistry-prior-strengthened | Aex1 explores materially further along path |
-| occupied_bins Aex1 / Ain ≥ 2.0 | chemistry-prior-strengthened | Aex1 covers much larger (s, z) area |
-| \|median_s Aex1 - Ain\| < 0.2 AND IQR ratio ∈ [0.80, 1.25] AND \|p95(s) delta\| < 0.3 | geometry-prior-strengthened | Distributions overlap; path/metric is the bottleneck |
+| density-normalized area ratio Aex1/Ain ≥ 2.0 (bins / sqrt(n_frames)) | chemistry-prior-strengthened | Aex1 covers materially larger (s, z) area, density-confounding corrected |
+| s-twin AND z-twin both pass geometry rule | geometry-prior-strengthened | Distributions overlap on both axes; path/metric is the bottleneck |
 | Both chemistry and geometry signals | ambiguous | Extend both lines to 20-30 ns before deciding |
 | Neither | no-clear-signal | Extend both lines to 20-30 ns before deciding |
+
+Geometry rule detail (both twins must pass):
+- s-twin: \|median_s Aex1 - Ain\| < 0.2 AND IQR_s ratio ∈ [0.80, 1.25] AND \|p95(s) delta\| < 0.3
+- z-twin: \|median_z Aex1 - Ain\| < 0.02 AND IQR_z ratio ∈ [0.80, 1.25] AND \|p95(z) delta\| < 0.03
+
+**Density normalization rationale (Codex review 2026-04-22):** Ain cMD is .nc at 10 ps/frame; Aex1 cMD is .dcd at 100 ps/frame. Over a shared 5 ns window Ain delivers 10x more frames, so raw occupied-bin counts are density-confounded. `occupied_bins / sqrt(n_frames)` approximates the coverage plateau. **z-twin rationale:** probe-sweep failures (FP-024/025/027) pressure sigma floor on both s and z; an s-only geometry rule would mis-tag an Aex1 line that broadens purely in z.
 
 **Even a geometry-prior-strengthened verdict does not replace the planned
 10 ns Aex1 MetaD** — this check only sharpens the prior before committing
