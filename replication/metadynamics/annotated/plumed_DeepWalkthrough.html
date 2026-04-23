@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>plumed.dat — Deep Walkthrough (PfTrpS Ain WT-MetaD)</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1a2744; --blue:#2563EB; --teal:#0d9488;
+  --paper:#faf8f3; --paper2:#f3f0e8; --border:#d4c9a8;
+  --text:#2d2d2d; --gray:#6b7280; --lg:#f3f4f6;
+  --hl-thesis:#fef3c7; --hl-thesis-b:#d97706;
+  --hl-concept:#fee2e2; --hl-concept-b:#dc2626;
+  --hl-evidence:#dbeafe; --hl-evidence-b:#2563eb;
+  --hl-counter:#dcfce7; --hl-counter-b:#16a34a;
+  --hl-method:#f3e8ff; --hl-method-b:#7c3aed;
+  --sidebar-w:240px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:15px;line-height:1.65}
+code,pre,.mono{font-family:'IBM Plex Mono',monospace}
+h1,h2,h3,h4{font-family:'Lora',serif;font-weight:600;color:var(--navy)}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+
+#topnav{position:sticky;top:0;background:var(--navy);color:#fff;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+#topnav .logo{font-family:'Lora',serif;font-weight:700;font-size:17px}
+#topnav .legend{display:flex;gap:8px;font-size:11.5px}
+#topnav .pill{padding:3px 10px;border-radius:12px;color:#1a2744;font-weight:500}
+.pill.y{background:var(--hl-thesis)}
+.pill.r{background:var(--hl-concept)}
+.pill.b{background:var(--hl-evidence)}
+.pill.g{background:var(--hl-counter)}
+.pill.p{background:var(--hl-method)}
+
+#layout{display:flex;min-height:100vh}
+#sidebar{width:var(--sidebar-w);background:var(--paper2);border-right:1px solid var(--border);padding:18px 12px;position:sticky;top:48px;height:calc(100vh - 48px);overflow-y:auto}
+#sidebar h4{font-size:11px;text-transform:uppercase;color:var(--gray);margin:14px 0 6px;letter-spacing:.5px;font-family:'IBM Plex Sans',sans-serif;font-weight:600}
+#sidebar .nav-link{display:block;padding:4px 8px;font-size:13px;color:var(--text);border-radius:4px;margin-bottom:1px}
+#sidebar .nav-link:hover{background:#fff;text-decoration:none}
+
+#main{flex:1;padding:30px 40px 80px;max-width:1400px}
+#meta-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:18px 22px;margin-bottom:20px}
+#meta-card h1{font-size:24px;margin-bottom:6px}
+#meta-card .sub{color:var(--gray);font-size:13.5px}
+#meta-card .meta-row{display:flex;gap:18px;margin-top:10px;font-size:13px;flex-wrap:wrap}
+#meta-card .meta-row span{color:var(--gray)}
+#meta-card .meta-row b{color:var(--navy)}
+
+.tldr{background:#fffbeb;border-left:4px solid var(--hl-thesis-b);padding:14px 18px;margin:18px 0;border-radius:4px}
+.tldr h3{font-size:15px;margin-bottom:6px}
+
+.section-head{margin:34px 0 14px;padding-bottom:6px;border-bottom:2px solid var(--navy)}
+.section-head h2{font-size:20px}
+
+.para-block{display:grid;grid-template-columns:1.1fr 1fr;gap:18px;margin:14px 0;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.para-left{padding:16px 18px;border-right:1px solid var(--border)}
+.para-right{padding:16px 18px;background:#fcfaf5}
+.para-id{display:inline-block;background:var(--navy);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-bottom:8px;font-family:'IBM Plex Mono',monospace}
+.para-left pre{background:#1a2744;color:#e5e7eb;padding:10px 12px;border-radius:5px;font-size:12.5px;overflow-x:auto;margin:8px 0;line-height:1.5}
+.para-left p{margin:7px 0}
+.para-right p{margin:6px 0;font-size:13.5px}
+.para-right strong{color:var(--navy)}
+
+.hl-y{background:var(--hl-thesis);padding:1px 3px;border-radius:2px}
+.hl-r{background:var(--hl-concept);padding:1px 3px;border-radius:2px}
+.hl-b{background:var(--hl-evidence);padding:1px 3px;border-radius:2px}
+.hl-g{background:var(--hl-counter);padding:1px 3px;border-radius:2px}
+.hl-p{background:var(--hl-method);padding:1px 3px;border-radius:2px}
+
+.term-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px}
+.term-table th,.term-table td{border:1px solid var(--border);padding:5px 8px;text-align:left;vertical-align:top}
+.term-table th{background:var(--lg);font-weight:600}
+
+.notable-box{background:#fffbeb;border-left:3px solid var(--hl-thesis-b);padding:9px 12px;margin:8px 0;border-radius:3px;font-size:13px}
+.attack-box{background:#fef2f2;border-left:3px solid var(--hl-concept-b);padding:9px 12px;margin:8px 0;border-radius:3px;font-size:13px}
+.bridge-box{background:#eff6ff;border-left:3px solid var(--hl-evidence-b);padding:9px 12px;margin:8px 0;border-radius:3px;font-size:13px}
+.method-box{background:#faf5ff;border-left:3px solid var(--hl-method-b);padding:9px 12px;margin:8px 0;border-radius:3px;font-size:13px}
+
+.sens-table{width:100%;border-collapse:collapse;margin:6px 0;font-size:12px}
+.sens-table th,.sens-table td{border:1px solid var(--border);padding:5px 7px;vertical-align:top}
+.sens-table th{background:#fef3c7;text-align:left;width:18%}
+.sens-table td.up{background:#fff7ed}
+.sens-table td.down{background:#f0f9ff}
+
+.source-tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:2px 7px;border-radius:3px;margin-right:5px;font-weight:500}
+.tag-siq{background:#dcfce7;color:#166534}
+.tag-sid{background:#dbeafe;color:#1e3a8a}
+.tag-our{background:#fef3c7;color:#854d0e}
+.tag-pld{background:#e9d5ff;color:#581c87}
+.tag-leg{background:#fee2e2;color:#991b1b}
+
+.argchain{background:#fff;border:1px solid var(--border);border-radius:8px;padding:18px;font-size:13px;line-height:1.9}
+.argchain code{background:var(--lg);padding:1px 5px;border-radius:3px;font-size:12px}
+
+.fp-card{background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:13px}
+.fp-card .fp-id{font-weight:700;color:#991b1b;font-family:'IBM Plex Mono',monospace}
+</style>
+</head>
+<body>
+
+<div id="topnav">
+  <div class="logo">plumed.dat — Deep Walkthrough · PfTrpS(Ain) WT-MetaD</div>
+  <div class="legend">
+    <span class="pill y">关键值/结论</span>
+    <span class="pill r">技术概念</span>
+    <span class="pill b">定量证据</span>
+    <span class="pill g">局限/陷阱</span>
+    <span class="pill p">Action/方法</span>
+  </div>
+</div>
+
+<div id="layout">
+
+<nav id="sidebar">
+  <h4>头部</h4>
+  <a class="nav-link" href="#meta">文档元信息</a>
+  <a class="nav-link" href="#tldr">TL;DR</a>
+  <a class="nav-link" href="#design">设计哲学</a>
+
+  <h4>Header 注释 (P1–P7)</h4>
+  <a class="nav-link" href="#p1">P1 文件标题</a>
+  <a class="nav-link" href="#p2">P2 FP-018 单位换算</a>
+  <a class="nav-link" href="#p3">P3 FP-020 PATHMSD 重诊断</a>
+  <a class="nav-link" href="#p4">P4 FP-022 LAMBDA 因子</a>
+  <a class="nav-link" href="#p5">P5 FP-023 PDB 尾部</a>
+  <a class="nav-link" href="#p6">P6 FP-024 SIGMA 塌缩</a>
+  <a class="nav-link" href="#p7">P7 FP-025 假引用</a>
+  <a class="nav-link" href="#p8">P8 切回 PATHMSD 决策</a>
+  <a class="nav-link" href="#p9">P9 LAMBDA 推导</a>
+  <a class="nav-link" href="#p10">P10 SIGMA_MIN/MAX 区间</a>
+
+  <h4>Step 1: PATHMSD (P11–P14)</h4>
+  <a class="nav-link" href="#p11">P11 Action 行</a>
+  <a class="nav-link" href="#p12">P12 REFERENCE 文件</a>
+  <a class="nav-link" href="#p13">P13 LAMBDA 参数</a>
+  <a class="nav-link" href="#p14">P14 输出字段命名</a>
+
+  <h4>Step 2: METAD (P15–P25)</h4>
+  <a class="nav-link" href="#p15">P15 Action 行</a>
+  <a class="nav-link" href="#p16">P16 ARG / ADAPTIVE</a>
+  <a class="nav-link" href="#p17">P17 SIGMA</a>
+  <a class="nav-link" href="#p18">P18 SIGMA_MIN[s]</a>
+  <a class="nav-link" href="#p19">P19 SIGMA_MIN[z]</a>
+  <a class="nav-link" href="#p20">P20 SIGMA_MAX[s]</a>
+  <a class="nav-link" href="#p21">P21 SIGMA_MAX[z]</a>
+  <a class="nav-link" href="#p22">P22 HEIGHT</a>
+  <a class="nav-link" href="#p23">P23 PACE</a>
+  <a class="nav-link" href="#p24">P24 BIASFACTOR</a>
+  <a class="nav-link" href="#p25">P25 TEMP</a>
+
+  <h4>Step 3: PRINT (P26)</h4>
+  <a class="nav-link" href="#p26">P26 PRINT 监测</a>
+
+  <h4>综合</h4>
+  <a class="nav-link" href="#argchain">§A 参数依赖链</a>
+  <a class="nav-link" href="#fphistory">§B 全 FP Bug 史</a>
+  <a class="nav-link" href="#provenance">§C 参数来源总表</a>
+  <a class="nav-link" href="#runbook">§D 失败模式速查</a>
+  <a class="nav-link" href="#glossary">§E 关键术语</a>
+</nav>
+
+<main id="main">
+
+<div id="meta" class="meta-card" style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:18px 22px;margin-bottom:20px">
+  <h1>plumed.dat — 逐行深度走读</h1>
+  <p class="sub">PfTrpS(Ain) COMM domain · Well-Tempered MetaDynamics · JACS 2019 复刻 · PATHMSD pivot (2026-04-09)</p>
+  <div class="meta-row">
+    <span><b>对应文件:</b> replication/metadynamics/annotated/plumed.dat (3.4 KB)</span>
+  </div>
+  <div class="meta-row">
+    <span><b>生产副本:</b> single_walker/plumed.dat (md5 aca3f0c4...)</span>
+  </div>
+  <div class="meta-row">
+    <span><b>当前 stage:</b> 4 (Skeptic verification)</span>
+    <span><b>对应作业:</b> 42679152 (50 ns，Job 已结束，待重提 FP-024 修复版)</span>
+    <span><b>路径长度:</b> 15 帧 × 112 Cα</span>
+  </div>
+  <div class="meta-row">
+    <span><b>SI 出处:</b> Maria-Solano et al., JACS 2019, 141, 13049–13056, SI p.S3</span>
+  </div>
+</div>
+
+<div id="tldr" class="tldr">
+  <h3>TL;DR — 这个文件干什么 + 为什么这样写</h3>
+  <p>三行 directive 完成 WT-MetaD on a 2D path CV：<code>PATHMSD</code> 把 112 个 Cα 的瞬时构象映射到 (s, z) ∈ ℝ² 上的两个标量；<code>METAD</code> 在 (s, z) 平面上以 1 ps 节奏沉积自适应 Gaussian 偏置势；<code>PRINT</code> 每 1 ps 把 (s, z, bias) 写入 COLVAR 供后续诊断。文件本体只有 3 行可执行；其余 64 行注释是 <b>6 个独立 bug 的封存现场 (FP-018 / 020 / 022 / 023 / 024 / 025)</b> 与每个数值参数的 Source 出处链——这是 PI/reviewer 检查 "数字哪来" 的唯一可信入口。</p>
+</div>
+
+<div id="design" class="section-head"><h2>设计哲学（先看这段再读细节）</h2></div>
+<div class="para-block">
+<div class="para-left">
+<div class="para-id">DESIGN</div>
+<p>这个文件采用 <span class="hl-p">"3 行 directive + 厚注释"</span> 结构。Directive 行是给 PLUMED 解析的（机器读），注释是给后来人读的（人读）。</p>
+<p>每个数值都有 <span class="hl-y">Source 标签</span>（SI-quote / SI-derived / Our-choice / PLUMED-default / Legacy-bug），且每个 Our-choice 数值都标了 <span class="hl-b">物理范围 + ×2/÷2 影响</span>。</p>
+<p>每个曾经踩过的坑都封存在 <span class="hl-g">FP-XXX 注释块</span>里——不是给读者讲故事，是为了让下一个想"删掉过时注释"的人看到代价。</p>
+</div>
+<div class="para-right">
+<p><strong>结构功能：</strong>把 "可执行内容" 和 "为什么这样写" 物理分离，但保留在同一个文件里。</p>
+<p><strong>逻辑角色：</strong>self-documenting artifact</p>
+<div class="notable-box">💡 <strong>核心约束：</strong>annotated 版和 production 版必须 byte-identical（剥掉注释和空行后）。这通过 README.md 里的 diff 命令强制验证。任何破坏这个约束的编辑都不能 commit。</div>
+<p><strong>对项目的意义：</strong>当 PI 或 reviewer 问 "你这个 LAMBDA 哪来的"，文件本身就能回答；不需要切到 Slack 历史或 git blame。</p>
+</div>
+</div>
+
+<!-- ========== Header 注释 ========== -->
+
+<div class="section-head"><h2>Header 注释（P1–P10）—— 文件历史与设计依据</h2></div>
+
+<div class="para-block" id="p1">
+<div class="para-left">
+<div class="para-id">P1</div>
+<pre># WT-MetaD PLUMED input for <span class="hl-r">PfTrpS(Ain)</span> — <span class="hl-y">JACS 2019 benchmark reproduction</span></pre>
+<p>文件第一行的标题：声明这是 <span class="hl-p">well-tempered MetaDynamics</span> 输入，靶点是 <span class="hl-r">P. furiosus tryptophan synthase β-subunit + Ain 中间态</span>，复刻目标是 <span class="hl-y">JACS 2019 (Maria-Solano et al.)</span> 的 benchmark。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>定锚——告诉读者 "这个文件不是从空白思考的，是有一篇 ground truth 论文在背后约束。"</p>
+<p><strong>逻辑角色：</strong>provenance anchor</p>
+<table class="term-table">
+<tr><th>术语</th><th>解释</th></tr>
+<tr><td>PfTrpS</td><td>Pyrococcus furiosus 嗜热菌的 tryptophan synthase；嗜热=350 K 是物理温度</td></tr>
+<tr><td>Ain</td><td>Internal aldimine—PLP cofactor 与 Lys87 形成 Schiff base 的静息态</td></tr>
+<tr><td>WT-MetaD</td><td>Well-Tempered MetaDynamics (Barducci 2008)，bias 高度自动衰减保证收敛</td></tr>
+</table>
+<div class="bridge-box">🔗 <strong>项目意义：</strong>JACS 2019 是 ground truth；任何参数偏离 SI 的地方都需要在文件里写"为什么偏离"，否则就是 silent drift。</div>
+</div>
+</div>
+
+<div class="para-block" id="p2">
+<div class="para-left">
+<div class="para-id">P2</div>
+<pre>#   <span class="hl-g">FP-018</span> (2026-04-04): <span class="hl-y">Å⁻² → nm⁻² × 100</span> unit conversion added for LAMBDA</pre>
+<p>第一个被封存的 bug：LAMBDA 的单位换算。SI 给的 MSD 在 Å²，PLUMED 内部用 nm²，所以 λ = 2.3 / MSD 在两套单位下差了 <span class="hl-b">100×</span>（Å→nm 是 10×，MSD 是平方所以 100×）。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>记录第一次被单位坑的事件，作为后续每次改 LAMBDA 都要"重新检查单位"的提示。</p>
+<p><strong>逻辑角色：</strong>FP-history entry #1</p>
+<div class="attack-box">⚠️ <strong>陷阱：</strong>PLUMED 文档里的公式既出现过 nm 也出现过 Å 写法，看不同 tutorial 时混淆是常见来源。</div>
+<div class="bridge-box">🔗 <strong>对未来：</strong>任何"换 path / 换原子集" 都要重新跑 generate_path_cv.py，新 LAMBDA 会自动按 nm² 输出，但仍要肉眼复核数量级。</div>
+</div>
+</div>
+
+<div class="para-block" id="p3">
+<div class="para-left">
+<div class="para-id">P3</div>
+<pre>#   <span class="hl-g">FP-020</span> (2026-04-04, re-diagnosed 2026-04-09):
+#     Originally attributed PATHMSD failures to <span class="hl-r">"non-sequential atom serials"</span>
+#     (1614, 1621, 1643, ...). Actual root cause was a <span class="hl-y">broken libplumedKernel.so</span>
+#     in the conda-forge PLUMED 2.9.2 build. With <span class="hl-p">source-compiled PLUMED 2.9.2</span>,
+#     PATHMSD handles non-sequential serials correctly.</pre>
+<p>这是项目里 <span class="hl-y">"误诊—修复—再误诊—正确诊断"</span> 三阶段最完整的案例。第一次 PATHMSD 报错时，被错误归因为 "原子序号不连续"，因此改用 FUNCPATHMSD workaround；2026-04-09 用源码编译的 PLUMED 测试，发现 PATHMSD 本来就能正常工作——真正问题是 conda 版的 <code>libplumedKernel.so</code> 有缺失。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>记录"为什么我们曾经走 FUNCPATHMSD 这条岔路 + 为什么现在又切回来"。</p>
+<p><strong>逻辑角色：</strong>FP-history entry #2 (重要！这条决定了为什么文件现在这样写)</p>
+<table class="term-table">
+<tr><th>术语</th><th>解释</th></tr>
+<tr><td>libplumedKernel.so</td><td>PLUMED 的运行时核心库，gmx mdrun 通过它调用 PLUMED 函数</td></tr>
+<tr><td>conda-forge build</td><td>从 conda 安装的预编译版本；某些 action 注册可能不完整</td></tr>
+<tr><td>FUNCPATHMSD</td><td>用 15 个 RMSD action + 1 个数学组合 action 手动拼出 PATHMSD 的功能</td></tr>
+</table>
+<div class="notable-box">💡 <strong>方法论：</strong>看到报错 → 先确认 binary 是否完整，再怀疑输入文件。conda 版 PLUMED 在该项目踩过两次坑，已成立"必须用源码编译"的硬规则。</div>
+<div class="bridge-box">🔗 <strong>对未来：</strong>任何新机器上跑 PLUMED 之前，先 plumed driver --plumed test.dat 跑一个最小测试；不要直接 sbatch 大 job。</div>
+</div>
+</div>
+
+<div class="para-block" id="p4">
+<div class="para-left">
+<div class="para-id">P4</div>
+<pre>#   <span class="hl-g">FP-022</span> (2026-04-08): FUNCPATHMSD workaround used <span class="hl-r">per-atom-mean RMSD</span>
+#     semantics, so LAMBDA had to be recomputed from per-atom MSD (<span class="hl-b">379.77</span>)
+#     instead of the original total-SD value (<span class="hl-b">3.391</span>). This was a silent
+#     <span class="hl-y">N_atoms = 112× error</span> in the FUNCPATHMSD path. Now moot — we are
+#     switching back to PATHMSD.</pre>
+<p>这是 sister bug：FUNCPATHMSD 内部的 RMSD action 输出的是 per-atom mean RMSD，而我们最初按 total SD 算 LAMBDA。结果差了 <span class="hl-b">112×</span>（恰好等于原子数）。这个 bug 是 silent 的——程序不报错，但 FES 形状是错的。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>说明 "切回 PATHMSD 之前的最后一个隐患"——并强调这种 silent bug 比报错更危险。</p>
+<p><strong>逻辑角色：</strong>FP-history entry #3 (silent numerical bug)</p>
+<div class="attack-box">⚠️ <strong>致命陷阱：</strong>不同 PLUMED action 对 "MSD" 的定义不一样！
+<ul style="margin-left:18px;margin-top:4px">
+<li>RMSD action: per-atom mean，单位 length²</li>
+<li>PATHMSD action: per-atom mean MSD，单位 length²</li>
+<li>原始 Branduardi 公式可能写 total SD（看文献版本）</li>
+</ul>
+所以 LAMBDA = 2.3 / MSD 这个公式必须确认 MSD 用的是哪种 convention。
+</div>
+<div class="bridge-box">🔗 <strong>对项目：</strong>FP-022 之后，所有 generate_path_cv.py 函数都加了 assertion：calculate_msd 必须 docstring 明示 "per-atom mean MSD in Å²"。函数名和返回值语义一致是从这里来的。</div>
+</div>
+</div>
+
+<div class="para-block" id="p5">
+<div class="para-left">
+<div class="para-id">P5</div>
+<pre>#   <span class="hl-g">FP-023</span> (2026-04-09): A trailing bare <span class="hl-r">"END"</span> after the last "ENDMDL" in
+#     the multi-model reference PDB makes PATHMSD try to parse an <span class="hl-y">empty 16th frame</span>
+#     and abort with "number of atoms in a frame should be more than zero".</pre>
+<p>PDB 格式细节：multi-model PDB 应该以 <code>ENDMDL</code> 结尾，但一些工具（pymol, openbabel）会自动在尾部加一个 <code>END</code>。PATHMSD 解析时把空的 END 块当作第 16 帧并尝试读原子，失败。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>提醒 "重新生成 path_gromacs.pdb 之后必须检查尾部"。</p>
+<p><strong>逻辑角色：</strong>FP-history entry #4 (file-format bug)</p>
+<div class="notable-box">💡 <strong>诊断技巧：</strong><code>tail -n 3 path_gromacs.pdb</code>，最后一行必须是 <code>ENDMDL</code>，不能是 <code>END</code>。</div>
+<div class="method-box">🛠️ <strong>修复一条命令：</strong><code>sed -i.bak '${/^END$/d;}' path_gromacs.pdb</code></div>
+<div class="bridge-box">🔗 <strong>普适教训：</strong>外部工具的"友好默认行为"经常是别人的 bug 来源。任何 pipeline 输出 PDB 后都加一个 sanity check。</div>
+</div>
+</div>
+
+<div class="para-block" id="p6">
+<div class="para-left">
+<div class="para-id">P6</div>
+<pre>#   <span class="hl-g">FP-024</span> (2026-04-15): <span class="hl-r">SIGMA=0.05 with ADAPTIVE=GEOM</span> collapsed to adaptive
+#     widths of <span class="hl-b">0.011–0.072 s-units</span> (≤<span class="hl-b">0.5%</span> of path axis 1-15). Job 42679152
+#     ran 50 ns, deposited <span class="hl-b">25000 Gaussians</span> and accumulated <span class="hl-b">48 kJ/mol</span> of bias,
+#     yet walker stayed in s(R)=<span class="hl-b">1.0-1.6</span> the entire time (<span class="hl-y">100% in O basin</span>).</pre>
+<p>这是项目最近一次重大灾难：50 ns 模拟跑完后，walker 完全没离开 Open basin。事后分析发现 <code>SIGMA=0.05</code>（单一 Cartesian）经 ADAPTIVE=GEOM 反投影到 s 方向后塌成 0.011 s-unit，远小于 path 1-15 的尺度。25000 个针尖 Gaussian 全部堆在 s≈1 处，bias 累到 12 kcal/mol 也推不出 basin。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>记录 "为什么现在的 SIGMA 行有 SIGMA_MIN/SIGMA_MAX"。</p>
+<p><strong>逻辑角色：</strong>FP-history entry #5 (silent sampling failure)</p>
+<table class="term-table">
+<tr><th>量</th><th>值</th></tr>
+<tr><td>Gaussian 数</td><td>25000 个</td></tr>
+<tr><td>累积 bias</td><td>48 kJ/mol = 11.5 kcal/mol</td></tr>
+<tr><td>walker 范围 s</td><td>1.0–1.6 (path 总范围 1–15)</td></tr>
+<tr><td>采样的 basin</td><td>仅 Open（O basin）</td></tr>
+</table>
+<div class="attack-box">⚠️ <strong>silent 失败模式：</strong>HILLS 文件正常增长，COLVAR 正常输出，bias 正常累积——程序"看起来在工作"，但物理上没采样。这种失败比报错更难发现：必须画 s(t) 时间序列才能看出。</div>
+<div class="notable-box">💡 <strong>修复：</strong>同时改两处：(1) SIGMA_MIN=0.3,0.005 + SIGMA_MAX=1.0,0.05 强制 per-CV 下限/上限；(2) SIGMA 0.05 → 0.1 nm 给更大的几何种子。</div>
+<div class="bridge-box">🔗 <strong>对项目：</strong>"50 ns 跑完才发现没采样" 是高代价错误。今后 single_walker 跑前必须在 toy 系统上预跑 1-2 ns，画 s(t) 确认有运动。</div>
+</div>
+</div>
+
+<div class="para-block" id="p7">
+<div class="para-left">
+<div class="para-id">P7</div>
+<pre>#   <span class="hl-g">FP-025</span> (2026-04-15): Prior tutorial copy cited "<span class="hl-r">[SI p.S3]</span>" for SIGMA=0.2,0.1
+#     — but the actual Osuna SI PDF p.S3 has <span class="hl-y">NO numerical SIGMA anywhere</span>.
+#     <span class="hl-r">Fabricated citation</span> from early AI draft.</pre>
+<p>这是项目里第一次正式封存 <span class="hl-y">AI 编造引用</span>的事件。早期 tutorial 草稿写 "SIGMA=0.2,0.1 [SI p.S3]"，但实际 SI 全文没有任何数值 SIGMA（只有"adaptive Gaussian width scheme was used"，引用 Branduardi 2012）。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>提醒 "出现 [SI p.X] 这种引用，必须打开 PDF 物理验证"。</p>
+<p><strong>逻辑角色：</strong>FP-history entry #6 (provenance hygiene)</p>
+<div class="attack-box">⚠️ <strong>普遍现象：</strong>AI 生成的 tutorial 经常会"自动配引用"——看起来权威，实际是杜撰。必须有人物理验证。</div>
+<div class="notable-box">💡 <strong>新规则：</strong>所有 SI-quote 标签必须能在 SI PDF 里 grep 到原文；否则降级为 SI-derived（推导）或 Our-choice（自定）。</div>
+<div class="bridge-box">🔗 <strong>对项目：</strong>这就是 PARAMETER_PROVENANCE.md 里 "Source legend" 必须严格区分 5 类标签（SI-quote / SI-derived / Our-choice / PLUMED-default / Legacy-bug）的原因。</div>
+</div>
+</div>
+
+<div class="para-block" id="p8">
+<div class="para-left">
+<div class="para-id">P8</div>
+<pre># 2026-04-09 decision: <span class="hl-y">switch BACK to PATHMSD</span> (matches SI protocol exactly).
+#   - Simpler: <span class="hl-b">1 path CV line vs 17</span> (15 RMSD + FUNCPATHMSD)
+#   - More stable numerically: <span class="hl-b">0 NaN vs 116 NaN</span> over 4631 frames
+#   - Physical z(R) range: <span class="hl-b">0.004–0.08 nm² vs 1.45–1.92 nm²</span> for FUNCPATHMSD
+#   - Matches SI protocol</pre>
+<p>切回 PATHMSD 的决策书面化记录。四个量化论据：行数 1 vs 17，NaN 数 0 vs 116，z 物理范围合理性，以及匹配 SI。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>把"为什么从 FUNCPATHMSD 切回 PATHMSD"封存成可被审计的决策记录。</p>
+<p><strong>逻辑角色：</strong>decision provenance</p>
+<div class="notable-box">💡 <strong>决策结构：</strong>四条论据每条都给量化数字，避免"感觉更好"这种模糊表述。这是 PI review 时的主要依据。</div>
+<div class="bridge-box">🔗 <strong>方法论：</strong>所有"切技术栈"的决定都应该这样写——一行结论 + 三到五行量化对照。</div>
+</div>
+</div>
+
+<div class="para-block" id="p9">
+<div class="para-left">
+<div class="para-id">P9</div>
+<pre># <span class="hl-y">LAMBDA = 379.77 nm⁻²</span> from: <span class="hl-p">λ = 2.3 / &lt;rmsd&gt;² × 100</span> (per-atom, in Å², × 100
+# for GROMACS nm). Formula confirmed from PLUMED docs and PLUMED users forum.
+# For our 15-frame path of 112 Cα atoms, per-atom RMSD_adjacent = <span class="hl-b">0.778 Å</span>,
+# so λ = 2.3 / <span class="hl-b">0.6056 Å²</span> × 100 = <span class="hl-b">379.77 nm⁻²</span>.</pre>
+<p>LAMBDA 的完整推导链，给 reviewer 一目了然：公式来源 + 输入数值 + 单位换算 + 输出。每个数字都能追溯。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>把"这个数字哪来的"用三行写完，不需要查别的文件。</p>
+<p><strong>逻辑角色：</strong>derivation transparency</p>
+<table class="term-table">
+<tr><th>步骤</th><th>值</th></tr>
+<tr><td>公式</td><td>λ = 2.3 / ⟨MSD⟩</td></tr>
+<tr><td>⟨RMSD⟩ 邻帧 per-atom</td><td>0.778 Å</td></tr>
+<tr><td>⟨MSD⟩ = ⟨RMSD⟩²</td><td>0.6056 Å²</td></tr>
+<tr><td>Å² → nm² ×100</td><td>×100 因 nm = 10 Å, 平方</td></tr>
+<tr><td>λ</td><td>379.77 nm⁻²</td></tr>
+</table>
+<div class="bridge-box">🔗 <strong>对项目：</strong>这种 "公式 → 数据 → 数字" 的封装方式适合所有衍生参数（LAMBDA, GRID_BIN, plumed driver REWEIGHT 时的 KT 等）。</div>
+</div>
+</div>
+
+<div class="para-block" id="p10">
+<div class="para-left">
+<div class="para-id">P10</div>
+<pre># SIGMA_MIN / SIGMA_MAX (2026-04-15 addition, in CV units per PLUMED docs):
+#   sigma_s ∈ [<span class="hl-b">0.3, 1.0</span>]         (path axis is 1-15, so Gaussian spans <span class="hl-b">2–7%</span>)
+#   sigma_z ∈ [<span class="hl-b">0.005, 0.05</span>] nm²  (z observed range in Job 42679152: 0.002–0.13 nm²)</pre>
+<p>SIGMA_MIN/MAX 的合理性论证：基于 path 轴长度（s）和实测分布（z），Gaussian 既不会塌成针又不会胖到糊掉相邻 basin。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>把 FP-024 的修复参数和它们的物理含义绑定。</p>
+<p><strong>逻辑角色：</strong>parameter rationale</p>
+<div class="notable-box">💡 <strong>关键洞见：</strong>这些值不是"经验调参"，是基于 (a) path 轴几何 + (b) 上一次 job 的实测 z 分布 → 物理上有约束。下次换 path 时这两个数也要重新算。</div>
+<div class="bridge-box">🔗 <strong>对项目：</strong>SIGMA_MIN[s]=0.3 = path 长度 14 的 2%；SIGMA_MAX[s]=1.0 = 7%。任何"换 path / 换原子集"后这两个数也要按比例重算。</div>
+</div>
+</div>
+
+<!-- ========== Step 1: PATHMSD ========== -->
+
+<div class="section-head"><h2>Step 1: PATHMSD action（P11–P14）—— 把 39268 原子塌成 (s, z) 两个数</h2></div>
+
+<div class="para-block" id="p11">
+<div class="para-left">
+<div class="para-id">P11 · Action 行</div>
+<pre><span class="hl-p">path: PATHMSD</span> REFERENCE=<span class="hl-r">path_gromacs.pdb</span> LAMBDA=<span class="hl-y">379.77</span></pre>
+<p>这是文件里第一行可执行 directive。<span class="hl-p">PATHMSD</span> 是 PLUMED 的内置 action（Branduardi, Gervasio, Parrinello 2007），把当前构象映射到沿参考路径的进度 s(R) 和偏离距离 z(R)。<span class="hl-r">path</span> 是 label，后续可用 <code>path.sss</code> 和 <code>path.zzz</code> 引用。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>整个文件最核心的一行——把高维构象空间塌成 2D。</p>
+<p><strong>逻辑角色：</strong>dimensionality reduction</p>
+<div class="method-box">🛠️ <strong>底层公式（Branduardi 2007）：</strong>
+<br>s(R) = Σᵢ i·exp(−λ·MSDᵢ) / Σᵢ exp(−λ·MSDᵢ)
+<br>z(R) = −(1/λ)·log Σᵢ exp(−λ·MSDᵢ)
+<br>其中 MSDᵢ 是当前构象与参考帧 i 的 per-atom mean squared displacement（先 Kabsch 叠合）。</div>
+<table class="term-table">
+<tr><th>量</th><th>含义</th></tr>
+<tr><td>path.sss</td><td>路径进度 (1=Open, 15=Closed)</td></tr>
+<tr><td>path.zzz</td><td>偏离路径距离 (nm²)</td></tr>
+<tr><td>label "path"</td><td>用户起的名字，后面 METAD 通过 <code>path.sss</code> 引用</td></tr>
+</table>
+<div class="bridge-box">🔗 <strong>对项目：</strong>这一行是整个 MetaD 复刻的物理基础。如果换成 contact-based CV 或 distance-based CV，整个 pipeline 都要重新设计。</div>
+</div>
+</div>
+
+<div class="para-block" id="p12">
+<div class="para-left">
+<div class="para-id">P12 · REFERENCE 文件</div>
+<pre>REFERENCE=<span class="hl-r">path_gromacs.pdb</span></pre>
+<p>这是 PATHMSD 的输入文件——一个 multi-model PDB，<span class="hl-b">15 个 MODEL/ENDMDL 块</span>。每帧 <span class="hl-b">112 个 Cα 原子</span>（COMM domain 88 + base 24）。Frame 1 = Open（来自 1WDW），Frame 15 = Closed（来自 3CEP），中间 13 帧线性插值。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>定义"参考路径"——MetaD 走的不是任意构象，而是这条预定义路径。</p>
+<p><strong>逻辑角色：</strong>reference geometry</p>
+<table class="term-table">
+<tr><th>属性</th><th>值</th></tr>
+<tr><td>帧数</td><td>15</td></tr>
+<tr><td>每帧原子数</td><td>112 Cα (88 COMM + 24 base)</td></tr>
+<tr><td>坐标单位</td><td>Å (PDB 惯例) → PLUMED 自动转 nm</td></tr>
+<tr><td>路径生成</td><td>Cα 空间线性插值 (generate_path_cv.py)</td></tr>
+<tr><td>endpoint 1</td><td>1WDW (Open)</td></tr>
+<tr><td>endpoint 15</td><td>3CEP (Closed)</td></tr>
+<tr><td>文件尾</td><td>必须 ENDMDL，不能 END (FP-023)</td></tr>
+</table>
+<div class="attack-box">⚠️ <strong>路径质量决定 MetaD 质量：</strong>如果 path 不是真实物理路径（例如 endpoint 选错或线性插值跨过非物理构象），MetaD 会沿"虚假"路径采样，得到错误的 FES。</div>
+<div class="bridge-box">🔗 <strong>对项目：</strong>未来想用 SE(3)-Diffusion / STAR-MD-style 模型，关键就是替换这步——不再用线性插值生成 path，而是模型直接给出 path 上的中间构象分布。</div>
+</div>
+</div>
+
+<div class="para-block" id="p13">
+<div class="para-left">
+<div class="para-id">P13 · LAMBDA 参数</div>
+<pre>LAMBDA=<span class="hl-y">379.77</span></pre>
+<p><span class="hl-p">PATHMSD</span> 公式中 exp(−λ·MSD) 的衰减系数。物理含义：邻帧权重 ≈ exp(−λ·⟨MSD⟩) ≈ <span class="hl-b">0.10</span>（PLUMED 推荐值）→ 解出 λ = 2.3 / ⟨MSD⟩。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>控制 path CV 的"分辨率 vs 平滑性"trade-off。</p>
+<p><strong>逻辑角色：</strong>discretization parameter</p>
+<p><span class="source-tag tag-sid">SI-derived</span>本地从 generate_path_cv.py 推出（SI 给公式不给数值）</p>
+<table class="sens-table">
+<tr><th>×2 (759.54)</th><td class="up">邻帧权重 exp(−4.6) = 0.010 → walker 几乎只看最近一帧 → s(R) 变成阶跃函数 → 力传不到原子 → <b>卡帧</b></td></tr>
+<tr><th>÷2 (189.89)</th><td class="down">权重 exp(−1.15) = 0.317 → 邻帧贡献过多 → s(R) 被平滑模糊 → <b>FES 沿 path 丢分辨率</b></td></tr>
+<tr><th>推荐区间</th><td>2.3 / ⟨MSD⟩ 附近 ±50% (PLUMED-NEST best practice)</td></tr>
+</table>
+<div class="attack-box">⚠️ <strong>FP-027 警告：</strong>SI p.S3 句尾的 "80" 是 total SD 单位 Å²，<b>不是</b> λ。曾经误读成 λ=80 nm⁻² 花 3+ 小时错方向诊断。</div>
+<div class="bridge-box">🔗 <strong>对项目：</strong>更换 path（例如换成 16 帧或非线性插值）后必须重算，不能复用 379.77。</div>
+</div>
+</div>
+
+<div class="para-block" id="p14">
+<div class="para-left">
+<div class="para-id">P14 · 输出字段命名</div>
+<pre><span class="hl-r">path.sss</span> — 进度 (PATHMSD 命名)
+<span class="hl-r">path.zzz</span> — 距离 (PATHMSD 命名)
+
+vs.
+<span class="hl-r">path.s</span>   — 进度 (FUNCPATHMSD 命名)
+<span class="hl-r">path.z</span>   — 距离 (FUNCPATHMSD 命名)</pre>
+<p>这是 PATHMSD 和 FUNCPATHMSD 的接口差异。从 FUNCPATHMSD 切到 PATHMSD（FP-020 修复时）必须同时改 METAD 的 ARG，否则会报 "ARG not found"。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>提醒读者 "label 之后的字段名不能改，PLUMED 内部硬编码"。</p>
+<p><strong>逻辑角色：</strong>API contract</p>
+<div class="attack-box">⚠️ <strong>易错点：</strong>label 是用户随便起的（这里是 "path"），但字段后缀（.sss/.zzz 或 .s/.z）由 action 类型决定，改不了。FUNCPATHMSD ↔ PATHMSD 切换时必须同步改所有引用。</div>
+<div class="bridge-box">🔗 <strong>对项目：</strong>未来如果再换 CV action（例如换 PATHCV），同样的 grep 检查 ARG 行；目前只 1 处 (METAD)。</div>
+</div>
+</div>
+
+<!-- ========== Step 2: METAD ========== -->
+
+<div class="section-head"><h2>Step 2: METAD action（P15–P25）—— Well-Tempered 偏置势</h2></div>
+
+<div class="para-block" id="p15">
+<div class="para-left">
+<div class="para-id">P15 · Action 行</div>
+<pre><span class="hl-p">metad: METAD</span> ARG=path.sss,path.zzz <span class="hl-y">SIGMA=0.1</span> ADAPTIVE=GEOM <span class="hl-y">SIGMA_MIN=0.3,0.005</span> <span class="hl-y">SIGMA_MAX=1.0,0.05</span> <span class="hl-y">HEIGHT=0.628</span> <span class="hl-y">PACE=1000</span> <span class="hl-y">BIASFACTOR=10</span> <span class="hl-y">TEMP=350</span> FILE=HILLS</pre>
+<p>这一行 8 个数值参数，每个都决定 MetaD 的不同行为侧面。<span class="hl-p">Well-tempered MetaD</span> (Barducci 2008) 与原版区别：hill 高度按 <code>exp(−V/(k_B·ΔT))</code> 自动衰减，保证最终 V(s) → −(1−1/γ)·F(s) 收敛。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>本文件最复杂的一行——8 参数 × 各自的 Source × 各自的物理含义 × 各自的 ×2/÷2 影响 = 项目 review 的主战场。</p>
+<p><strong>逻辑角色：</strong>main bias driver</p>
+<div class="method-box">🛠️ <strong>WT-MetaD 公式：</strong>
+<br>V(s, t+τ) = V(s, t) + W·exp(−V(s, t) / (k_B·ΔT))·G(s − s(t))
+<br>γ = (T+ΔT) / T = BIASFACTOR
+<br>最终: V(s) → −(1 − 1/γ)·F(s)
+</div>
+<div class="bridge-box">🔗 <strong>对项目：</strong>下面 P17–P25 逐个参数详解；每个都给 ×2 / ÷2 影响表格，方便 PI 评估"如果改这个会怎样"。</div>
+</div>
+</div>
+
+<div class="para-block" id="p16">
+<div class="para-left">
+<div class="para-id">P16 · ARG / ADAPTIVE</div>
+<pre>ARG=<span class="hl-r">path.sss,path.zzz</span>
+<span class="hl-r">ADAPTIVE=GEOM</span></pre>
+<p><span class="hl-r">ARG</span>：bias 施加在哪两个 CV 上 → 二维 MetaD。Gaussian hill 是椭圆。<br>
+<span class="hl-r">ADAPTIVE=GEOM</span>：自适应 sigma 模式，按 CV 空间局部几何调整 Gaussian 宽度（CV 变化快的地方用窄 hill，慢的地方用宽 hill）。SI 明示用 GEOM。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>声明"在 (s, z) 空间做 2D MetaD"+"用 PLUMED 自适应宽度"。</p>
+<p><strong>逻辑角色：</strong>CV space declaration</p>
+<table class="term-table">
+<tr><th>选项</th><th>含义</th></tr>
+<tr><td>ADAPTIVE=NONE (默认)</td><td>固定 SIGMA，不自适应</td></tr>
+<tr><td>ADAPTIVE=GEOM</td><td>按 CV 几何变化自适应（SI 用这个）</td></tr>
+<tr><td>ADAPTIVE=DIFF</td><td>按 CV 时间涨落自适应</td></tr>
+</table>
+<div class="attack-box">⚠️ <strong>FP-024 根因：</strong>ADAPTIVE=GEOM 下 SIGMA 含义从 "per-CV 宽度" 变成 "Cartesian 几何种子"——这个语义切换是 SIGMA 塌缩 bug 的源头。必须同时给 SIGMA_MIN/MAX 才安全。</div>
+<div class="bridge-box">🔗 <strong>对项目：</strong>如果未来想换 ADAPTIVE=DIFF，必须重新评估 SIGMA_MIN/MAX 的合理范围（DIFF 模式下 sigma 来自时间涨落，不是几何）。</div>
+</div>
+</div>
+
+<div class="para-block" id="p17">
+<div class="para-left">
+<div class="para-id">P17 · SIGMA</div>
+<pre>SIGMA=<span class="hl-y">0.1</span>  (nm, Cartesian 几何种子)</pre>
+<p><span class="hl-p">ADAPTIVE=GEOM</span> 模式下，SIGMA 是<span class="hl-r">单一标量 Cartesian 长度</span>（不是 per-CV 宽度）。PLUMED 反投影到 s 和 z 方向，得到两个 per-CV sigma，再被 SIGMA_MIN/MAX clip。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>给 PLUMED 一个"几何种子"，让自适应算法有起始尺度。</p>
+<p><strong>逻辑角色：</strong>geometric seed</p>
+<p><span class="source-tag tag-our">Our-choice</span>SI 全文无数值 SIGMA（FP-025 警告假引用！）</p>
+<p><b>历史：</b>Pre-2026-04-15 = 0.05 → FP-024 崩塌 → 现在 0.1 + 强制下限。</p>
+<table class="sens-table">
+<tr><th>×2 (0.2 nm)</th><td class="up">反投影后 per-CV sigma 翻倍 → Gaussian 更胖<br>+ 起始 basin 迅速被填平 → 更快出 O basin<br>− FES 分辨率下降，相邻 basin 可能糊成一个</td></tr>
+<tr><th>÷2 (0.05 nm)</th><td class="down">回到 FP-024 灾难场景；sigma_s 反投影塌到 0.011<br>− 25000 个针尖 hill 全挤在 s=1.0-1.6<br>− bias 累到 12 kcal/mol 也推不出 O basin（Job 42679152 实测）</td></tr>
+<tr><th>推荐区间</th><td>0.08–0.15 nm，且必须同时写 SIGMA_MIN/MAX（FP-024 教训）</td></tr>
+</table>
+<div class="bridge-box">🔗 <strong>对项目：</strong>这是文件中 4 个"曾经引发 silent failure"参数之一。任何 review 都要重点检查它的下限/上限是否成对出现。</div>
+</div>
+</div>
+
+<div class="para-block" id="p18">
+<div class="para-left">
+<div class="para-id">P18 · SIGMA_MIN[0] (s 方向)</div>
+<pre>SIGMA_MIN=<span class="hl-y">0.3</span>,0.005  (CV 单位; path 轴 1-15)</pre>
+<p>Gaussian 在 path 进度 s 方向的<span class="hl-r">最小宽度下限</span>（CV 单位）。反投影得到的 sigma_s 若小于 0.3，PLUMED clip 回 0.3。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>防止 sigma_s 塌缩成针尖（FP-024 修复）。</p>
+<p><strong>逻辑角色：</strong>safety floor</p>
+<p><span class="source-tag tag-our">Our-choice</span>SI silent；PLUMED 2.9 docs 强制 ADAPTIVE 模式下必须给 floor</p>
+<table class="sens-table">
+<tr><th>×2 (0.6)</th><td class="up">Gaussian 至少覆盖 path 的 4% → 填坑更快但分辨率降<br>− 相邻参考帧细结构可能糊掉，s=8 (PC) 和 s=9 可能合并</td></tr>
+<tr><th>÷2 (0.15)</th><td class="down">接近崩塌阈值；ADAPTIVE 再压一压 sigma_s 就回 FP-024<br>− walker 有再次卡在起始 basin 的风险</td></tr>
+<tr><th>推荐区间</th><td>path 轴长的 1–5% (我们 path 长 14 → 0.14–0.7)</td></tr>
+</table>
+<div class="bridge-box">🔗 <strong>对项目：</strong>下次换 path 时，0.3 这个数要按"path 长度的 2%"重算。</div>
+</div>
+</div>
+
+<div class="para-block" id="p19">
+<div class="para-left">
+<div class="para-id">P19 · SIGMA_MIN[1] (z 方向)</div>
+<pre>SIGMA_MIN=0.3,<span class="hl-y">0.005</span>  (nm², MSD 单位)</pre>
+<p>Gaussian 在 path 偏离 z 方向的<span class="hl-r">最小宽度下限</span>（nm²）。基于 Job 42679152 实测 z 范围 0.002–0.13 nm² 的下分位数。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>防止 z 向 sigma 塌成 0.001 噪声尺度。</p>
+<p><strong>逻辑角色：</strong>safety floor (z direction)</p>
+<p><span class="source-tag tag-our">Our-choice</span>基于 Job 42679152 实测 z 分布</p>
+<table class="sens-table">
+<tr><th>×2 (0.01)</th><td class="up">z 向 Gaussian 最窄也有 0.01 nm² → 偏离路径方向填得快<br>− walker 在"离路径很远"的非物理区域也被推 (z>0.1 的空域乱填)</td></tr>
+<tr><th>÷2 (0.0025)</th><td class="down">接近 Job 42679152 实测 sigma_z 下限 0.001<br>− z 向 Gaussian 太细 → FES 在 z 方向噪声大</td></tr>
+<tr><th>推荐区间</th><td>系统实测 z 范围下 10–30 分位值 (我们 0.002–0.13 → 0.005 合理)</td></tr>
+</table>
+</div>
+</div>
+
+<div class="para-block" id="p20">
+<div class="para-left">
+<div class="para-id">P20 · SIGMA_MAX[0] (s 方向)</div>
+<pre>SIGMA_MAX=<span class="hl-y">1.0</span>,0.05  (CV 单位)</pre>
+<p>Gaussian 在 path 进度 s 方向的<span class="hl-r">最大宽度上限</span>。防 ADAPTIVE 反投影出过大 sigma 把整条 path 糊成一坨。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>防 Gaussian 过胖把相邻 basin 合并。</p>
+<p><strong>逻辑角色：</strong>safety ceiling</p>
+<p><span class="source-tag tag-our">Our-choice</span>SI silent</p>
+<table class="sens-table">
+<tr><th>×2 (2.0)</th><td class="up">Gaussian 可覆盖 path 的 14% → 邻 basin 被糊在一起<br>− FES 分辨率差，O/PC/C 三态分不清</td></tr>
+<tr><th>÷2 (0.5)</th><td class="down">Gaussian 最宽只能 0.5 (3% of path)<br>− 在平坦 FES 区域（CV 变化慢）填坑速度慢，收敛时间变长</td></tr>
+<tr><th>推荐区间</th><td>path 轴的 5–15% (path 长 14 → 0.7–2.1)</td></tr>
+</table>
+</div>
+</div>
+
+<div class="para-block" id="p21">
+<div class="para-left">
+<div class="para-id">P21 · SIGMA_MAX[1] (z 方向)</div>
+<pre>SIGMA_MAX=1.0,<span class="hl-y">0.05</span>  (nm²)</pre>
+<p>z 方向上限。基于 Job 42679152 z 分布上半部。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>z 向 Gaussian 不能糊掉 on-path / off-path 区分。</p>
+<p><strong>逻辑角色：</strong>safety ceiling (z)</p>
+<p><span class="source-tag tag-our">Our-choice</span></p>
+<table class="sens-table">
+<tr><th>×2 (0.1)</th><td class="up">z 方向 Gaussian 可以很胖<br>− z=0 物理路径附近的细结构被糊掉 → 分不清 "on-path" 和 "off-path" 构象</td></tr>
+<tr><th>÷2 (0.025)</th><td class="down">z 向 Gaussian 最宽只能 0.025<br>− 偏离路径的区域填坑慢，walker 在 z 方向卡住概率上升</td></tr>
+<tr><th>推荐区间</th><td>系统实测 z 范围的 30–50 分位值 (我们 0.002–0.13 → 0.04–0.07)</td></tr>
+</table>
+</div>
+</div>
+
+<div class="para-block" id="p22">
+<div class="para-left">
+<div class="para-id">P22 · HEIGHT</div>
+<pre>HEIGHT=<span class="hl-y">0.628</span>  (kJ/mol)</pre>
+<p>每个 Gaussian hill 的<span class="hl-r">初始高度</span>。WT-MetaD 下实际高度按 <code>exp(−V/(k_B·ΔT))</code> 衰减，<span class="hl-b">0.628 kJ/mol = 0.15 kcal/mol</span>（SI 原文）。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>控制 bias 累积速度。</p>
+<p><strong>逻辑角色：</strong>bias deposition rate (per hill)</p>
+<p><span class="source-tag tag-siq">SI-quote</span>SI p.S3 "Initial Gaussian potentials of height 0.15 kcal/mol"</p>
+<div class="method-box">🛠️ <strong>换算：</strong>0.15 kcal/mol × 4.184 = 0.6276 ≈ 0.628 kJ/mol</div>
+<table class="sens-table">
+<tr><th>×2 (1.256)</th><td class="up">bias 积累速度 2×<br>+ 更快填平 FES basin<br>− 过量沉积 → 冲出物理合理区域 (z>>0.1) 概率↑；WT 收敛变慢</td></tr>
+<tr><th>÷2 (0.314)</th><td class="down">bias 积累速度 0.5×<br>+ 更精细的 FES（适合收敛阶段，SI 也可能后期降 height）<br>− 50 ns 可能填不满 basin，walker 仍卡在起始态</td></tr>
+<tr><th>推荐区间</th><td>0.1–1.0 kJ/mol (Barducci 2008 WT-MetaD 原文建议 k_B·T 量级)</td></tr>
+</table>
+</div>
+</div>
+
+<div class="para-block" id="p23">
+<div class="para-left">
+<div class="para-id">P23 · PACE</div>
+<pre>PACE=<span class="hl-y">1000</span>  (steps; dt=2 fs → 每 2 ps 一个 hill)</pre>
+<p>每多少 MD 步沉积一个 hill。<span class="hl-b">PACE × dt = 2 ps</span>（SI 明示）。直接决定 bias 累积的时间密度。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>控制 deposition 节奏。</p>
+<p><strong>逻辑角色：</strong>temporal cadence</p>
+<p><span class="source-tag tag-siq">SI-quote</span>SI p.S3 "hills ... deposited every 2 ps of MD simulation at 350 K"</p>
+<table class="sens-table">
+<tr><th>×2 (2000 steps, 4 ps)</th><td class="up">deposition rate 0.5×<br>+ CV 有更多时间在两次 deposit 间松弛 → WT 收敛质量↑<br>− 填平同样 basin 需要 2× 真实时间 (50 ns → 100 ns)</td></tr>
+<tr><th>÷2 (500 steps, 1 ps)</th><td class="down">deposition rate 2×<br>− CV 来不及松弛 → "nonadiabatic" 污染 → FES 估计有偏<br>不建议偏离 SI 值</td></tr>
+<tr><th>推荐区间</th><td>SI 明示 1000；偏离必须说明（例 1-walker 首探可提到 500 加速初扫）</td></tr>
+</table>
+</div>
+</div>
+
+<div class="para-block" id="p24">
+<div class="para-left">
+<div class="para-id">P24 · BIASFACTOR</div>
+<pre>BIASFACTOR=<span class="hl-y">10</span></pre>
+<p><span class="hl-p">Well-tempered</span> 温度比 <span class="hl-r">γ = (T+ΔT)/T</span>。CV 空间有效采样温度 = γ·T = <span class="hl-b">3500 K</span>（原子运动仍是 350 K）。决定 bias 衰减速度和最终 FES 回放系数 <code>F(s) = −γ/(γ−1)·V_bias(s)</code>。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>定义 WT-MetaD 的"温度梯度"——CV 走得多快、bias 衰减多快、最终 FES 怎么回放。</p>
+<p><strong>逻辑角色：</strong>WT temperature ratio</p>
+<p><span class="source-tag tag-siq">SI-quote</span>SI p.S3 "well-tempered adaptative bias with a bias factor of 10"</p>
+<table class="sens-table">
+<tr><th>×2 (γ=20)</th><td class="up">T_eff = 7000 K (CV)<br>+ 采样能量更高的 barrier，能量阈值 ≈ γ·k_B·T<br>− WT 收敛时间 ↑（deposit 高度衰减更慢）；CV 漂远非物理区</td></tr>
+<tr><th>÷2 (γ=5)</th><td class="down">T_eff = 1750 K<br>+ 更快收敛；bias 更快衰减到 0<br>− 采不到 > 5·k_B·T ≈ 3.5 kcal/mol 的 barrier<br>− 对 TrpB O→C barrier ~5–7 kcal/mol 可能采不全</td></tr>
+<tr><th>推荐区间</th><td>5–20 (Barducci 2008 原文区间)；SI 明示 10</td></tr>
+</table>
+</div>
+</div>
+
+<div class="para-block" id="p25">
+<div class="para-left">
+<div class="para-id">P25 · TEMP</div>
+<pre>TEMP=<span class="hl-y">350</span>  (K)</pre>
+<p>MetaD bias 的<span class="hl-r">物理温度</span>。<b>必须与 metad.mdp 的 ref_t 一致</b>。物理依据：P. furiosus 是 hyperthermophile，生长温度 75–100°C。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>把 PLUMED 的统计力学温度和 GROMACS 的热浴温度绑定。</p>
+<p><strong>逻辑角色：</strong>physical temperature</p>
+<p><span class="source-tag tag-siq">SI-quote</span>SI p.S3 "2 ps of MD simulation at 350 K"</p>
+<table class="sens-table">
+<tr><th>×2 (700 K)</th><td class="up">蛋白质可能已经 unfold → 整个模拟失效</td></tr>
+<tr><th>÷2 (175 K)</th><td class="down">低于水的冰点；TIP3P 在此温度下非物理</td></tr>
+<tr><th>推荐区间</th><td>SI 明示 350；E. coli-native 蛋白会用 300/310 K</td></tr>
+</table>
+<div class="attack-box">⚠️ <strong>不要乱调：</strong>TEMP 必须匹配实验温度或生理温度。这是物理约束，不是优化参数。</div>
+<div class="bridge-box">🔗 <strong>对项目：</strong>检查清单：每次改 metad.mdp 的 ref_t 都要同步检查 plumed.dat 的 TEMP（grep 双向验证）。</div>
+</div>
+</div>
+
+<!-- ========== Step 3: PRINT ========== -->
+
+<div class="section-head"><h2>Step 3: PRINT action（P26）—— 实时监测</h2></div>
+
+<div class="para-block" id="p26">
+<div class="para-left">
+<div class="para-id">P26 · PRINT 监测</div>
+<pre>PRINT ARG=<span class="hl-r">path.sss,path.zzz,metad.bias</span> FILE=<span class="hl-r">COLVAR</span> STRIDE=<span class="hl-y">500</span></pre>
+<p>每 <span class="hl-b">500 步</span>（dt=0.002 ps × 500 = <span class="hl-b">每 1 ps</span>）输出一行。MetaD 运行期间，COLVAR 是<span class="hl-y">唯一能"看到系统在做什么"</span>的方式（HILLS 只记录 deposit 事件，COLVAR 是连续时间序列）。</p>
+</div>
+<div class="para-right">
+<p><strong>段落功能：</strong>可观察性 layer——把模拟内部状态导出供后续诊断/可视化。</p>
+<p><strong>逻辑角色：</strong>observability hook</p>
+<table class="term-table">
+<tr><th>列</th><th>含义</th></tr>
+<tr><td>time</td><td>ps</td></tr>
+<tr><td>path.sss</td><td>当前进度 (1..15)</td></tr>
+<tr><td>path.zzz</td><td>当前距离 (nm²)</td></tr>
+<tr><td>metad.bias</td><td>当前点累积 bias (kJ/mol)</td></tr>
+</table>
+<div class="method-box">🛠️ <strong>最快诊断：</strong>
+<pre style="background:#1a2744;color:#e5e7eb;padding:7px;border-radius:3px;font-size:11px;margin:4px 0">python3 -c "
+import numpy as np; d=np.loadtxt('COLVAR',comments='#')
+s=d[:,1]
+print(f'O(s&lt;5): {(s&lt;5).sum()}  PC(5-10): {((s>5)&amp;(s&lt;10)).sum()}  C(s>10): {(s>10).sum()}')"</pre></div>
+<div class="notable-box">💡 <strong>STRIDE vs PACE：</strong>STRIDE=500 (1 ps) 比 PACE=1000 (2 ps) 更频繁——因为 HILLS 是 deposit 事件（不需要密），COLVAR 是监测数据（要看清涨落）。两者时间分辨率独立。</div>
+<div class="bridge-box">🔗 <strong>对项目：</strong>FP-024 silent failure 的关键诊断就是画 s(t) 时间序列。如果当时没有 COLVAR，可能 50 ns 跑完都不知道 walker 没动。</div>
+</div>
+</div>
+
+<!-- ========== §A 参数依赖链 ========== -->
+
+<div class="section-head" id="argchain"><h2>§A 参数依赖链 — 改一个参数会带动哪些</h2></div>
+<div class="argchain">
+<p>这张图回答 PI 常问的问题："如果我改 X，还要改什么？"</p>
+<pre style="background:transparent;color:var(--text);padding:0;margin:0;font-size:13px">
+[换 path geometry (例 16 帧 / 不同 endpoint)]
+   │
+   ├─→ <code>path_gromacs.pdb</code> 改 (重跑 generate_path_cv.py)
+   ├─→ ⟨MSD_adjacent⟩ 变 → <code>LAMBDA</code> 重算 (P13)
+   ├─→ path 轴长变 → <code>SIGMA_MIN[s]</code> 按 2% 重算 (P18)
+   └─→ path 轴长变 → <code>SIGMA_MAX[s]</code> 按 7% 重算 (P20)
+
+[换原子集 (例 加 PLP heavy atoms)]
+   │
+   ├─→ <code>path_gromacs.pdb</code> 重生成
+   ├─→ N_atoms 变 → ⟨MSD⟩ per-atom 变 → <code>LAMBDA</code> 重算
+   └─→ FUNCPATHMSD ↔ PATHMSD 切换：必须改 <code>ARG=path.sss,path.zzz</code>
+        ⇆ <code>ARG=path.s,path.z</code> (P14)
+
+[换温度 (例 300 K 适配 E.coli)]
+   │
+   ├─→ metad.mdp <code>ref_t = 300</code>
+   ├─→ plumed.dat <code>TEMP=300</code> (P25)
+   └─→ HEIGHT 单位换算重核 (kcal/mol → kJ/mol 不变，但 k_B·T 量级变)
+
+[换 ADAPTIVE 模式 (GEOM → DIFF)]
+   │
+   ├─→ <code>SIGMA</code> 含义变 (Cartesian → CV space)
+   ├─→ <code>SIGMA_MIN/MAX</code> 阈值重新评估
+   └─→ 必须重跑 1-2 ns toy 验证 sigma 分布合理
+
+[换 BIASFACTOR (γ)]
+   │
+   ├─→ FES 回放系数变: F(s) = −γ/(γ−1)·V(s)
+   ├─→ 收敛时间估计变 (γ↑ → 慢)
+   └─→ 可达 barrier 阈值变 (~γ·k_B·T)
+</pre>
+</div>
+
+<!-- ========== §B FP Bug History ========== -->
+
+<div class="section-head" id="fphistory"><h2>§B 全 FP Bug 史 — 这个文件踩过的所有坑</h2></div>
+
+<div class="fp-card">
+<p><span class="fp-id">FP-018</span> (2026-04-04) · LAMBDA 单位换算</p>
+<p>SI 给 MSD 在 Å²，PLUMED 用 nm²，差 100×。<b>修复：</b>统一用 nm² × 100 因子。</p>
+</div>
+
+<div class="fp-card">
+<p><span class="fp-id">FP-020</span> (2026-04-04 误诊 → 2026-04-09 正确诊断) · PATHMSD vs conda binary</p>
+<p>误诊为"非连续 atom serial"，切到 FUNCPATHMSD workaround。真因是 conda 版 libplumedKernel.so 残缺。<b>修复：</b>换源码编译 PLUMED 2.9.2，PATHMSD 直接能用。</p>
+</div>
+
+<div class="fp-card">
+<p><span class="fp-id">FP-022</span> (2026-04-08) · LAMBDA 因子 112×</p>
+<p>FUNCPATHMSD 用 per-atom MSD，LAMBDA 应是 379.77，曾错用 3.391（total SD 约定）。<b>silent bug</b>，差 N_atoms = 112×。<b>修复：</b>函数加 docstring 明示约定，加 assertion。</p>
+</div>
+
+<div class="fp-card">
+<p><span class="fp-id">FP-023</span> (2026-04-09) · PDB 尾部 END</p>
+<p>multi-model PDB 尾部多一行 <code>END</code>，PATHMSD 解析"第 16 帧"崩。<b>修复：</b><code>sed -i '${/^END$/d;}' path_gromacs.pdb</code>。</p>
+</div>
+
+<div class="fp-card">
+<p><span class="fp-id">FP-024</span> (2026-04-15) · SIGMA 自适应塌缩</p>
+<p>SIGMA=0.05 + ADAPTIVE=GEOM 反投影到 sigma_s=0.011（path 0.5%）。25000 个针尖 hill 全堆 s≈1，walker 100% 在 O basin。<b>silent failure</b> 浪费 50 ns。<b>修复：</b>SIGMA→0.1，加 SIGMA_MIN=0.3,0.005 + SIGMA_MAX=1.0,0.05。</p>
+</div>
+
+<div class="fp-card">
+<p><span class="fp-id">FP-025</span> (2026-04-15) · 假引用 [SI p.S3]</p>
+<p>早期 tutorial 写 "SIGMA=0.2,0.1 [SI p.S3]"，SI 全文无数值 SIGMA。<b>AI 杜撰引用</b>。<b>修复：</b>所有 SI-quote 标签必须能在 SI PDF grep 到原文，否则降级标 Our-choice。</p>
+</div>
+
+<div class="fp-card">
+<p><span class="fp-id">FP-027</span> (2026-04-?) · SI 句尾 "80" 误读</p>
+<p>SI p.S3 末尾 "80" 是 total SD 单位 Å²，不是 λ。曾错读 λ=80 nm⁻²，3+ 小时错方向诊断。<b>修复：</b>引文里数字必须看上下文单位。</p>
+</div>
+
+<!-- ========== §C 参数来源总表 ========== -->
+
+<div class="section-head" id="provenance"><h2>§C 参数来源总表（PI review 用）</h2></div>
+
+<table class="term-table">
+<tr><th>参数</th><th>值</th><th>Source</th><th>原始出处</th></tr>
+<tr><td>PATHMSD</td><td>—</td><td><span class="source-tag tag-siq">SI-quote</span></td><td>SI p.S3 "path collective variables"</td></tr>
+<tr><td>LAMBDA</td><td>379.77</td><td><span class="source-tag tag-sid">SI-derived</span></td><td>本地 generate_path_cv.py 算 ⟨MSD⟩ per-atom</td></tr>
+<tr><td>SIGMA</td><td>0.1</td><td><span class="source-tag tag-our">Our-choice</span></td><td>2026-04-15 从 0.05 上调（FP-024 修复）</td></tr>
+<tr><td>SIGMA_MIN</td><td>0.3, 0.005</td><td><span class="source-tag tag-our">Our-choice</span></td><td>FP-024 修复，per-CV 下限</td></tr>
+<tr><td>SIGMA_MAX</td><td>1.0, 0.05</td><td><span class="source-tag tag-our">Our-choice</span></td><td>FP-024 修复，per-CV 上限</td></tr>
+<tr><td>ADAPTIVE</td><td>GEOM</td><td><span class="source-tag tag-siq">SI-quote</span></td><td>SI 明示</td></tr>
+<tr><td>HEIGHT</td><td>0.628</td><td><span class="source-tag tag-siq">SI-quote</span></td><td>SI 0.15 kcal/mol × 4.184</td></tr>
+<tr><td>PACE</td><td>1000</td><td><span class="source-tag tag-siq">SI-quote</span></td><td>SI 2 ps × (1/dt)</td></tr>
+<tr><td>BIASFACTOR</td><td>10</td><td><span class="source-tag tag-siq">SI-quote</span></td><td>SI 明示</td></tr>
+<tr><td>TEMP</td><td>350</td><td><span class="source-tag tag-siq">SI-quote</span></td><td>SI 明示（嗜热菌 P. furiosus）</td></tr>
+<tr><td>STRIDE</td><td>500</td><td><span class="source-tag tag-our">Our-choice</span></td><td>1 ps 时间分辨率</td></tr>
+</table>
+
+<p style="margin-top:10px;font-size:13px;color:var(--gray)">SI 没有给 PLUMED 输入文件原文；上述 "SI-quote" 是从 SI 正文数字段落里读出来的。"Our-choice" 没有严格 SI 依据但都是合理默认。LAMBDA 379.77 是本地从 generate_path_cv.py 算的，<b>不是</b> SI 原值。如果路径换了，LAMBDA 也要重新算。</p>
+
+<!-- ========== §D Runbook ========== -->
+
+<div class="section-head" id="runbook"><h2>§D 失败模式速查（运维向）</h2></div>
+
+<table class="term-table">
+<tr><th>症状</th><th>可能原因</th><th>诊断 / 修复</th></tr>
+<tr><td>plumed driver 报 "ARG not found"</td><td>FUNCPATHMSD ↔ PATHMSD 切换没改 ARG</td><td>检查 ARG 是 path.sss/zzz (PATHMSD) 还是 path.s/z (FUNCPATHMSD)</td></tr>
+<tr><td>"number of atoms in a frame should be more than zero"</td><td>FP-023</td><td><code>tail -3 path_gromacs.pdb</code> 末行须是 ENDMDL</td></tr>
+<tr><td>walker 50 ns 不动 (s 卡 1.0–1.6)</td><td>FP-024 SIGMA 塌缩</td><td>检查 SIGMA_MIN/MAX 是否成对存在；plumed driver 看 sigma_s 实测</td></tr>
+<tr><td>FES 形状离谱、相邻 basin 距离不对</td><td>FP-022 LAMBDA 因子错</td><td>对照 generate_path_cv.py 输出的 per-atom MSD，不是 total SD</td></tr>
+<tr><td>"PATHMSD: not registered"</td><td>FP-020 conda 版 libplumedKernel.so 残缺</td><td>切源码编译 PLUMED 2.9.2，env <code>PLUMED_KERNEL=...lib/libplumedKernel.so</code></td></tr>
+<tr><td>NaN 在 COLVAR 出现</td><td>FUNCPATHMSD 数值不稳</td><td>切 PATHMSD（已是当前默认）</td></tr>
+<tr><td>HILLS 增长但没物理采样</td><td>silent failure (FP-024 类)</td><td>立刻 plot s(t)，看 walker 范围是否覆盖 path 的 30%+</td></tr>
+</table>
+
+<!-- ========== §E Glossary ========== -->
+
+<div class="section-head" id="glossary"><h2>§E 关键术语（按字母）</h2></div>
+
+<table class="term-table">
+<tr><th>术语</th><th>解释</th></tr>
+<tr><td>ADAPTIVE=GEOM</td><td>PLUMED 自适应 sigma 模式：按 CV 空间几何变化调整 Gaussian 宽度</td></tr>
+<tr><td>BIASFACTOR (γ)</td><td>WT-MetaD 温度比 (T+ΔT)/T；CV 有效采样温度 = γ·T</td></tr>
+<tr><td>COMM domain</td><td>TrpB β-亚基的"通信结构域"（残基 97–184），开/关切换载体</td></tr>
+<tr><td>FES</td><td>Free Energy Surface，自由能面</td></tr>
+<tr><td>FUNCPATHMSD</td><td>用 15 RMSD + FUNCPATHMSD 拼出的 path CV（被 PATHMSD 取代）</td></tr>
+<tr><td>HILLS</td><td>PLUMED 输出文件，记录每个 Gaussian deposit 事件 + 参数</td></tr>
+<tr><td>Kabsch alignment</td><td>最优刚体叠合算法，去除平动转动后再算 MSD</td></tr>
+<tr><td>LAMBDA (λ)</td><td>PATHMSD 公式 exp(−λ·MSD) 的衰减系数；λ=2.3/⟨MSD⟩</td></tr>
+<tr><td>MSD</td><td>Mean Squared Displacement，per-atom mean，单位 length²</td></tr>
+<tr><td>O / PC / C</td><td>Open / Partially Closed / Closed conformations</td></tr>
+<tr><td>PACE</td><td>Gaussian deposit 间隔，单位 MD steps</td></tr>
+<tr><td>PATHMSD</td><td>PLUMED 内置 action，把构象映射到 (s, z) 标量对</td></tr>
+<tr><td>path.sss</td><td>PATHMSD 输出的进度坐标 (1..N_frames)</td></tr>
+<tr><td>path.zzz</td><td>PATHMSD 输出的偏离坐标 (nm²)</td></tr>
+<tr><td>per-atom MSD</td><td>(1/N)·Σⱼ |Δrⱼ|²；与 total SD 差 N_atoms 倍</td></tr>
+<tr><td>RMSD</td><td>√MSD，单位 length</td></tr>
+<tr><td>SIGMA (ADAPTIVE=GEOM)</td><td>单一 Cartesian 几何种子，单位 nm</td></tr>
+<tr><td>SIGMA_MIN/MAX</td><td>per-CV 自适应宽度的下限/上限，CV 单位（不是 nm）</td></tr>
+<tr><td>STRIDE</td><td>PRINT action 的输出间隔，单位 MD steps</td></tr>
+<tr><td>WT-MetaD</td><td>Well-Tempered MetaDynamics (Barducci 2008)</td></tr>
+</table>
+
+<div style="margin-top:40px;padding-top:20px;border-top:1px solid var(--border);text-align:center;color:var(--gray);font-size:12px">
+plumed.dat Deep Walkthrough · 文档生成 2026-04-17<br>
+对应 production 文件 md5: aca3f0c4d23ee4d2f8cb6dcb14383908 · Job 42679152<br>
+Source: replication/metadynamics/annotated/plumed.dat + plumed_annotated.dat
+</div>
+
+</main>
+</div>
+</body>
+</html>

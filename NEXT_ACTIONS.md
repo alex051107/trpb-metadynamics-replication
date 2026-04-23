@@ -12,18 +12,50 @@
 
 ---
 
-## Current (2026-04-17)
+## Current (2026-04-22)
 
-- Job 44008381 running, 25.56 ns, max s=2.794, ETA 50 ns ~2026-04-19
-- Decision gate triggers at 50 ns or when max s≥5, whichever first
-- Phase 2 (10-walker) ready: scripts in `replication/metadynamics/multi_walker/`
-- Phase 3 (4HPX-seeded dual walker) is fallback if Phase 2 not triggered
+### Phase A landed
+Path CV diagnostic package committed (`e2f19f4`). Self-projection PASS, PATHMSD↔FUNCPATHMSD PASS, O-endpoint tangent OFF-TANGENT signal (21/21 frames). Rules out technical bugs at PATHMSD / λ / metric. λ=379.77 is FP-022-settled. VERDICT at `replication/metadynamics/path_cv/diagnostics/VERDICT_2026-04-21.md`.
+
+### Probe sweep (σ floor/ceiling ladder) — CLOSED
+All 5 probes (P1–P5) stalled with max_s ≤ 1.64 through ≥ 5 ns. **SIGMA_MIN/MAX axis does not rescue.** Decision: stop scanning this axis.
+- P3 extension 44956161 TIMEOUT at 15h (run logged but no rescue)
+- P5 44956006 COMPLETED 6:28, same stall pattern
+- `replication/metadynamics/probe_sweep/ladder.yaml` is the source of truth
+
+### Aex1 cMD — running
+Job 45186335 on a100-gpu, 18 ns / 500 ns (3.9 %), 273 ns/day, ETA ~44 h. This is the chemistry-control line: 5DW0 chain A (PLS external aldimine) on same PATHMSD + λ + plumed.dat. 5DW0 → s ≈ 1.07 on current path.
+- Load-state stale-XML bug fixed by preflight diff (ChatGPT Pro spec, Codex-applied)
+- FP-028 (openmm CUDA PTX) resolved on prod branch; CPU fallback not needed
+- Post-cMD plan: Aex1 MetaD 5–10 ns on same path to discriminate chemistry-specific vs path-local stall
+
+### Next strategic framing (ChatGPT Pro 2026-04-22)
+The probe sweep ruling out SIGMA_MIN/MAX narrows the remaining hypotheses to two **separable** variables:
+- **H1 — anchor set**: direct 1WDW→3CEP linear interpolation may be globally OK but locally poor at O-end; PC-state anchor (5DW0) not used in current path
+- **H2 — initial SIGMA=0.1**: the initial Gaussian seed is UNVERIFIED (SI silent); probe sweep varied floor/ceiling only, never the seed
+
+Rather than launching 10 parallel walkers (same CV, falsification-only, no causal signal), Pro's plan is a **2×2 pilot matrix** holding ff/λ/bias/pace constant and varying only {anchor set, initial SIGMA}:
+
+| Pilot | Path | SIGMA | Purpose |
+|---|---|---|---|
+| P1 (baseline) | 1WDW→3CEP | 0.1 | have |
+| P2 | 1WDW→3CEP | 0.3 | isolates seed axis |
+| P3 | 1WDW→5DW0 | 0.1 | isolates anchor axis |
+| P4 | 1WDW→5DW0 | 0.3 | interaction |
+
+Each pilot runs 3 ns; only winner extends to 10 ns. Read {max_s, p95(s), p95(z), (s,z) occupied bins, HILLS center spread}.
 
 ## Next 48 hours
 
-1. Monitor Job 44008381 via hourly cron (see `.claude/cron_registry.json` job 7d28254c)
-2. 50 ns completion check: decide Phase 2 vs Phase 3 per gate rules in `replication/validations/2026-04-17_single_walker_timeline.md`
-3. If Phase 2: launch `bash replication/metadynamics/multi_walker/setup_walkers.sh COLVAR traj.xtc`, then PyMOL visual inspection of 10 candidates, then `sbatch submit_array.sh`
+1. **Cheap O-end diagnostic first** — project existing unbiased Ain 500 ns cMD onto current path, plot z vs t. ~30 min with existing traj. If thermal alone saturates z while s pinned, Pilot 3/4 (anchor change) is predicted to be the winner before GPU burn. (Unblocks once `path_cv/attribution/project_to_path.py` window-NaN is fixed — cap 2 h.)
+2. **Pilot 2 launch** — `ladder.yaml` add P6 with SIGMA=0.3, floor/ceiling unchanged. Cheapest of the 4; launches tonight. Gate read at 3 ns.
+3. **1WDW→5DW0 path build** — extract 5DW0 chain A 112 Cα, renumber to Ain convention, re-run `generate_path_cv.py`, **re-run self-projection + re-derive λ for new anchor geometry** (do NOT assume λ=379.77 transfers). Multi-hour task. Gate: self-projection must PASS before Pilots 3/4 launch.
+4. **Aex1 cMD monitor** (hourly cron) — flag on completion or wall-clock drift; post-cMD MetaD prep is queue-able once this crosses 50 ns.
+5. **Osuna group email** (Iglesias-Fernández) — draft at `reports/osuna_email_draft_2026-04-18_iglesias.md`, send on user confirmation.
+
+### Will NOT do now (Pro-deprioritized)
+- **10 parallel walkers** — same CV, no causal signal until 2×2 returns. Defer until 2×2 matrix has a winner or Pilots 3/4 confirm anchor set is the axis.
+- **Full piecewise O→PC→C path** — Pro's sequencing: first-round local pilot is "keep 15 frames, 112 Cα, λ=379.77, only change terminal anchor", not production-grade piecewise. Upgrade to piecewise only after Pilots 3/4 show rescue on the simpler local-anchor swap.
 
 ---
 

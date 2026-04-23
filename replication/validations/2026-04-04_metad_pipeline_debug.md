@@ -90,3 +90,21 @@ No parsing errors.
 ## Conclusion
 
 **PASS** — All three bugs fixed. The MetaD pipeline now produces physically reasonable path CV values. The LAMBDA unit conversion (FP-018) was the most impactful bug, causing a ~100x error in the distance-from-path metric.
+
+
+---
+
+## 2026-04-15 Update — Historical-only note (FP-024)
+
+The SIGMA=0.2,0.1 shown in the "After" block above was later found to be:
+(a) non-functional with ADAPTIVE=GEOM because PLUMED 2.9 expects a single
+    Cartesian nm SIGMA with GEOM; pair values are silently ignored or error.
+(b) citing a non-existent SI p.S3 number (the 2019 SI is silent on SIGMA).
+
+The live production value is now:
+  `SIGMA=0.1 ADAPTIVE=GEOM SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05`
+
+See `replication/validations/failure-patterns.md` (FP-024, FP-025) and
+`replication/metadynamics/single_walker/plumed.dat` for the current config.
+
+This historical note is preserved as-is for traceability.
