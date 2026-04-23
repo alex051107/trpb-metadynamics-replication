@@ -5,7 +5,19 @@
 **DOI**: 10.1021/jacs.9b03646  
 **Supporting Information**: ja9b03646\_si\_001.pdf  
 **作者**：Zhenpeng Liu (liualex@ad.unc.edu), UNC Chapel Hill  
-**最后更新**：2026-04-02
+**最后更新**：2026-04-23（Miguel 2026-04-23 邮件覆盖，详见下方 banner）
+
+> **⚠️ 2026-04-23 Miguel Iglesias-Fernández 合同覆盖**：原文一作直接给了 MetaD 权威版本。本教程后文若出现 `ADAPTIVE=GEOM / SIGMA=0.1 / SIGMA_MIN,MAX / LAMBDA=379.77 nm⁻²` 等旧表述，**以下 Miguel 合同为准**：
+>
+> - `UNITS LENGTH=A ENERGY=kcal/mol`（SI 数值本来就是 Å + kcal/mol，**不要** 再乘 100 或 4.184）
+> - `ADAPTIVE=DIFF SIGMA=1000`（1000 步的时间窗 ≈ 2 ps；这不是 Gaussian 宽度）
+> - `HEIGHT=0.15 kcal/mol`、`BIASFACTOR=10`、`PACE=1000`、`TEMP=350`
+> - `WALKERS_N=10` 并行（SI 原意就是 10 walker，single-walker 只是备选）
+> - `UPPER_WALLS ARG=p1.zzz AT=2.5 KAPPA=800`（Å, kcal/mol）
+> - `WHOLEMOLECULES ENTITY0=1-39268` 每步重拼
+> - `PATHMSD LAMBDA=3.77 Å⁻²`（= 379.77 nm⁻²）是我们 15 帧路径的正确值；Miguel 自己给的 `LAMBDA=80 Å⁻²` 只适用他更密的路径，对我们偏窄 21×（详见 FP-032）。
+>
+> 权威来源：`replication/metadynamics/miguel_2026-04-23/miguel_email.md` + FP-031/FP-032（`replication/validations/failure-patterns.md`）。正文中残留的 `ADAPTIVE=GEOM / SIGMA_MIN,MAX` 叙述仅作为历史记录保留，勿按其部署。
 
 > **重要提示**：本教程中所有路径使用 `$WORK` 作为你在 Longleaf 上的工作目录简写。开始之前，请先设置这个变量：
 > ```bash

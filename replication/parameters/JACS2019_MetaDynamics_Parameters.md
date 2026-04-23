@@ -5,6 +5,8 @@
 > **DOI**: 10.1021/jacs.9b03646
 > **Last verified**: 2026-04-02 (skeptic audit: 61 PASS, 15 WARN, 3 FAIL→fixed)
 >
+> **⚠️ 2026-04-23 Miguel Iglesias-Fernández email override**: the original author clarified the MetaD recipe directly; several SI re-reads documented earlier in this file are now superseded. See `replication/metadynamics/miguel_2026-04-23/miguel_email.md` for the authoritative contract, and Section 3 below for the updated live parameters (UNITS=A / kcal·mol⁻¹, ADAPTIVE=DIFF SIGMA=1000 steps, 10 walkers, λ=3.77 Å⁻² per our path density). FP-031/FP-032 in `replication/validations/failure-patterns.md` log the re-interpretation.
+>
 > **约定**：每个参数标注三列——SI 原值、我们的复刻值、状态。
 > 状态含义：✅ = 与 SI 一致 | ⚠️ = 有差异（已记录） | ❓ = SI 未报告
 
@@ -208,34 +210,33 @@
 | MD engine | GROMACS 5.1.2 | GROMACS 2026.0 (conda, PLUMED patched) | ⚠️ 版本升级 | S3 |
 | MetaD variant | Well-tempered | Well-tempered | ✅ | S3 |
 
-### Well-Tempered MetaDynamics Parameters
+### Well-Tempered MetaDynamics Parameters (Miguel 2026-04-23 contract)
 
-| Parameter | SI Value | PLUMED .dat Value | Unit Conversion | Status | SI Page |
-|-----------|----------|-------------------|-----------------|--------|---------|
-| Hill height | 0.15 kcal/mol | `HEIGHT=0.628` | 0.15 × 4.184 = 0.628 kJ/mol | ✅ | S3 |
-| Deposition pace | Every 2 ps | `PACE=1000` | 1000 steps × 0.002 ps = 2 ps | ✅ | S3 |
-| Bias factor | 10 | `BIASFACTOR=10` | — | ✅ | S3 |
-| Temperature | 350 K | `TEMP=350` | — | ✅ | S3 |
-| Gaussian width | Adaptive | `ADAPTIVE=GEOM` | — | ✅ | S3 |
-| Initial SIGMA | **未报告** | `SIGMA=0.1` (Cartesian nm) | PLUMED docs: ADAPTIVE=GEOM takes single nm seed | ⚠️ **UNVERIFIED** (SI silent) | — |
-| Sigma floor   | **未报告** | `SIGMA_MIN=0.3,0.005` (s, z in CV units) | FP-024: without floor, adaptive σ_s collapses to <1% path range | ⚠️ **UNVERIFIED** (SI silent) | — |
-| Sigma ceiling | **未报告** | `SIGMA_MAX=1.0,0.05` (s, z in CV units) | FP-024: prevents runaway adaptive in flat regions | ⚠️ **UNVERIFIED** (SI silent) | — |
-| kT (for sum_hills) | — | `--kt 0.695` | k_B × 350 = 0.695 kcal/mol | ✅ (计算值) | — |
+> **Authoritative contract**: `replication/metadynamics/miguel_2026-04-23/miguel_email.md`. All PLUMED `.dat` values below are in `UNITS LENGTH=A ENERGY=kcal/mol` — no kJ/nm conversion. `ADAPTIVE=DIFF SIGMA=1000` is a time window in integrator steps (≈2 ps at dt=2 fs), NOT a Gaussian width.
 
-> **⚠️ UNVERIFIED (Osuna SI silent, see FP-024/025)**: SI 只说 "adaptive Gaussian width scheme"，**整个 SI PDF 没有任何数值 SIGMA**（Agent-B 2026-04-15 文献审计确认：2021 ACS Catal follow-up / 2024 Faraday / PLUMED-NEST 全部 defer 到 2019 SI）。
->
-> **2026-04-15 更新（FP-024）**：Job 42679152 用 `SIGMA=0.05` 无 floor 跑了 50 ns，walker 全程卡在 s(R)=1.0-1.6（adaptive σ_s 塌到 0.011-0.072，path 轴 <1%）。primary-source 验证（PLUMED 2.9 METAD docs）后确定：ADAPTIVE=GEOM 下 SIGMA 是单一 Cartesian nm，per-CV control 走 SIGMA_MIN/MAX（in CV units）。已改为 `SIGMA=0.1 SIGMA_MIN=0.3,0.005 SIGMA_MAX=1.0,0.05`，probe Job 43813633 验证中。
+| Parameter | SI Value | PLUMED .dat Value (Miguel) | Status |
+|-----------|----------|----------------------------|--------|
+| UNITS | — | `UNITS LENGTH=A ENERGY=kcal/mol` | ✅ Miguel 2026-04-23 |
+| Hill height | 0.15 kcal/mol | `HEIGHT=0.15` (kcal/mol) | ✅ |
+| Deposition pace | Every 2 ps | `PACE=1000` | ✅ |
+| Bias factor | 10 | `BIASFACTOR=10` | ✅ |
+| Temperature | 350 K | `TEMP=350` | ✅ |
+| Gaussian width scheme | "adaptive Gaussian width" | `ADAPTIVE=DIFF SIGMA=1000` (steps) | ✅ Miguel 2026-04-23 |
+| z wall | (not in SI, in Miguel email) | `UPPER_WALLS ARG=p1.zzz AT=2.5 KAPPA=800` (Å, kcal/mol) | ✅ Miguel 2026-04-23 |
+| Wholemolecules | (not in SI) | `WHOLEMOLECULES ENTITY0=1-39268` every step | ✅ Miguel 2026-04-23 |
+| kT (for sum_hills) | — | `--kt 2.908` (= k_B × 350 K in kJ/mol; or `--kt 0.695` if you re-run `sum_hills` under kcal) | ✅ FP-021 |
 
-### Multiple-Walker Protocol
+> **⚠️ Historical FP-024/FP-025 (2026-04-15)** — under the (incorrect) `ADAPTIVE=GEOM` interpretation we needed `SIGMA_MIN`/`SIGMA_MAX` floors/ceilings to stop σ from collapsing. Under the correct Miguel contract `ADAPTIVE=DIFF` there is no σ-collapse pathology to floor; the old floor/ceiling literature (`SIGMA_MIN=0.3,0.005`, `SIGMA_MAX=1.0,0.05`) does not apply. The entire σ-ladder probe sweep (P1–P5) was a GEOM-specific artifact — see `replication/metadynamics/probe_sweep/DEPRECATED.md` and FP-031.
 
-| Parameter | SI Value | Our Value | Status | SI Page |
-|-----------|----------|-----------|--------|---------|
-| Walkers | 10 replicas | 10 | ✅ | S4 |
-| Time/walker | 50–100 ns | 待执行 | ✅ (计划) | S4 |
-| Total/system | 500–1000 ns | 待执行 | ✅ (计划) | S4 |
-| Accumulated total | ~7 μs | 待执行 | ✅ (计划) | S4 |
-| Walker starts | 10 snapshots from initial MetaD | 待执行 | ✅ (计划) | S4 |
-| HILLS sharing | Walkers read each other's HILLS | `WALKERS_N=10` in plumed.dat | ✅ | S4 |
+### Multiple-Walker Protocol (Miguel contract)
+
+| Parameter | SI Value | Our Value | Status | Source |
+|-----------|----------|-----------|--------|--------|
+| Walkers | 10 replicas | `WALKERS_N=10` in plumed.dat | ✅ | S4 |
+| HILLS sharing | Walkers read each other's HILLS | `WALKERS_DIR=HILLS_DIR WALKERS_RSTRIDE=3000` | ✅ | Miguel email |
+| Time/walker | 50–100 ns | live (job 45320189, 3-day walltime) | 🟡 | S4 |
+| Total/system | 500–1000 ns | — | 🟡 (计划) | S4 |
+| Walker starts | 10 snapshots from initial MetaD | SI says seed from initial; Miguel contract launches all walkers from the same equilibrated system (`system_built.gro` + `metad.mdp`), each with independent GROMACS random seeds | ⚠️ deviation vs SI wording | — |
 
 ### Convergence Assessment
 
@@ -309,14 +310,15 @@
 
 ## 6. Discrepancy Summary
 
-| # | Parameter | SI | Ours | Severity | Resolution |
-|---|-----------|-----|------|----------|-----------|
-| 1 | Lambda | 0.029 | 0.0339 | HIGH | 待导师确认：用 SI 值 or 本地值 |
-| 2 | Heat7 restraint | 未明确 | 10.0 | MEDIUM | 合理默认，待导师确认 |
-| 3 | SIGMA (PLUMED) | 未报告 | 0.05 | MEDIUM | ADAPTIVE 模式自校正，影响有限 |
-| 4 | Gaussian version | 09 | 16 | LOW | ff14SB/GAFF 不受影响，IOp 已修正 |
-| 5 | AMBER version | 16 | 24p3 | LOW | ff14SB 等价 |
-| 6 | GROMACS version | 5.1.2 | 2026.0 | LOW | PLUMED 接口兼容 |
+| # | Parameter | SI / Miguel email | Ours | Severity | Resolution |
+|---|-----------|-------------------|------|----------|-----------|
+| 1 | Lambda (PATHMSD) | Miguel email: `LAMBDA=80 Å⁻²` for HIS denser path | `LAMBDA=3.77 Å⁻²` (= 379.77 nm⁻²) for our 15-frame / 112 Cα path | HIGH | ✅ resolved — Codex λ audit 2026-04-23, Branduardi textbook 2.3 / ⟨MSD⟩; Miguel's 80 not transferable (21× too sharp for our path density). See FP-032. |
+| 2 | ADAPTIVE scheme | SI: "adaptive Gaussian width" (ambiguous) | `ADAPTIVE=DIFF SIGMA=1000` (time window, steps) | HIGH | ✅ resolved — Miguel 2026-04-23 email, FP-031 |
+| 3 | UNITS | SI reports Å / kcal·mol⁻¹ | `UNITS LENGTH=A ENERGY=kcal/mol` | HIGH | ✅ resolved — Miguel 2026-04-23 email |
+| 4 | Heat7 restraint | 未明确 | 10.0 | MEDIUM | 合理默认，待导师确认 |
+| 5 | Gaussian version | 09 | 16 | LOW | ff14SB/GAFF 不受影响，IOp 已修正 |
+| 6 | AMBER version | 16 | 24p3 | LOW | ff14SB 等价 |
+| 7 | GROMACS version | 5.1.2 | 2026.0 | LOW | PLUMED 接口兼容 |
 | 7 | Langevin gamma | 未报告 | 1.0 | LOW | 标准默认值 |
 | 8 | Barostat | 未报告 | Berendsen | LOW | 仅影响 NPT 平衡阶段 |
 

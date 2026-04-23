@@ -12,50 +12,49 @@
 
 ---
 
-## Current (2026-04-22)
+## Current (2026-04-23 — Miguel pivot)
 
-### Phase A landed
-Path CV diagnostic package committed (`e2f19f4`). Self-projection PASS, PATHMSD↔FUNCPATHMSD PASS, O-endpoint tangent OFF-TANGENT signal (21/21 frames). Rules out technical bugs at PATHMSD / λ / metric. λ=379.77 is FP-022-settled. VERDICT at `replication/metadynamics/path_cv/diagnostics/VERDICT_2026-04-21.md`.
+### Miguel Iglesias-Fernández email 2026-04-23 — ground-truth contract
+Original Osuna 2019 author clarified the MetaD recipe directly. Paper contract (authoritative, supersedes SI re-read):
+- `UNITS LENGTH=A ENERGY=kcal/mol` (SI values are Å / kcal·mol⁻¹, not nm / kJ·mol⁻¹)
+- `ADAPTIVE=DIFF SIGMA=1000` — time window in integrator steps (≈ 2 ps), NOT a geometry Gaussian width
+- `HEIGHT=0.15 kcal/mol` BIASFACTOR=10 PACE=1000 TEMP=350
+- 10 parallel walkers, not single-walker
+- `UPPER_WALLS ARG=p1.zzz AT=2.5 KAPPA=800` (Å, kcal/mol)
+- `WHOLEMOLECULES ENTITY0=1-39268` every step
+- Email + annotated template at `replication/metadynamics/miguel_2026-04-23/miguel_email.md`
 
-### Probe sweep (σ floor/ceiling ladder) — CLOSED
-All 5 probes (P1–P5) stalled with max_s ≤ 1.64 through ≥ 5 ns. **SIGMA_MIN/MAX axis does not rescue.** Decision: stop scanning this axis.
-- P3 extension 44956161 TIMEOUT at 15h (run logged but no rescue)
-- P5 44956006 COMPLETED 6:28, same stall pattern
-- `replication/metadynamics/probe_sweep/ladder.yaml` is the source of truth
+### λ=3.77 Å⁻² (= 379.77 nm⁻²) — Codex-confirmed
+Miguel's `LAMBDA=80` is correct for HIS denser path (adjacent MSD ~0.03 Å²); our 15-frame path has adjacent MSD ~0.61 Å², so Branduardi textbook λ = 2.3 / 0.61 ≈ 3.77 Å⁻². Miguel's 80 would be 21× too sharp for our path (neighbor weight 10⁻²¹, integer-snap artifact). FP-022 was CORRECT all along; FP-027 re-opening was the error. See FP-032 + `replication/metadynamics/miguel_2026-04-23/lambda_audit_2026-04-23.md`.
 
-### Aex1 cMD — running
-Job 45186335 on a100-gpu, 18 ns / 500 ns (3.9 %), 273 ns/day, ETA ~44 h. This is the chemistry-control line: 5DW0 chain A (PLS external aldimine) on same PATHMSD + λ + plumed.dat. 5DW0 → s ≈ 1.07 on current path.
-- Load-state stale-XML bug fixed by preflight diff (ChatGPT Pro spec, Codex-applied)
-- FP-028 (openmm CUDA PTX) resolved on prod branch; CPU fallback not needed
-- Post-cMD plan: Aex1 MetaD 5–10 ns on same path to discriminate chemistry-specific vs path-local stall
+### Initial 10-walker production — LAUNCHED 2026-04-23
+**Job `45320189` (array 0-9) RUNNING** on volta-gpu, 10-walker WALKERS_DIR sync, path_gromacs.pdb 15 frames, all-PATHMSD-atoms λ=3.77 Å⁻². 3-day walltime; ETA depends on convergence, not hard wall.
+- Driver self-projection gate PASS under UNITS=A + λ=3.77 (s: 1.092 → 14.907 monotonic, z ≈ −0.049 Å²).
+- COLVAR / HILLS shared via `HILLS_DIR/`; per-walker provenance.txt records Miguel-email source + λ contract.
+- Monitor cadence: every 2 h (per user request). Metrics: max_s per walker, HILLS σ columns (verify DIFF populates non-zero), first COLVAR s seed ≈ 1, wall-clock progress.
 
-### Next strategic framing (ChatGPT Pro 2026-04-22)
-The probe sweep ruling out SIGMA_MIN/MAX narrows the remaining hypotheses to two **separable** variables:
-- **H1 — anchor set**: direct 1WDW→3CEP linear interpolation may be globally OK but locally poor at O-end; PC-state anchor (5DW0) not used in current path
-- **H2 — initial SIGMA=0.1**: the initial Gaussian seed is UNVERIFIED (SI silent); probe sweep varied floor/ceiling only, never the seed
+### Superseded directories (DEPRECATED, do not launch from)
+- `replication/metadynamics/probe_sweep/` — P1–P5 were GEOM scans, invalidated by DIFF. `DEPRECATED.md` points at Miguel dir.
+- `replication/metadynamics/pilot_matrix/` — 2×2 (anchor × SIGMA seed) scaffold built on GEOM assumption. Nothing launched. `DEPRECATED.md` points at Miguel dir.
+- Anchor-set question (1WDW→3CEP vs 1WDW→5DW0) is still scientifically legitimate but must be re-posed under the Miguel contract, not inside the old 2×2 scaffold.
 
-Rather than launching 10 parallel walkers (same CV, falsification-only, no causal signal), Pro's plan is a **2×2 pilot matrix** holding ff/λ/bias/pace constant and varying only {anchor set, initial SIGMA}:
-
-| Pilot | Path | SIGMA | Purpose |
-|---|---|---|---|
-| P1 (baseline) | 1WDW→3CEP | 0.1 | have |
-| P2 | 1WDW→3CEP | 0.3 | isolates seed axis |
-| P3 | 1WDW→5DW0 | 0.1 | isolates anchor axis |
-| P4 | 1WDW→5DW0 | 0.3 | interaction |
-
-Each pilot runs 3 ns; only winner extends to 10 ns. Read {max_s, p95(s), p95(z), (s,z) occupied bins, HILLS center spread}.
+### Aex1 cMD — running (parallel, not Miguel-gated)
+Job `45186335` on a100-gpu, ~13 h / 500 ns target, ~273 ns/day. Chemistry-control line: 5DW0 chain A (PLS external aldimine), unbiased. Not affected by Miguel pivot (no MetaD contract in cMD phase).
+- stale-XML preflight bug fixed; FP-028 (openmm CUDA PTX) resolved.
+- Post-cMD Aex1 MetaD prep will use Miguel contract (UNITS=A, DIFF SIGMA=1000, WALKERS_N=10, λ per Aex1 path density) once cMD completes.
 
 ## Next 48 hours
 
-1. **Cheap O-end diagnostic first** — project existing unbiased Ain 500 ns cMD onto current path, plot z vs t. ~30 min with existing traj. If thermal alone saturates z while s pinned, Pilot 3/4 (anchor change) is predicted to be the winner before GPU burn. (Unblocks once `path_cv/attribution/project_to_path.py` window-NaN is fixed — cap 2 h.)
-2. **Pilot 2 launch** — `ladder.yaml` add P6 with SIGMA=0.3, floor/ceiling unchanged. Cheapest of the 4; launches tonight. Gate read at 3 ns.
-3. **1WDW→5DW0 path build** — extract 5DW0 chain A 112 Cα, renumber to Ain convention, re-run `generate_path_cv.py`, **re-run self-projection + re-derive λ for new anchor geometry** (do NOT assume λ=379.77 transfers). Multi-hour task. Gate: self-projection must PASS before Pilots 3/4 launch.
-4. **Aex1 cMD monitor** (hourly cron) — flag on completion or wall-clock drift; post-cMD MetaD prep is queue-able once this crosses 50 ns.
-5. **Osuna group email** (Iglesias-Fernández) — draft at `reports/osuna_email_draft_2026-04-18_iglesias.md`, send on user confirmation.
+1. **Monitor 45320189 at 2 h cadence** — log max_s, σ-column population (DIFF sanity), s-seed (~1), wall-clock; first checkpoint at first HILLS row (~1 ps). If all walkers stall <s=2 through 10 ns under Miguel contract → anchor-set / piecewise-path becomes the surviving live hypothesis. If any walker crosses s>3 → Miguel contract vindicates and the whole GEOM/σ-ladder story was the wrong axis.
+2. **Docs sweep** — tutorials, MASTER_TECHNICAL_GUIDE, TrpB_MetaDynamics_Complete_Workflow, JACS2019 parameters doc all still quote old (GEOM, SIGMA=0.1 nm, 50 ns single-walker, λ=3.798 nm⁻²) contract. Replace with Miguel contract. Do NOT rewrite failure-patterns.md (FP-031/032 already land the correction in place).
+3. **Aex1 cMD monitor** — hourly cron; post-cMD Aex1 MetaD prep (path-CV self-projection + λ derivation on 5DW0-seeded path) queue-able once cMD crosses 50 ns.
+4. **Miguel reply draft** — acknowledge contract, report our λ path-density derivation (so Miguel knows we did not blindly copy his 80), attach 45320189 first 10 ns COLVAR when available.
+5. **Commit + push Miguel pivot** — single commit covering plumed.dat/plumed_template/single/materialize_walkers/submit/provenance + FP-031/FP-032/FP-022 corrigendum + DEPRECATED.md × 2 + this NEXT_ACTIONS rewrite + tutorial doc sweep. Author `alex051107 <2476939435@qq.com>`, NO Claude attribution. Target `trpb-metadynamics-replication.git` branch `new_idea_explore`; update PR #2.
 
-### Will NOT do now (Pro-deprioritized)
-- **10 parallel walkers** — same CV, no causal signal until 2×2 returns. Defer until 2×2 matrix has a winner or Pilots 3/4 confirm anchor set is the axis.
-- **Full piecewise O→PC→C path** — Pro's sequencing: first-round local pilot is "keep 15 frames, 112 Cα, λ=379.77, only change terminal anchor", not production-grade piecewise. Upgrade to piecewise only after Pilots 3/4 show rescue on the simpler local-anchor swap.
+### Will NOT do now
+- **Revisit λ scheme** — FP-022 + FP-032 + Codex λ audit all landed. Not re-opening.
+- **1WDW→5DW0 path build** — legitimate but contingent on Miguel-contract initial run's verdict. If 45320189 escapes, anchor change is not the pivot. If it stalls, anchor build becomes B-priority.
+- **Launch piecewise path** — same reasoning; defer until Miguel initial returns a verdict.
 
 ---
 

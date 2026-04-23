@@ -5,7 +5,19 @@
 **DOI**: 10.1021/jacs.9b03646  
 **Supporting Information**: ja9b03646\_si\_001.pdf  
 **Author**: Zhenpeng Liu (<your-onyen>@ad.unc.edu), UNC Chapel Hill  
-**Last updated**: 2026-04-02
+**Last updated**: 2026-04-23 (Miguel 2026-04-23 email override; see banner below)
+
+> **⚠️ 2026-04-23 MIGUEL IGLESIAS-FERNÁNDEZ CONTRACT**: the original Osuna 2019 first author emailed the definitive MetaD recipe. If any later section of this tutorial (especially the `plumed.dat` template, the Path-CV λ, `ADAPTIVE=GEOM`, `SIGMA_MIN/MAX`, or the single-walker 50 ns framing) conflicts with the following, **the Miguel contract wins**:
+>
+> - `UNITS LENGTH=A ENERGY=kcal/mol` (SI numbers are Å / kcal·mol⁻¹ — no nm/kJ rescaling)
+> - `ADAPTIVE=DIFF SIGMA=1000` (a 1000-step time window ≈ 2 ps; this is NOT a Gaussian width)
+> - `HEIGHT=0.15 kcal/mol`, `BIASFACTOR=10`, `PACE=1000`, `TEMP=350`
+> - `WALKERS_N=10` parallel (SI always meant 10 walkers; single-walker is fallback only)
+> - `UPPER_WALLS ARG=p1.zzz AT=2.5 KAPPA=800` (Å, kcal/mol)
+> - `WHOLEMOLECULES ENTITY0=1-39268` every step
+> - `PATHMSD LAMBDA=3.77 Å⁻²` (= 379.77 nm⁻²) for our 15-frame path; Miguel's `LAMBDA=80 Å⁻²` is correct only for his denser path and is 21× too sharp for ours (see FP-032).
+>
+> Authoritative source: `replication/metadynamics/miguel_2026-04-23/miguel_email.md` + FP-031/FP-032 in `replication/validations/failure-patterns.md`. All remaining `ADAPTIVE=GEOM` / `SIGMA_MIN,MAX` narrative in this tutorial is historical and preserved for record only.
 
 > **IMPORTANT**: Throughout this tutorial, paths use `$WORK` as shorthand for your working directory on Longleaf. Before starting, set this variable:
 > ```bash
