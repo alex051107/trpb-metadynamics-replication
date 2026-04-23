@@ -582,8 +582,9 @@ METAD ...
   BIASFACTOR=10
   TEMP=350
   ADAPTIVE=GEOM
-  SIGMA_MIN=0.1
-  SIGMA_MAX=3.0
+  SIGMA=0.1
+  SIGMA_MIN=0.3,0.005   # per-CV (s, z) in CV units; FP-024
+  SIGMA_MAX=1.0,0.05    # per-CV (s, z) in CV units; FP-024
   FILE=HILLS
   STRIDE=500
 ... METAD
