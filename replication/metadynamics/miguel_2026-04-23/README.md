@@ -14,7 +14,7 @@ Authority: email from Miguel (original Osuna 2019 author) received
 See `miguel_email.md` § "Points of conflict". Short version:
 
 - UNITS: **LENGTH=A ENERGY=kcal/mol** (not nm/kJ)
-- LAMBDA: Miguel's email quotes `LAMBDA=80 Å⁻²` for HIS path; our 15-frame path has adjacent MSD ≈ 0.61 Å², so Branduardi textbook gives **`LAMBDA=3.77 Å⁻²`** (= 379.77 nm⁻², identical to our historical FP-022 value). Miguel's 80 is 21× too sharp for our path density (integer-snap / kernel-collapse artifact). See FP-032 and `lambda_audit_2026-04-23.md`.
+- LAMBDA: Miguel's email quotes `LAMBDA=80 Å⁻²` for HIS path. Branduardi's formula (λ ≈ 2.3/⟨MSD_adj⟩) on *our* 15-frame 1WDW→3CEP linear-interpolation path (⟨MSD⟩ ≈ 0.61 Å²) gives **`LAMBDA=3.77 Å⁻²`** (= 379.77 nm⁻², identical to our historical FP-022 value). Miguel's 80 is 21× too sharp *for our path density* (integer-snap / kernel-collapse artifact). This does NOT mean 80 is wrong on Miguel's own path — it likely reflects a denser path built from a construction recipe the SI does not fully specify. Path-construction recipe remains the uncontrolled variable; see FP-032, FP-033, and `lambda_audit_2026-04-23.md`.
 - ADAPTIVE: **DIFF** (not GEOM) — SIGMA=1000 is a time window in steps
 - 10 walkers mandatory — `WALKERS_DIR=HILLS_DIR WALKERS_N=10`
 - UPPER_WALLS on p1.zzz AT=2.5 Å KAPPA=800
@@ -53,7 +53,7 @@ copy of `path_gromacs.pdb`, the `metad.mdp` from single_walker, and a
    plumed driver --plumed plumed_self.dat --mf_pdb path_driver.pdb
    ```
    with `plumed_self.dat` = `UNITS LENGTH=A` + `PATHMSD REFERENCE=path_driver.pdb LAMBDA=3.77` + `PRINT`. `path_driver.pdb` is `path_gromacs.pdb` with atom serials renumbered 1..112 per MODEL (FP-030: GROMACS full-system indexing is incompatible with driver's 112-atom view). Result: s 1.092 → 14.907 monotonic, z ≈ −0.049 Å² (kernel-average boundary effect, expected small).
-   - λ=80 (Miguel's value for HIS path) was REJECTED at this gate: it produced integer-snap s and kernel weights ~10⁻²¹ between neighbor frames (over-sharpness). Our path has ⟨MSD⟩ ~20× higher than his, so 2.3/⟨MSD⟩ = 3.77 Å⁻² is the Branduardi textbook choice. Verified by independent Codex audit. See `lambda_audit_2026-04-23.md` and FP-032.
+   - λ=80 (Miguel's value for HIS path) was rejected **as a transplant onto our path**: integer-snap s + kernel weights ~10⁻²¹ between neighbor frames. This falsifies 80-on-our-path, NOT 80-in-absolute-terms. On his own denser path (⟨MSD⟩~20× smaller than ours), 80 is plausibly the Branduardi-correct value. See `lambda_audit_2026-04-23.md`, FP-032, FP-033. Open question: rebuild Miguel's actual PATH.pdb recipe (`path_construction_ABC_plan.md`, pending).
 4. For each walker_NN, build a TPR from `start.gro + metad.mdp` (shared across walkers), submit as 10-way SLURM array on volta-gpu or a100-gpu.
 5. Monitor: first HILLS row should appear at ~1 ps of sim time with Gaussian height ≈ 0.15 kcal/mol (check the sigma column — DIFF scheme populates a σ inferred from walker's recent path). First COLVAR should show s seeded around 1 (O-basin).
 
