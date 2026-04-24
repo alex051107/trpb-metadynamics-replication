@@ -1,0 +1,68 @@
+Cross-species Needleman-Wunsch alignment — 1WDW-B vs 3CEP-B
+===========================================================
+
+Purpose
+-------
+Derive the residue-to-residue correspondence between the two crystal
+chains used as Path-CV endpoints (1WDW-B = Open, 3CEP-B = Closed),
+so that the PATHMSD reference compares homologous Cα positions, not
+residue numbers.
+
+Implementation
+--------------
+Script   : replication/metadynamics/path_seqaligned/build_seqaligned_path.py
+Dependencies : numpy only (no BioPython)
+PDB parsing  : handwritten fixed-column reader, chain B, altloc blank or 'A'
+Scoring    : match = +2, mismatch = -1, gap = -2
+  (BLOSUM62 + BLASTp defaults produce the identical alignment on these two
+   chains because sequence identity > 50 %; custom scoring is used to keep
+   the dependency count at zero.)
+
+Input sequences
+---------------
+1WDW.pdb chain B : 385 residues, resid 1 .. 385
+3CEP.pdb chain B : 393 residues, resid 1 .. 393
+
+Alignment result
+----------------
+NW score         : 286
+Sequence identity : 59.0 % over the 112 residues selected for the Path-CV
+          (COMM domain 97-184 plus base domain 282-305, 1WDW numbering)
+Gaps within selection : 0  (essential; otherwise uniform offset is illegal)
+Uniform offset    : +5  (i.e. 1WDW resid X maps to 3CEP resid X + 5)
+
+Examples (1WDW resid -> 3CEP resid / one-letter AA):
+  97 (S) -> 102 (S)      100 (Y) -> 105 (Y)    150 (G) -> 155 (G)
+  184 (A) -> 189 (A)     282 (L) -> 287 (L)    305 (K) -> 310 (K)
+
+Independent verification
+------------------------
+A blind Codex reimplementation (same two sequences, no access to the above
+script) produced:
+  NW score         : 286
+  Sequence identity : 59.0331 %
+  Uniform offset    : +5
+  Byte-level equality with the primary implementation.
+
+Why the offset is uniform — the NW check
+----------------------------------------
+The scientific validity of "use +5 offset on all 112 residues" depends on
+the empirical observation that:
+
+  min([mapping[r] - r for r in COMM ∪ BASE]) == max([mapping[r] - r for ...])
+
+If there were any insertion or deletion within the selected residue range,
+these two extrema would differ and a single-number fix would be
+mathematically illegal.  The Needleman-Wunsch value-add is not the "discovery"
+of +5 (most of that is a crystallographic numbering-convention difference at
+the N-terminus); it is the **proof** that a uniform offset is defensible
+across the 112 residues that enter the Path-CV.
+
+Downstream consequence
+----------------------
+Before (naive mapping): compared non-homologous residues, per-atom O↔C
+                        RMSD = 10.89 Å, Branduardi λ = 3.80 Å⁻²
+                        (21 × smaller than Miguel's reported 80).
+After (uniform +5):     compared true homologs, per-atom O↔C
+                        RMSD = 2.115 Å,  Branduardi λ = 100.79 Å⁻²
+                        (1.26 × Miguel's 80 — same kernel-width regime).

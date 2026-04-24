@@ -1,0 +1,38 @@
+Job 45515869 — single-walker MetaD on sequence-aligned path
+========================================================================
+
+Source COLVAR    : chatgpt_pro_consult_45558834/raw_data/pilot_45515869_COLVAR
+PLUMED format    : time  path.sss  path.zzz  metad.bias  wall4.bias  rct
+Rows             : 40,193
+Simulation time  : 8.038 ns  (8038.4 ps)
+
+path.s statistics
+  min(s)         : 1.0000  at t =   4920.2 ps
+  max(s)         : 12.8665  at t =   6085.4 ps
+  mean(s)        : 5.1784
+  median(s)      : 5.0095
+  std(s)         : 2.7909
+
+path.z statistics  (off-path deviation, squared A)
+  min(z)         : 0.2446
+  max(z)         : 2.5882
+  mean(z)        : 1.5298
+  median(z)      : 1.5321
+
+Histogram of path.s
+  s = [ 1,  2)  16.50 %  ################
+  s = [ 2,  3)  10.21 %  ##########
+  s = [ 3,  4)  10.71 %  ##########
+  s = [ 4,  5)  12.45 %  ############
+  s = [ 5,  6)  11.80 %  ###########
+  s = [ 6,  7)  11.29 %  ###########
+  s = [ 7,  8)   9.31 %  #########
+  s = [ 8,  9)   6.60 %  ######
+  s = [ 9, 10)   5.19 %  #####
+  s = [10, 11)   4.37 %  ####
+  s = [11, 12)   1.51 %  #
+  s = [12, 13)   0.04 %  
+
+Fraction at s < 1.25  :  8.03 %
+Fraction at s >= 10   :  5.93 %
+Fraction at s >= 12   :  0.04 %
