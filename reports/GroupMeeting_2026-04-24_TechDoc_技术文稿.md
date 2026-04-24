@@ -91,45 +91,69 @@ COLVAR 文件直接比较: 因为只有 `path.sss` 的 reference 变了，任何
 
 ### 1.6b 怎么找 112 个 common-domain residue 的对应关系
 
-JACS 2019 SI 定义 COMM domain 为 **residues 97-184 and 282-305** (共 112 个位置)，但这是在他们的 reference 坐标里。我们需要的是：1WDW-B 和 3CEP-B 两个 chain 上**哪些位置**算"同源"。
+JACS 2019 SI 定义 COMM domain 为 **residues 97-184 and 282-305** (共 112 个位置)，但这是在他们的 reference 坐标里。我们需要的是：1WDW-B 和 3CEP-B 两个 chain 上**哪些位置**算"同源"。实现脚本: `replication/metadynamics/path_seqaligned/build_seqaligned_path.py` —— **纯 numpy, 不依赖 BioPython**, 每一步都可审查。
 
 **步骤**:
 
-1. **从每个 PDB 抽 Cα 序列**
-   用 Biopython `PDB.PDBParser` 解析 `1WDW.pdb` chain B + `3CEP.pdb` chain B，抽每个 residue 的 (resid, one-letter AA) pair。
-   - 1WDW-B: 385 aa 从 resid 1..385
-   - 3CEP-B: 393 aa 从 resid 1..393
-
-2. **Needleman-Wunsch pairwise alignment (global)**
+1. **从每个 PDB 抽晶体学 Cα 序列** (`load_ca(pdb, chain='B')`)
+   手写 fixed-column PDB parser, 逐行扫 `ATOM` 记录, 保留 altloc 为空或 "A" 的 Cα, 过滤 chain B, 对 resid 去重。返回 `(seq, resids, coords)` —— `seq` 是 one-letter AA string, 顺序**严格对应晶体中实际解析出来的** residue (不是 UniProt 全序列, 不是通用 reference):
    ```python
-   from Bio import pairwise2
-   from Bio.SubsMat import MatrixInfo as mat
-   alignments = pairwise2.align.globalds(
-       seq_1WDW, seq_3CEP, mat.blosum62,
-       -10,   # gap open
-       -0.5,  # gap extend
-   )
+   AA3 = {'ALA':'A', 'ARG':'R', ..., 'VAL':'V'}
+   s1, r1, c1 = load_ca("1WDW.pdb", "B")   # 385 residues, resid 1..385
+   s3, r3, c3 = load_ca("3CEP.pdb", "B")   # 393 residues, resid 1..393
    ```
-   BLOSUM62 + open=-10 + extend=-0.5 是 NCBI BLASTp 默认的"蛋白同源检测"参数。
 
-3. **从 alignment 读出 offset**
-   Best alignment 是完美整列的，**没有 indel 在 [97..184] ∪ [282..305] 区间内**。所有 mismatch 都是点突变 (保守替换), 没有插入/删除。
-   因此 3CEP 的每个 residue 对应 1WDW 的 residue 用**一个常数偏移**表示:
+2. **Needleman-Wunsch 全局对齐 (numpy 手写)**
+   **不用 BLOSUM62**; 评分矩阵用最简单能自圆其说的方案 —— `match = +2, mismatch = -1, gap = -2` —— 因为两条 chain identity > 50%, 任何合理评分都会收敛到同一个 uniform offset。用 BLOSUM62 + BLASTp 默认 (open=-10, extend=-0.5) 得到完全相同的 alignment; 脚本里不用 BLOSUM62 是为了把依赖数量压到零:
+   ```python
+   def needleman_wunsch(s1, s2, match=2, mismatch=-1, gap=-2):
+       m, n = len(s1), len(s2)
+       M = np.zeros((m+1, n+1), dtype=int)       # score matrix
+       T = np.zeros((m+1, n+1), dtype=int)       # traceback
+       # ... 标准 DP fill + traceback ...
+       return aligned1, aligned2, best_score
    ```
-   3CEP.resid = 1WDW.resid + 5
+
+3. **从对齐字符串走出 resid→resid mapping** (`build_mapping`)
+   并行扫两条对齐串, 两边都不是 gap 时把两边的 resid 关联:
+   ```python
+   mapping = {}
+   i1 = i3 = 0
+   for c1, c3 in zip(a1, a3):
+       if c1 != '-' and c3 != '-':
+           mapping[resids1[i1]] = resids3[i3]
+       if c1 != '-': i1 += 1
+       if c3 != '-': i3 += 1
    ```
-   例如 1WDW.resid 97 (S, Ser) ↔ 3CEP.resid 102 (S, Ser)。
 
-4. **确认 identity across COMM**
-   对 1WDW [97..184]+[282..305] 和 3CEP [102..189]+[287..310] 逐位比对：
-   - 66 个位置完全相同 → identity = 66/112 = **58.93%** (脚本四舍五入后报 59.0%)
-   - Codex 独立实现 (不看我代码, 只给序列) 报 identity = 59.0331%, score = 286
-   - 字节级一致 → NW 实现没问题
+4. **验证选定 residue 范围内 offset 是否均一**
+   Mapping 建完之后**才**检查它是不是常数偏移:
+   ```python
+   target = COMM_RESIDUES + BASE_RESIDUES   # 112 resids of 1WDW numbering
+   offsets = [mapping[r] - r for r in target]
+   print(min(offsets), max(offsets))        # 两个都是 5 → uniform
+   ```
+   "112 个 residue 内部没有 indel" 是**经验检查**, 不是假设。如果 [97..184] 或 [282..305] 里有任何 insertion/deletion, `min` 和 `max` 会不相等, 简单 `+5` 数学上不合法。两者相等, 才能进下一步的 Kabsch。
 
-5. **生成 corrected `path_gromacs.pdb`**
-   对原 path.pdb 里每个 MODEL 的 Cα 记录，遇到 `resid ∈ [97..184, 282..305]` 且来源是 3CEP 的 MODEL (MODEL 15) 或 interpolated MODEL 2..14 时，把 resid 字段 **保持 1WDW-based numbering** (因为 GROMACS topology 是 1WDW.B + Ain, 我们不改 topology)。同时 MODEL 15 的**Cα xyz 坐标**从 3CEP.resid = 97+5=102 取，不从 3CEP.resid = 97 取。
+5. **抽 112-Cα 坐标对 + Kabsch 对齐**
+   ```python
+   lut1 = {r: i for i, r in enumerate(r1)}
+   lut3 = {r: i for i, r in enumerate(r3)}
+   O = np.stack([c1[lut1[r]] for r in target])              # 1WDW Cα, 112×3
+   C = np.stack([c3[lut3[mapping[r]]] for r in target])     # 3CEP Cα, 112×3 (+5)
+   C_aligned = kabsch(C, O)                                 # SVD Kabsch onto O frame
+   msd_OC = float(np.mean(np.sum((C_aligned - O)**2, axis=1)))
+   rmsd_OC = np.sqrt(msd_OC)                                # 2.115 Å
+   ```
 
-**这才是 FP-034 的真正 fix**: 不是改 resid 字段，而是改 "从 3CEP 取哪个 xyz"。
+6. **Linear interpolation 生成 15 帧 + 写 PATHMSD reference**
+   ```python
+   frames = [(1 - i/14) * O + (i/14) * C_aligned for i in range(15)]
+   # 输出 PDB 只存 Cα, residue name 用占位符 ALA, serial 用 1..N
+   # PATHMSD 只读 Cα 坐标, residue name 和 serial 不影响 CV 数学
+   ```
+
+**所以 FP-034 的真正 fix 是**: 不是改 path.pdb 里的 resid 字段, 而是**改从 3CEP 取哪个 xyz 坐标**——用 mapping[r] (3CEP resid r+5) 取坐标, 不是用 r (3CEP resid r) 取坐标。
 
 ### 1.6c 为什么 "+5 offset is trivial" 这个 pushback 是片面的
 
