@@ -623,20 +623,23 @@ Output:      N-frame trajectory                 audit report:
 
 **具体 demo scenario — Amin's STAR-MD SURF benchmark on TrpB**:
 
+> ⚠️ **全部数字 illustrative / hypothetical — 我们 NEVER run STAR-MD trajectory**。以下是 architectural argument 示例，不是 measured results。Codex + Amin-lens subagent 独立 flag 过这点（2026-04-24 review）。实际 demo 需要 STAR-MD checkpoint release 或 Amin 的 fork output 才能跑。
+
 1. Amin 拿 STAR-MD fork 在 TrpB WT (seq + 5DVZ starting) 上 rollout
-   1 μs trajectory (100 frames × 10 ns 间隔)
-2. Amin 调用 `cartridge.score_trajectory(trajectory, reference="TrpB_WT")`
-3. Cartridge 返回:
-   - O/PC/C 三态 occupancy: STAR-MD 输出 `[60%, 35%, 5%]` vs cartridge
-     reference `[50%, 30%, 20%]` → C 态 **4× under-represented**
-   - Rare-state recall on "catalytic-ready C" bin: **12%** vs cartridge
-     oracle 70% → STAR-MD miss 了催化 relevant 的 rare state
-   - FDT closure residual: *LARGE* → STAR-MD 在 barrier region 明显低估
-     memory kernel (对应 MNG 方法 E 的 diagnostic 预测)
-4. Amin 在 benchmark report 里列 TrpB 作为 **adversarial case**:
+   1 μs trajectory (100 frames × 10 ns 间隔) — **[尚未发生]**
+2. Amin 调用 `cartridge.score_trajectory(trajectory, reference="TrpB_WT")` — **[API 尚未实现，D2 deliverable 0%]**
+3. Cartridge 假设返回（illustrative）:
+   - O/PC/C 三态 occupancy: 假设 STAR-MD 输出 `[60%, 35%, 5%]` vs cartridge
+     reference `[50%, 30%, 20%]` → C 态 under-represented — **[假设数字，非实测]**
+   - Rare-state recall on "catalytic-ready C" bin: 假设 STAR-MD 12% vs cartridge
+     oracle 70% — **[假设数字，非实测]**
+   - FDT closure residual: LARGE (定性预期, 对应 MNG 方法 E 的 diagnostic 预测) — **[理论预期，非实测]**
+4. Amin 在 benchmark report 里**可能**列 TrpB 作为 adversarial case:
    "generic SE(3) rollout captures overall dynamics but under-represents
-   catalytic substates by 4×; this is the kind of failure mode cartridge
-   identifies."
+   catalytic substates; this is the kind of failure mode cartridge
+   identifies." — **[假设台词，需实际 demo 后兑现]**
+
+**OOD caveat**（Amin-lens 明确要求我承认）: ATLAS 不含 PLP-cofactor 复合物，STAR-MD 在 TrpB 上的任何低分**也可能是 OOD artifact**，不必然是模型 failure mode。真实解读需要 control：同 STAR-MD 在 ATLAS-like 非 enzyme 上先跑，cartridge 给 baseline 分，然后对比 TrpB 分数差。
 
 **这对双方都是 win**:
 - Amin 的 benchmark paper 有了 enzyme-specific stress test 材料（不再只
