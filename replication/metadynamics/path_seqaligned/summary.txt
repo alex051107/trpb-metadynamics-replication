@@ -1,0 +1,26 @@
+Sequence-aligned TrpB 15-frame path (2026-04-23)
+============================================================
+
+Bug fix: 1WDW-B vs 3CEP-B naive residue-number mapping was
+comparing non-homologous positions. Proper sequence alignment
+has consistent offset +5: 1WDW resid X -> 3CEP resid (X+5).
+
+Aligned N: 112 Cα
+Selection: COMM 97-184 + base 282-305 (1WDW numbering)
+Corresponding 3CEP: COMM 102-189 + base 287-310
+
+Alignment stats:
+  NW score = 286
+  sequence identity = 59.0%
+  offset = +5 (uniform across all 112 residues)
+
+Path geometry:
+  O↔C per-atom RMSD = 2.115 Å
+  ⟨MSD_adj⟩ = 0.0228 Å² per atom
+  neighbor_msd_cv = 0.0000
+  λ = 100.7916 Å⁻²  = 10079.16 nm⁻²
+
+Comparison:
+  naive mapping:   O↔C RMSD 10.89 Å, λ = 3.80 Å⁻²
+  this path:       O↔C RMSD  2.115 Å, λ = 100.79 Å⁻²
+  Miguel email:    λ = 80 Å⁻² (our λ / Miguel = 1.260×)
