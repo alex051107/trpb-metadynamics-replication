@@ -6,9 +6,14 @@
 
 ## 1 句话总结本周（开场第一句）
 
-**"这周发现真正卡住项目的不是 MetaD 参数，是 path 定义本身的一个跨物种 residue mapping bug (FP-034)。修完之后 pilot 在 sim 6 ns 时 transient cross s=12 gate，端到端通路 confirm。10-walker primary production 正在启动。"**
+**"本周核心是 path CV 的跨物种 residue mapping bug (FP-034) —— 修完后 corrected path 让 pilot 在 8 ns 内 sample 了 s=1 到 s=12 整段，vs 老 path 16 ns 只 sample s=1-1.9 (6× wider exploration)。但 start.gro 本身是 off-path 构象 (z=1.68)，所以 s=7 的投影不能当生物学解读，10-walker 需要从 pilot 低-z frames 重选 seeding。"**
 
-**更新时间 2026-04-24 06:17**: GATE CLEARED — pilot 45515869 @ t=6085 ps, max_s=12.867（single transient ~120 ps, fraction(s>12)=0.05%, 未 sustained）。
+**Pro verdict (2026-04-24 am)**: FP-034 fix 本身 OK 保留；start.gro s=7 降级为 "off-path endpoint projection"，不是 biology；10-walker 需要 reseed。
+
+**关键数据更新**:
+- Pilot: min_s=1.000 @ t=4920 ps, max_s=12.867 @ t=6085 (z=2.04 near-wall)
+- start.gro: direct Kabsch vs 1WDW = 1.59 Å RMSD (物理偏 Open side)
+- 老 path 对照 (45324928 16 ns): 75% 时间 s<1.25, 完全没突破
 
 ---
 

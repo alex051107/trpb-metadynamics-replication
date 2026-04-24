@@ -42,11 +42,12 @@
         },
         "    Replicator framing = asymptotic value 0 once FES converges; owner framing = reusable artifact for Yu/Amin/Raswanth",
         {
-          "text": "Pilot 45515869 于 t=6085 ps 单次 transient 越过 s=12 gate",
+          "text": "Pilot 8 ns 证实 corrected path 能 sample s=1 到 12.87",
           "bold": true,
           "color": "ACCENT"
         },
-        "    corrected path 端到端通路 confirm; 10-walker shared bias 启动依据"
+        "    caveat: start.gro (t=0) 是 off-path projection, z=1.68",
+        "    10-walker seeding 从 pilot 低-z frames 重选 (in progress)"
       ],
       "bulletsBox": {
         "y": 1.55,
@@ -473,55 +474,55 @@
     },
     {
       "type": "bullets+code",
-      "title": "Pilot 45515869 — GATE CLEARED at t=6085 ps (max_s=12.87)",
-      "subtitle": "4.3 ns plateau 后 single transient 越过 s=12 — path geometry 端到端通路 confirm",
+      "title": "Pilot 45515869 — corrected path exploration (s=1 to 12)",
+      "subtitle": "Pilot 8 ns samples s=1→12.87; start.gro is off-path (z=1.68), not a clean mid-path state",
       "bullets": [
         {
-          "text": "Pilot 轨迹（sim 到 6.2 ns）",
+          "text": "Pilot 实际 sample 分布（8 ns, 40193 frames）",
           "bold": true,
           "color": "ACCENT"
         },
-        "    t=0       s=7.09  (start.gro = 500 ns cMD 终态, 新 coord 下是 mid-path)",
-        "    t=437 ps  s=10.92 (first frontier)",
-        "    t=437 ps–6085 ps  plateau 4.3 ns at max_s=10.92",
-        "    **t=6085 ps  s=12.87 — transient breakthrough, GATE CLEARED**",
+        "    s=1: 到过 (min_s=1.000 at t=4920 ps)",
+        "    s<3: 26.7% 时间；s=7: 11.3% 时间；s=12: 0.05% transient",
+        "    整段 path s=1 到 12 已被 walker 物理访问",
         {
-          "text": "Gate criteria",
+          "text": "关键 caveat — start.gro 是 off-path endpoint",
           "bold": true,
           "color": "ACCENT"
         },
-        "    fraction(s>10) = 3.0%, fraction(s>12) = 0.05% (single transient ~120 ps)",
-        "    Not sustained — 没在 C-basin 驻留, walker 退回 s=7-9 震荡",
+        "    t=0 投影 s=7.09 但 z=1.68 Å²（不在 path 上）",
+        "    直接 Kabsch vs 1WDW 仅 1.59 Å RMSD（物理上仍偏 Open 侧）",
+        "    s=7 不代表 'Ain 在 PC basin'，只是 linear-interp soft-min 偏中段",
         {
-          "text": "End-to-end path validation",
+          "text": "max_s=12.87 near-wall transient",
           "bold": true,
           "color": "ACCENT"
         },
-        "    Walker 物理能跨 s=12 证明 corrected path 从 O 到近 C 整条通路通",
-        "    Single-walker well-tempered 填 bias 能推过次级 barrier (耗时 ~4.3 ns)",
-        "    10-walker shared bias 预期能把 transient 堆成 sustained C-basin occupancy",
+        "    t=6085 ps: s=12.87, z=2.04 (UPPER_WALLS AT=2.5 附近)",
+        "    单次 ~120 ps 宽，不 sustained；不算 clean barrier crossing",
         {
-          "text": "Caveat — path is linear-Cartesian, not mechanistic",
+          "text": "Vs baseline 45324928 (老 path)",
           "bold": true,
           "color": "ACCENT"
         },
-        "    neighbor_msd_cv ≈ 1.96e-14 → s 是 geometric waypoint, 不是 validated basin"
+        "    老 path 16 ns: s ∈ [1.00, 1.90], 75% 时间 s<1.25",
+        "    新 path 8 ns: s ∈ [1.00, 12.87] (6× 更宽 exploration)"
       ],
       "bulletsBox": {
         "y": 1.55,
         "h": 3.9
       },
-      "code": "# 45515869 COLVAR summary (sim 6.2 ns, wall 8h20m)\nt=0        ps  s=7.09   z=0.03\nt=437      ps  s=10.92  z=1.48  ← first frontier\nt=437-6085 ps  plateau at max_s=10.92\nt=6085     ps  s=12.87  ← GATE CLEARED (transient ~120 ps)\nt=6200     ps  s=7-9    ← walker retreated, 震荡 region",
+      "code": "# Pilot 45515869 s distribution (40193 frames)\ns=[1,2):  16.5%   s=[7,8):   9.3%   min_z = 0.245\ns=[2,3):  10.2%   s=[8,9):   6.6%   mean_z = 1.530\ns=[3,4):  10.7%   s=[9,10):  5.2%   max_z = 2.588 (near wall)\ns=[4,5):  12.5%   s=[10,11): 4.4%\ns=[5,6):  11.8%   s=[11,12): 1.5%\ns=[6,7):  11.3%   s=[12,13): 0.04%\nstart.gro at t=0: s=7.09, z=1.68 (off-path projection)",
       "codeBox": {
         "y": 5.6,
         "h": 1.1,
         "fontSize": 11
       },
       "sources": [
-        "Longleaf 45515869 COLVAR (live)",
-        "replication/metadynamics/path_seqaligned/REVERSE_SANITY_CHECK.md"
+        "Raw COLVAR analysis 2026-04-24",
+        "ChatGPT Pro independent verification 2026-04-24"
       ],
-      "footer": "Slide 9 / 17  ·  GATE CLEARED · 10-walker launch 已 conditional-approve"
+      "footer": "Slide 9 / 17  ·  corrected path exposes s=1-12 region  ·  seeding needs re-selection"
     },
     {
       "type": "two-column",
