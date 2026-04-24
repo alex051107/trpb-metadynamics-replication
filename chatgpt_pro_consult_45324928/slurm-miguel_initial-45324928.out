@@ -1,0 +1,36 @@
+=== initial_single start === Thu Apr 23 10:55:52 EDT 2026
+PLUMED_KERNEL=/work/users/l/i/liualex/plumed-2.9.2/lib/libplumedKernel.so
+host=g0311.ll.unc.edu  gpu=GPU 0: Tesla V100-SXM2-16GB (UUID: GPU-491e0644-bc1a-4b49-d7b1-7c1194344145)
+# Miguel fallback (HEIGHT=0.3, BIASFACTOR=15) with λ corrected to
+UNITS LENGTH=A ENERGY=kcal/mol
+p1: PATHMSD REFERENCE=path_gromacs.pdb LAMBDA=3.77 NEIGH_STRIDE=100 NEIGH_SIZE=6
+METAD ARG=p1.sss,p1.zzz ADAPTIVE=DIFF SIGMA=1000 SIGMA_MIN=0.1,0.01 HEIGHT=0.3 PACE=1000 BIASFACTOR=15.0 TEMP=350.0 GRID_MIN=0.5,0.0 GRID_MAX=15.5,2.8 GRID_BIN=300,100
+                :-) GROMACS - gmx mdrun, 2026.0-conda_forge (-:
+
+Executable:   /work/users/l/i/liualex/conda/envs/trpb-md/bin.AVX2_256/gmx
+Data prefix:  /work/users/l/i/liualex/conda/envs/trpb-md
+Working dir:  /work/users/l/i/liualex/AnimaLab/metadynamics/miguel_2026-04-23/initial_single
+Command line:
+  gmx mdrun -deffnm metad -plumed plumed.dat -ntmpi 1 -ntomp 4
+
+Compiled SIMD is AVX2_256, but CPU also supports AVX_512 (see log).
+The current CPU can measure timings more accurately than the code in
+gmx mdrun was configured to use. This might affect your simulation
+speed as accurate timings are needed for load-balancing.
+Please consider rebuilding gmx mdrun with the GMX_USE_RDTSCP=ON CMake option.
+Reading file metad.tpr, VERSION 2026.0-conda_forge (single precision)
+Changing nstlist from 20 to 40, rlist from 0.839 to 0.909
+
+
+Update groups can not be used for this system because atoms that are (in)directly constrained together are interdispersed with other atoms
+
+Using 1 MPI thread
+
+Non-default thread affinity set, disabling internal thread affinity
+
+Using 4 OpenMP threads 
+
++++ Loading the PLUMED kernel runtime +++
++++ PLUMED_KERNEL="/work/users/l/i/liualex/plumed-2.9.2/lib/libplumedKernel.so" +++
+starting mdrun 'Generic title'
+25000000 steps,  50000.0 ps.

@@ -479,3 +479,20 @@
 | 防范措施 | (1) 任何从外部作者拿到的 PATHMSD λ，先用 `plumed driver` 做 self-projection + 核对 `exp(-λ·⟨MSD_adj⟩)` 是否接近 0.1（Branduardi 启发式）；(2) "好看的 self-projection 整数 snap" 不是 validation——过 sharp 核也会给整数投影，需看帧间梯度是否连续；(3) 移植作者脚本时，单位和 λ 要**同时**核对，不要假设换算后就通用。 |
 | FP-022 / Miguel email corrigendum | 本项目原先在 FP-022 将 λ 锁定在 `379.77 nm⁻²`（per-atom MSD 约定），该值在当前 15-frame 路径下经 Codex 独立核对确认为 Branduardi 2007 教科书值。Miguel 的 `80 Å⁻²` 是**他系统**的正确值，但不能直接转移。重提交作业 `45320189` 使用 `λ=3.77 Å⁻²`（= 379.77 nm⁻² 换单位版），其余参数 100% Miguel contract。 |
 | 已修复 | ✅ 2026-04-23 `plumed_template.dat` / `plumed_single.dat` / `single_walker/plumed.dat` 全部更新为 `LAMBDA=3.77`（Å⁻² 下）；`materialize_walkers.py` 断言也同步更新（`LAMBDA_LITERAL = "LAMBDA=3.77"`）。自投影 gate 通过：`s` 从 1.092 → 14.907 单调，`z ≈ -0.05 Å²`（非零但小，符合 kernel-average 边界效应）。 |
+
+---
+
+## FP-034: 跨物种 PATHMSD 参考路径用 naive residue-number mapping 而非 sequence alignment → 21× λ 虚假 gap
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-04-23 |
+| 发现者 | Zhenpeng Liu（本地 Python 逐字符 AA 比对 + Needleman-Wunsch 重建）；Codex 独立验证 7/8 PASS |
+| 受影响文件 | `replication/metadynamics/path_cv/generate_path_cv.py`（line 182 计算序列对齐但 line 670 实际提取仍按 resid number）；`replication/metadynamics/single_walker/path_gromacs.pdb`（production path）；所有基于该 path 的 probe_sweep / pilot_matrix / Miguel fallback 运行（45324928, 45448011 等） |
+| 错误描述 | 我们的 15-frame O→C 路径以 1WDW 作为 open endpoint（PfTrpS, P. furiosus），3CEP 作为 closed endpoint（StTrpS, S. typhimurium），选取 COMM domain residues 97-184 + base 282-305（112 Cα）。提取坐标时**直接**按 residue number 对齐："1WDW resid X ↔ 3CEP resid X"。但 1WDW-B 和 3CEP-B 是两条不同物种的 TrpB β 亚基，residue numbering offset = **+5**（3CEP N 端多 5 个 residue：TTLLN 起始序列）。naive mapping 实际上在比较**非同源**位置。 |
+| 正确事实 | Needleman-Wunsch 全局比对 1WDW-B (385 aa) vs 3CEP-B (393 aa) 给出 uniform +5 offset：**1WDW resid X ↔ 3CEP resid (X+5)**。修正后：序列同一性 6.2% → 59.0%（正常 TrpB 同源水平），O↔C per-atom RMSD 10.89 Å → 2.115 Å，⟨MSD_adj⟩ 0.606 → 0.0228 Å²，Branduardi λ 3.80 → 100.79 Å⁻²。Miguel's LAMBDA=80 在 corrected path 上 ratio 1.26×（Branduardi 意义下可接受）。 |
+| 根因 | (1) `generate_path_cv.py:159-188` 计算了 BioPython pairwise2 序列对齐但**从未使用**对齐结果——line 668-671 提取坐标时直接用硬编码 residue list (`list(range(97,185)) + list(range(282,306))`)。(2) 跨物种 PDB 的 residue numbering convention 差异（signal peptide cleavage、construct 起始位置、missing density）从未在 FP 库里登记过。(3) SI 原文说"residues 97-184"但没有指明这是 1WDW 的编号还是"结构上同源位置"的编号——SI 本身的 ambiguity 也是共犯。 |
+| 下游污染 | **所有**基于 old path 的现象都需要重新 interpret：(a) 我们曾在 path_piecewise/ 里 audit 认为"5DW0/5DW3/5DVZ 全部 O-proximal, biological βPC label ≠ 几何中点" —— 该结论**被本 FP 推翻**，corrected path 上 5DW0 projects at s=9.46, 5DW3 at s=8.51, 5DVZ at s=5.37（Codex 验证）。(b) probe_sweep P1-P5 + Miguel fallback 45324928 长时间 O-basin stall **不是 filling pattern / SIGMA / wall 问题**，只是 naive path 下 t=0 初始构象被误标为 s≈1（corrected path 下同样 start.gro 的 t=0 是 s≈7，属于 mid-path）。(c) FP-032 里"Miguel λ=80 vs 我们 3.77 差 21×"的叙述也要修正——gap 本身存在（corrected 100.79 vs his 80 = 1.26×），但 21× 那部分源于本 FP 的 bug。 |
+| 防范措施 | (1) 任何跨物种 / 跨构建体的 PATHMSD 参考路径，**必须**先做序列比对（Needleman-Wunsch / BLAST / structural alignment）并得到 explicit residue-to-residue mapping，再据此提取 Cα 坐标。(2) `generate_path_cv.py` 的 sequence alignment 代码既然存在就必须 **wire up 到坐标提取**；只打印对齐结果不使用是 false comfort。(3) 所有 PDB 加载后第一步做 sanity check：相同 resid 在两个结构里的 AA identity > 50% 才能按 resid-number 对齐，否则必须走 NW mapping。(4) FP-024 style "UNVERIFIED" 标注应扩展覆盖"跨 PDB residue mapping convention"这一类。 |
+| 已修复 | ✅ 2026-04-23 新增 `replication/metadynamics/path_seqaligned/`：`build_seqaligned_path.py`（Claude）+ `verify_and_materialize_seqaligned_path.py`（Codex 独立实现）+ production `path_seqaligned_gromacs.pdb`（GROMACS system atom serial 保留）+ `VERIFICATION_REPORT.md`。Longleaf 作业 `45515869`（sequence-aligned pilot，LAMBDA=80 full Miguel contract）提交 11 min 后即已 max_s=8.94 @ t=110 ps，对比 old path 7.7 ns 只到 max_s=1.75 —— 500× 速度差，bug fix 定性确认。`generate_path_cv.py` 本身尚未重构，留待后续 PR 彻底修复或废弃该脚本。 |
+

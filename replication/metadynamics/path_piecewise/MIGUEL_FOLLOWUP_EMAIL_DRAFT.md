@@ -1,6 +1,21 @@
-# Follow-up email to Miguel Iglesias-Fernández — DRAFT (2026-04-23)
+# Follow-up email to Miguel Iglesias-Fernández — DRAFT (2026-04-23, superseded)
 
-Status: draft, awaiting PM approval before sending.
+Status: **SUPERSEDED 2026-04-23 evening**. This draft asked for PATH.pdb
+because we thought there was an unresolved 21× λ gap. A local investigation
+later that day identified the actual bug (cross-species residue-number
+mapping between 1WDW-Pf and 3CEP-St β chains; see FP-034). After proper
+Needleman-Wunsch alignment (uniform +5 offset), our λ = 100.79 Å⁻² which
+is only 1.26× Miguel's 80 — within Branduardi-heuristic tolerance. The
+sequence-aligned pilot (job 45515869) is running now.
+
+A much shorter thank-you / update email may still be worth sending,
+noting the bug was on our side (his email + PLUMED contract were
+self-consistent all along; the 21× gap was our PATH.pdb artifact).
+
+Draft below is preserved as historical record of what we were about to
+ask before the breakthrough.
+
+---
 
 Subject: TrpB COMM-domain MetaDynamics — follow-up on path construction
 
