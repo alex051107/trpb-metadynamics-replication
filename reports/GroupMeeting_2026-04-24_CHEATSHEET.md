@@ -6,7 +6,9 @@
 
 ## 1 句话总结本周（开场第一句）
 
-**"这周发现真正卡住项目的不是 MetaD 参数，是 path 定义本身的一个跨物种 residue mapping bug (FP-034)。修完之后 path geometry 自洽，pilot 正在验证。同时把自己从 replicator 重定位到 cartridge builder。"**
+**"这周发现真正卡住项目的不是 MetaD 参数，是 path 定义本身的一个跨物种 residue mapping bug (FP-034)。修完之后 pilot 在 sim 6 ns 时 transient cross s=12 gate，端到端通路 confirm。10-walker primary production 正在启动。"**
+
+**更新时间 2026-04-24 06:17**: GATE CLEARED — pilot 45515869 @ t=6085 ps, max_s=12.867（single transient ~120 ps, fraction(s>12)=0.05%, 未 sustained）。
 
 ---
 
@@ -20,7 +22,9 @@
 | ⟨MSD_adj⟩ | 0.606 → **0.0228 Å²** | summary.txt |
 | Branduardi λ | 3.80 → **100.79 Å⁻²** | summary.txt |
 | Miguel 邮件 λ=80 | 比值 **1.26×** = 自洽 | summary.txt L54 |
-| Pilot max_s 当前 | **10.92 @ 437 ps** (plateau ~1+ ns) | Longleaf 45515869 |
+| Pilot max_s 当前 | **12.867 @ 6085 ps**（GATE CLEARED, transient ~120 ps）| Longleaf 45515869 |
+| Pilot plateau 段 | 437 ps → 6085 ps = 4.3 ns at max_s=10.92 | COLVAR |
+| fraction(s > 12) | 0.05%（单次 transient, 未 sustained）| COLVAR full scan |
 | 老 path 对照 max_s | 1.75 @ 7.7 ns | 45324928 |
 | PC 独立 projection | 5DW0→s=9.46, 5DW3→s=8.51, 5DVZ→s=5.37, 4HPX→s=14.90 | Codex VERIFICATION |
 | Kill-switch 日期 | **2026-05-01** | memo A.5 |

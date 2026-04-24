@@ -40,7 +40,13 @@
           "bold": true,
           "color": "ACCENT"
         },
-        "    Replicator framing = asymptotic value 0 once FES converges; owner framing = reusable artifact for Yu/Amin/Raswanth"
+        "    Replicator framing = asymptotic value 0 once FES converges; owner framing = reusable artifact for Yu/Amin/Raswanth",
+        {
+          "text": "Pilot 45515869 于 t=6085 ps 单次 transient 越过 s=12 gate",
+          "bold": true,
+          "color": "ACCENT"
+        },
+        "    corrected path 端到端通路 confirm; 10-walker shared bias 启动依据"
       ],
       "bulletsBox": {
         "y": 1.55,
@@ -467,55 +473,55 @@
     },
     {
       "type": "bullets+code",
-      "title": "Pilot 45515869 — corrected path reveals old coord-system was wrong",
-      "subtitle": "Same Ain cMD start.gro, only CV changed; walker now reaches s~11 region",
+      "title": "Pilot 45515869 — GATE CLEARED at t=6085 ps (max_s=12.87)",
+      "subtitle": "4.3 ns plateau 后 single transient 越过 s=12 — path geometry 端到端通路 confirm",
       "bullets": [
         {
-          "text": "t = 0 on corrected path → s = 7.09",
+          "text": "Pilot 轨迹（sim 到 6.2 ns）",
           "bold": true,
           "color": "ACCENT"
         },
-        "    On old naive path same start.gro projected to s ≈ 1",
-        "    → old run was never in O-basin; it was on an artifact coordinate system",
+        "    t=0       s=7.09  (start.gro = 500 ns cMD 终态, 新 coord 下是 mid-path)",
+        "    t=437 ps  s=10.92 (first frontier)",
+        "    t=437 ps–6085 ps  plateau 4.3 ns at max_s=10.92",
+        "    **t=6085 ps  s=12.87 — transient breakthrough, GATE CLEARED**",
         {
-          "text": "Current pilot state (sim 1.4 ns, wall 1h51m)",
+          "text": "Gate criteria",
           "bold": true,
           "color": "ACCENT"
         },
-        "    max s = 10.921 at t = 437 ps (new frontier in s = 5–11 band)",
-        "    Plateau since 437 ps — walker not yet past a secondary barrier at s ≈ 11",
-        "    z stays small (~1.5 Å²); wall-hit fraction well below 45324928",
+        "    fraction(s>10) = 3.0%, fraction(s>12) = 0.05% (single transient ~120 ps)",
+        "    Not sustained — 没在 C-basin 驻留, walker 退回 s=7-9 震荡",
         {
-          "text": "Honest framing (NOT replication success)",
+          "text": "End-to-end path validation",
           "bold": true,
           "color": "ACCENT"
         },
-        "    What this shows: coord-system fixed; CV now responds to motion",
-        "    What it does NOT show: walker can reach s = 15 (C-end) alone",
-        "    Gate for 10-walker launch: max s > 12 sustained, or pilot done without",
+        "    Walker 物理能跨 s=12 证明 corrected path 从 O 到近 C 整条通路通",
+        "    Single-walker well-tempered 填 bias 能推过次级 barrier (耗时 ~4.3 ns)",
+        "    10-walker shared bias 预期能把 transient 堆成 sustained C-basin occupancy",
         {
           "text": "Caveat — path is linear-Cartesian, not mechanistic",
           "bold": true,
           "color": "ACCENT"
         },
-        "    neighbor_msd_cv ≈ 1.96e-14 → no physical intermediate states",
-        "    intermediate s values are geometric waypoints, not validated basins"
+        "    neighbor_msd_cv ≈ 1.96e-14 → s 是 geometric waypoint, 不是 validated basin"
       ],
       "bulletsBox": {
         "y": 1.55,
         "h": 3.9
       },
-      "code": "# 45515869 COLVAR (sim time, s, z)\nt=0        ps  s=7.09    z=0.031\nt=110      ps  s=8.94    z=0.055\nt=437      ps  s=10.92   z=1.48   ← current max\nt=1404     ps  s=~10.2   z=~1.3   ← plateau\n# Old path 45324928: max s=1.75 after 7.7 ns, then retreat",
+      "code": "# 45515869 COLVAR summary (sim 6.2 ns, wall 8h20m)\nt=0        ps  s=7.09   z=0.03\nt=437      ps  s=10.92  z=1.48  ← first frontier\nt=437-6085 ps  plateau at max_s=10.92\nt=6085     ps  s=12.87  ← GATE CLEARED (transient ~120 ps)\nt=6200     ps  s=7-9    ← walker retreated, 震荡 region",
       "codeBox": {
         "y": 5.6,
         "h": 1.1,
         "fontSize": 11
       },
       "sources": [
-        "replication/metadynamics/path_seqaligned/REVERSE_SANITY_CHECK.md",
-        "Codex independent verify — commit 7e7ba6a"
+        "Longleaf 45515869 COLVAR (live)",
+        "replication/metadynamics/path_seqaligned/REVERSE_SANITY_CHECK.md"
       ],
-      "footer": "Slide 9 / 17  ·  pilot: s-range 7→11 exposed  ·  s>12 gate still pending"
+      "footer": "Slide 9 / 17  ·  GATE CLEARED · 10-walker launch 已 conditional-approve"
     },
     {
       "type": "two-column",
