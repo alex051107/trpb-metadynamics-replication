@@ -1170,6 +1170,27 @@ Step   MSD (Å²)
 的数学必然（相邻帧位移 = (C_aligned - O) / 14 恒定），但也验证了
 interpolation 过程本身没有 numerical blow-up。
 
+**[诚实 caveat — 预防 Yu-lens 攻击]** 零 CV 是 linear interpolation 的
+数学必然，**不是** 一条健康 transition path 的特征。Branduardi 2007 建议
+10–15% 的 neighbor-MSD CV 作为生物学 path 的合理区间，有些许 asymmetry 才让
+kernel overlap 能 discriminate folding / transition region。我们现在的 path
+是 **geometric reference**（waypoint），中间 s 值（s=5, 8, 11）对应两端点
+之间的**算术中点**，**不是** 物理 intermediate basin。这意味着：
+
+- cartridge 的 s-coordinate 能 detect 构象沿 O–C 轴的进度
+- **不能** 直接把 "s=8" 读成 "物理 PC basin"，除非有独立证据——我们目前的
+  独立证据是 5DW0/5DW3/5DVZ/4HPX 的 projection 都落在 biologically 合理
+  区间（posteriori validation），但这是**事后证据**，不是 path 构造里的
+  prior
+- 真正 mechanism-grounded path 需要 **string method / targeted MD /
+  PCA-sampled intermediate frames**，属于未来工作（memo § 0.6 方向 2
+  "MetaD rescue loop" 或方向 F/G），**不在** 本周 D1 scope
+
+明天 Yu 要是问 "你凭什么相信 s=8 就是 PC"，我的回答是两句话不 collapse 成
+一句：(1) path 本身是 geometric linear reference；(2) 5DW0 和 5DW3 独立
+projection 落在 s=8–9 恰好支持 biological PC label。S=8 **不 define** PC；
+PC 独立 define，然后 **恰好** 落在 s=8。
+
 ### 4.4 Self-projection gate: 1 → 15 单调
 
 `VERIFICATION_REPORT.md` L74–95 的 self-projection 表（把 15 个 reference

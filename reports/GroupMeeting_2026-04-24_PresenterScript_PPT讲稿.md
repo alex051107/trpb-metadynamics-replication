@@ -255,7 +255,7 @@ kill-switch 触发后的 minimum viable deliverable 是什么——**回到 sing
 
 | Yu 的问题 | 我的准备回答 |
 |----------|-------------|
-| "Branduardi kernel weight 在 1.26× 下只 0.16，是不是 too loose？" | Branduardi 建议 target 0.10，tolerance 0.05-0.25，我们 0.16 落在 tolerance 内。更有说服力的是 driver self-projection——15 帧 reference 扔回去 s 值出 1、2、3...15 完全 monotonic，kernel discrimination 够。 |
+| "Branduardi kernel weight 在 1.26× 下只 0.16，是不是 too loose？" | Branduardi 2007 给的 target 是 0.10（= exp(-2.3)）；0.16（= exp(-1.82)）比 target 松。说是 "tolerance 0.05-0.25" 我其实没找到 Branduardi 文献里的明确区间——诚实答：这是我的经验估计，不是作者 explicit。更有说服力的论据是 driver self-projection：15 帧 reference 喂回去 s 出 1.09/2/3/.../14/14.91，monotonic 且 frame gap ≈ 1，kernel discrimination 够用。如果 Yu 坚持 Branduardi 0.10 严格版，**切到 λ=100.79 (我们 Branduardi 精确值) 更稳**，我的 plumed 也支持这一版，已在 repo 备好。 |
 | "既然 generate_path_cv.py 算了 sequence alignment，为什么下游不用？" | 坦白这是 silent bug。alignment 算了但下游坐标提取硬编码用 residue.number 不是 alignment_table[residue.number]。FP-034 第 5 条防范：**坐标提取必须接收 alignment table 作为参数**，并 assert "每个 residue number 必须在 alignment table 里存在"。 |
 | "10-walker starting points 都在 s=7 附近，会不会 correlated？" | 从 500 ns 经典 MD 挑 snapshot，mean s≈7，但 thermal fluctuation 让实际 s 分布 span 5-10；z(R) 方向 spread 再去相关一次。如果跑出来 correlation 太高，从更 diverse 的 500 ns 窗口再挑。 |
 | "FP-031 GEOM→DIFF 怎么影响 λ？" | DIFF 是 CV 空间差分，scale 和 GEOM 差系数。Miguel 确认 SI 的 0.15 kcal/mol HEIGHT 和 10 BIASFACTOR 都是 DIFF assumption 下。切 DIFF 后 λ 数值尺度没因为 mode 跳，主要 27× 来自 residue alignment 修复。 |
@@ -263,6 +263,10 @@ kill-switch 触发后的 minimum viable deliverable 是什么——**回到 sing
 | "corrected path 会不会只是 reshift 了坐标，物理意义没变？" | 不是 reshift。reshift 会保持 MSD 不变。我们 MSD_adj 从 0.606 降到 0.023 nm²，geometry 本身变了——之前 MSD 里混了大量"跨物种 residue mismatch 假位移"，修掉后只剩真的 conformational change。 |
 | "FES gate 为什么 max_s > 12？" | path 范围 1-15，12 对应已经越过 PC middle 进入 closed vicinity。max_s > 12 意味着 pilot sample 到 path 后段，是 Phase 2 能 converge 的最低前提。 |
 | "bug 存在两个月，有没有更早 warning signal 被 ignore？" | 有。端点 RMSD 10.89 Å 本来就是 red flag——COMM 的 O→C 位移文献只有 4-5 Å。一直归因为 "flexible loop noise"。FP-034 补 assertion：**端点 RMSD > 4 Å 必须报警**。 |
+| "500 ns 经典 MD 是在哪个 coordinate system 做的？之前所有 downstream analysis 是不是都废了？" | 经典 MD **本身没用 path CV**（unbiased Cartesian dynamics），所以 trajectory 本身没被污染。**被污染的是**：任何用 `project_to_path.py` on 老 `single_walker/path_gromacs.pdb` 得到的 s(t) / z(t) 时间序列。这些 analysis 全部要重跑在 corrected path 上（TechDoc Ch 3.4 列了 3 条：(a) path_piecewise audit retracted, (b) probe_sweep + 45324928 stall 重新解释, (c) FP-032 21× gap 从 21× 纠正到 1.26×）。Trajectory 本身 fine，只是 coordinate lens 换了。|
+| "反向 sanity check 1WDW→s=1.14 / 3CEP→s=14.86——这不就是 self-projection 吗？算独立证据吗？" | 坦白：**这是内部一致性，不是独立 test**。MODEL 1 和 MODEL 15 就是 Kabsch-aligned 的 1WDW 和 3CEP，自己投回去得 s≈1 / s≈15 是 by construction。**真正独立的** 证据是 Codex VERIFICATION_REPORT 里的 5DW0→s=9.455 / 5DW3→s=8.508 / 5DVZ→s=5.371 / 4HPX→s=14.898——这四个 PDB 从未参与 path 构造，落点和 biological 标签吻合，才是 external validation。REVERSE_SANITY_CHECK.md 第二节已经明写这个 caveat。|
+| "+5 offset 是 alignment finding 吗？还是纯 PDB 编号惯例差？" | **更多是编号惯例差**。NW 给 uniform +5 且 0 indel 意味着：1WDW 和 3CEP 在 β subunit 这段是没有 insertion/deletion 的同源区，所以 offset 只是 N 端 signal peptide / Met-1 处理方式不同。NW 的 value-add 不是 "发现 offset"，是 **证明 selected range 内没有 indel**——如果有 indel，uniform offset 就数学上不可能，naive mapping 会错得更彻底。这点 REVERSE_SANITY_CHECK.md 新增一节交代。|
+| "为什么相信 s=8 就是 PC basin？path 是纯 linear interp，没有物理中间态啊。" | 不 collapse 成一句话——两句话不能并。(1) 我们的 path 是 **geometric linear reference**（neighbor_msd_cv ≈ 0），中间 s 值对应两端点之间的算术中点，**不** define PC。(2) 但 5DW0/5DW3/5DVZ 这些**独立**生物学 PC 晶体投到 corrected path 上，s 值 5.37/8.51/9.46，**恰好**落在中段——这是**事后** validation，证明 biological PC label 和 geometric mid-path **一致**。S=8 **不 define** PC；PC 独立 define（文献晶体结构），**恰好** 落在 s=8。TechDoc Ch 4.3 有显性 caveat；真正 mechanistic path 需要 string method / targeted MD，在 memo 方向 2/F/G，**不在** 本周 D1。|
 
 ### 战略层（stakeholder hypotheticals — Yu 可能替其他人问）
 
