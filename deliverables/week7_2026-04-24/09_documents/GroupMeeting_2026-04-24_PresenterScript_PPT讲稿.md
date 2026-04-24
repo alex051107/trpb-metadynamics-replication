@@ -335,6 +335,12 @@ Slide content: can-claim / cannot-claim two-column, last-line takeaway.
 
 **中文**: "`build_seqaligned_path.py` (NW + Kabsch) 是我写的, 纯 numpy。`verify_and_materialize_seqaligned_path.py` 是 Codex 独立实现交叉验证 (byte-level 一致)。v3 submit template 是 Codex 基于 crash log 诊断写的。Slides 和 TechDoc prose 是 Claude 写的, 我 review + 改。**每个数字都是脚本输出, 不是手算**。"
 
+### Q6 · Why MSD not RMSD in path CV? / 为什么 path CV 用 MSD 不用 RMSD?
+
+**EN**: RMSD is what structural biologists use in PyMOL / VMD / papers because it is in Å — directly interpretable. But PATHMSD (and any path-CV meant to drive metadynamics forces) must be differentiable everywhere in atomic coordinates. `z = RMSD = √MSD` has `∂z/∂Δr = Δr / RMSD`; at `RMSD = 0` (walker sits exactly on the path) the denominator blows up and the derivative is undefined — GROMACS hits NaN and segfaults. Using MSD (squared) gives `∂z/∂Δr = 2·Δr`, smooth everywhere including `MSD = 0`. So Branduardi 2007 was forced into MSD by the requirement that MetaD can compute forces. The reason our figure axis reads `Å²` is exactly this — when you want an interpretable "distance per Cα", take `√z`: for start.gro `z = 1.68 Å²` → `√z ≈ 1.3 Å` per Cα.
+
+**中文**: 结构生物学里大家确实用 RMSD (PyMOL / VMD / paper figure 都是), 因为 Å 直觉好。但 PATHMSD 要驱动 MetaD 的力, **必须处处可微**。`z = RMSD = √MSD` 的导数 `∂z/∂Δr = Δr / RMSD`, 在 RMSD=0 (walker 正好踩 path 上) 时分母爆 0 → NaN → GROMACS segfault。换成 MSD (平方), 导数 `2·Δr` 在 0 处也平滑, MetaD 能稳定积分。所以 Branduardi 2007 **被迫**选 MSD, 不是 MSD 更好, 是 RMSD 根本跑不起来。我们 2D 图 y 轴是 Å² 正是这个原因; 想要"每个 Cα 平均偏几 Å"的直觉, `√z` 一下就行 —— start.gro `z=1.68 Å² → √z ≈ 1.3 Å per Cα`。
+
 ### Downgrade phrase / 临时降级话术
 
 **EN**: "My hot-path answer may be inaccurate. TechDoc § X and VERIFICATION_REPORT have the full traceback; let me circle back after the meeting."
