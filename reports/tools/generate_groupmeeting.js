@@ -346,6 +346,26 @@ const renderers = {
     }
     addSourcesFooter(s, d.sources);
     addFooter(s, d.footer);
+  },
+
+  "image+bullets"(s, d) {
+    addTitle(s, d.title);
+    addSubtitle(s, d.subtitle);
+    if (d.image && d.image.path) {
+      const opts = {
+        path: d.image.path,
+        x: d.image.x ?? margin.left,
+        y: d.image.y ?? 1.55,
+        w: d.image.w ?? 6.5,
+        h: d.image.h ?? 5.0
+      };
+      s.addImage(opts);
+    }
+    if (d.bullets) {
+      addBullets(s, d.bullets, d.bulletsBox);
+    }
+    addSourcesFooter(s, d.sources);
+    addFooter(s, d.footer);
   }
 };
 
