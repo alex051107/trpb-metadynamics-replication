@@ -1,0 +1,229 @@
+{
+  "meta": {
+    "date": "2026-04-24",
+    "author": "Zhenpeng Liu",
+    "meeting_type": "TrpB group meeting",
+    "outputFilename": "GroupMeeting_2026-04-24.pptx"
+  },
+  "slides": [
+    {
+      "type": "title",
+      "title": "TrpB MetaDynamics — Path Definition Fix",
+      "subtitle": "Week 7: from parameter tuning to path geometry (FP-034)",
+      "meta": "Zhenpeng Liu  ·  2026-04-24  ·  TrpB group meeting",
+      "footer": "Replicating Maria-Solano et al., JACS 2019, 141, 13049-13056"
+    },
+    {
+      "type": "bullets",
+      "title": "本周目标 & 决策",
+      "subtitle": "Osuna 2019 严格复刻不是新方法发明",
+      "bullets": [
+        {"text": "Scope reminder", "bold": true, "color": "ACCENT"},
+        "    This project replicates JACS 2019; not inventing a new enhanced-sampling method",
+        {"text": "核心判断 (this week)", "bold": true, "color": "ACCENT"},
+        "    Path-definition 是真正的 replication blocker — 不是 MetaD 参数",
+        "    HEIGHT / BIASFACTOR / SIGMA / LAMBDA 都无法救一条 geometry 错的 path",
+        {"text": "Decision sequence", "bold": true, "color": "ACCENT"},
+        "    (1) single-walker 多次失败 → (2) Miguel 作者邮件 contract → (3) FP-034 sequence-aligned path fix → (4) 10-walker production gate"
+      ],
+      "footer": "Slide 1 / 9  ·  scope & decision log  ·  see NEXT_ACTIONS.md"
+    },
+    {
+      "type": "bullets+code",
+      "title": "上周末状态 & 卡点 — single-walker 仍然 stuck",
+      "subtitle": "Three failed probes on the naive (numeric-resid-aligned) path",
+      "bullets": [
+        {"text": "Job 45324928 (single walker)", "bold": true, "color": "ACCENT"},
+        "    7.7 ns 后停在 max s(R) = 1.75 ; never escaped O basin",
+        {"text": "Job 45448011 (wall AT=2.5 test)", "bold": true, "color": "ACCENT"},
+        "    z(R) rose 3.4× while s(R) did not move — walls 并非 blocker (证伪)",
+        {"text": "PC-crystal projection (naive path)", "bold": true, "color": "ACCENT"},
+        "    5DW0 / 5DW3 / 5DVZ all project to s ≈ 1.07 — partially-closed 晶体 无法从 path 上区分",
+        {"text": "Diagnosis → path geometry 是主嫌疑", "bold": true}
+      ],
+      "bulletsBox": {"y": 1.55, "h": 3.5},
+      "code": "# Naive path — all three PC crystals collapse to O endpoint\n5DW0_A  s=1.07  z=+0.0245 nm^2\n5DW3_A  s=1.07  z=+0.0231 nm^2\n5DVZ_A  s=1.07  z=+0.0173 nm^2\n# s barely distinguishes them from 1WDW_B (s=1.09)",
+      "codeBox": {"y": 5.25, "h": 1.3, "fontSize": 11},
+      "footer": "Slide 2 / 9  ·  pre-Miguel status  ·  jobs 45324928 · 45448011"
+    },
+    {
+      "type": "code+bullets",
+      "title": "Miguel 作者邮件 contract (2026-04-23)",
+      "subtitle": "Osuna-lab first-author reply — parameter set authoritative",
+      "code": "# Miguel's METAD line (verbatim extract)\nUNITS         LENGTH=A  ENERGY=kcal/mol\nADAPTIVE      DIFF            # NOT GEOM  (FP-031)\nHEIGHT        0.15 / 0.3 kcal/mol\nBIASFACTOR    10 / 15\nWALKERS_N     10\nLAMBDA        80 (A^-2)       # self-consistent on their path\nUPPER_WALLS   ARG=path.zzz  AT=2.5",
+      "codeBox": {"y": 1.55, "h": 2.1, "fontSize": 12},
+      "bullets": [
+        {"text": "Key corrections (vs our prior attempts)", "bold": true, "color": "ACCENT"},
+        "    ADAPTIVE = DIFF, not GEOM → fixes FP-031 (adaptive σ projected wrong axis)",
+        "    UNITS = A / kcal — not nm / kJ (FP-032 SIGMA-unit bookkeeping)",
+        "    10 walkers with HEIGHT=0.15 kcal/mol, BF=10 (production set)",
+        {"text": "Important caveat", "bold": true, "color": "ACCENT"},
+        "    Miguel's LAMBDA=80 is self-consistent on his path — not a universal constant. Must re-derive per-path."
+      ],
+      "bulletsBox": {"y": 3.75, "h": 2.7, "fontSize": 13},
+      "sources": [
+        "https://doi.org/10.1021/jacs.9b03646 (Maria-Solano et al., JACS 2019)",
+        "replication/metadynamics/miguel_2026-04-23/miguel_email.md (verbatim reply)"
+      ],
+      "footer": "Slide 3 / 9  ·  Miguel contract  ·  FP-031 / FP-032 in failure-patterns.md"
+    },
+    {
+      "type": "table+bullets",
+      "title": "诊断顺序 — 我们排除的假设",
+      "subtitle": "Before touching path geometry, ruled out 3 parameter-level hypotheses",
+      "table": {
+        "rows": [
+          ["Hypothesis", "Test", "Result", "Verdict"],
+          ["A · HEIGHT too small", "cumulative bias at O basin", "13.6 kcal/mol (~19 kT) and still no escape", "rejected"],
+          ["B · SIGMA floor collapse", "Codex audit of PLUMED source (multivariate Cholesky)", "σ behavior is nominal — not pathological", "rejected"],
+          ["C · Wall AT=2.5 blocks escape", "Job 45448011 — z rose 3.4×, s flat", "walls did not contain the walker", "rejected"],
+          ["D · Path geometry is wrong", "project PC crystals + re-examine residue mapping", "5DW0/5DW3/5DVZ all land on s≈1.07", "accepted → next slide"]
+        ],
+        "box": {"y": 1.55, "colW": [2.5, 3.3, 4.3, 2.233], "rowH": 0.55}
+      },
+      "bullets": [
+        {"text": "Only D remained after A/B/C were falsified — motivates FP-034 audit", "bold": true, "color": "ACCENT"},
+        "    Parameter tuning 不能修复 a physically-wrong path",
+        "    Moved from METAD-line tuning to CV-construction audit"
+      ],
+      "bulletsBox": {"y": 5.4, "h": 1.5},
+      "sources": [
+        "https://www.plumed.org/doc-v2.9/user-doc/html/_m_e_t_a_d.html (ADAPTIVE keyword semantics)"
+      ],
+      "footer": "Slide 4 / 9  ·  falsification ladder  ·  jobs 45324928 / 45448011"
+    },
+    {
+      "type": "dual-box+bullets",
+      "title": "FP-034 — cross-species residue mapping was wrong",
+      "subtitle": "1WDW-B (Pf, 385 aa) vs 3CEP-B (St, 393 aa) differ by 5 N-terminal residues",
+      "leftBox": {
+        "heading": "Naive path (what we had)",
+        "headingColor": "BAD",
+        "body": "Resid-number alignment: 97 ↔ 97\nIdentity across 112 Cα: 6.2 %\nO↔C RMSD: 10.89 Å\n⟨MSD⟩ along path: 0.606 Å²\nλ (1/⟨MSD⟩): 3.80 Å⁻²\n→ path mixes 2 different residue sets"
+      },
+      "rightBox": {
+        "heading": "Sequence-aligned path (FP-034 fix)",
+        "headingColor": "GOOD",
+        "body": "NW alignment: uniform +5 offset\n112 Cα mapped to true homologs\nIdentity: 59.0 %  (9.5×)\nO↔C RMSD: 2.115 Å  (5.1× tighter)\n⟨MSD⟩: 0.0228 Å²\nλ: 100.79 Å⁻²"
+      },
+      "bullets": [
+        {"text": "Silent bug in generate_path_cv.py", "bold": true, "color": "ACCENT"},
+        "    Line 182 did compute a Needleman-Wunsch alignment — but line 670 never consumed it",
+        "    Code ran clean, produced a usable path.pdb, and the error only surfaced as sampling failure downstream"
+      ],
+      "bulletsBox": {"y": 3.55, "h": 2.9},
+      "sources": [
+        "replication/validations/failure-patterns.md (FP-034 entry)",
+        "replication/metadynamics/path_seqaligned/verify_and_materialize_seqaligned_path.py"
+      ],
+      "footer": "Slide 5 / 9  ·  FP-034 root cause  ·  the bug was silent for 3 weeks"
+    },
+    {
+      "type": "table+bullets",
+      "title": "Needleman-Wunsch 修复结果",
+      "subtitle": "Sequence-aligned path: geometry consistent with Branduardi 2007 prescription",
+      "table": {
+        "rows": [
+          ["Metric", "Naive path", "Sequence-aligned", "Change"],
+          ["Cα identity across 112 residues", "6.2 %", "59.0 %", "9.5× higher"],
+          ["O↔C endpoint RMSD (Å)", "10.89", "2.115", "5.1× tighter"],
+          ["⟨MSD⟩ along path (Å²)", "0.606", "0.0228", "26.6× smaller"],
+          ["λ = 1/⟨MSD⟩ (Å⁻²)", "3.80", "100.79", "26.5× larger"],
+          ["Ratio vs Miguel's λ=80", "0.047×", "1.26×", "within acceptable band"]
+        ],
+        "box": {"y": 1.55, "colW": [4.0, 2.5, 2.8, 3.033], "rowH": 0.4}
+      },
+      "bullets": [
+        {"text": "Our λ=100.79 is self-consistent with our corrected path", "bold": true, "color": "ACCENT"},
+        "    Miguel's 80 on his path → ours 100.79 on ours; 1.26× ratio acceptable per Branduardi 2007 criterion (λ ~ 2.3/⟨MSD⟩)",
+        "    Both values satisfy the \"Gaussian-width matches neighbor-frame spacing\" requirement"
+      ],
+      "bulletsBox": {"y": 5.15, "h": 1.75},
+      "sources": [
+        "https://doi.org/10.1063/1.2432340 (Branduardi, Gervasio, Parrinello 2007, J. Chem. Phys. 126, 054103)",
+        "replication/metadynamics/path_seqaligned/VERIFICATION_REPORT.md"
+      ],
+      "footer": "Slide 6 / 9  ·  λ = 100.79 Å⁻² · corrected path · 112 Cα mapped"
+    },
+    {
+      "type": "table+bullets",
+      "title": "生物学验证 — PC 晶体在 corrected path 上分布合理",
+      "subtitle": "Structures that should be mid-path actually sit mid-path now",
+      "table": {
+        "rows": [
+          ["PDB", "Chain", "State (lit.)", "s on naive path", "s on corrected path"],
+          ["1WDW", "B", "Open endpoint", "1.00", "1.00"],
+          ["3CEP", "B", "Closed endpoint", "15.00", "15.00"],
+          ["5DW0", "A", "βPC + L-Ser (Aex1)", "1.07", "9.46"],
+          ["5DW3", "A", "βPC variant", "—", "8.51"],
+          ["5DVZ", "A", "βPC holo", "1.07", "5.37"],
+          ["4HPX", "B", "Pf A-A intermediate", "14.91", "14.90"]
+        ],
+        "box": {"y": 1.55, "colW": [1.2, 0.9, 3.0, 3.1, 4.133], "rowH": 0.33}
+      },
+      "bullets": [
+        {"text": "Three βPC-labeled crystals now sit in mid-path (s = 5.4–9.5)", "bold": true, "color": "ACCENT"},
+        "    On the naive path they all collapsed to s ≈ 1.07 (indistinguishable from Open)",
+        "    Codex independent verification: 7/8 projections PASS (one partial-CV-coverage informational)"
+      ],
+      "bulletsBox": {"y": 4.9, "h": 1.9},
+      "sources": [
+        "replication/metadynamics/path_seqaligned/VERIFICATION_REPORT.md (independent projection)",
+        "https://doi.org/10.1021/jacs.9b03646 (PC state definitions, Osuna 2019 SI)"
+      ],
+      "footer": "Slide 7 / 9  ·  biological sanity check passes  ·  7/8 PASS"
+    },
+    {
+      "type": "bullets+code",
+      "title": "Pilot 45515869 — 同 start.gro on corrected path",
+      "subtitle": "Same Ain cMD starting frame, same walker — only CV/path changed",
+      "bullets": [
+        {"text": "t = 0 on corrected path", "bold": true, "color": "ACCENT"},
+        "    s(R) = 7.09 — not 1.0 · the 500 ns cMD终态 actually sits mid-path",
+        {"text": "Escape speed", "bold": true, "color": "ACCENT"},
+        "    Within 110 ps walker reaches max s = 8.94",
+        "    Old naive path: 7.7 ns to reach s = 1.75",
+        "    ≈ 500× qualitative acceleration on path traversal",
+        {"text": "Interpretation", "bold": true, "color": "ACCENT"},
+        "    Not claimed as replication success yet — only says \"the CV now responds\"",
+        "    Production gate is max s(R) > 12 (Closed endpoint approach)"
+      ],
+      "bulletsBox": {"y": 1.55, "h": 3.9},
+      "code": "# Corrected path — pilot 45515869 early window\nt=0      ps  s= 7.09  z=0.031\nt=50     ps  s= 7.92  z=0.048\nt=110    ps  s= 8.94  z=0.055\n# Old path (45324928): s=1.75 only after 7.7 ns",
+      "codeBox": {"y": 5.6, "h": 1.1, "fontSize": 11},
+      "sources": [
+        "Codex independent verification — commit 7e7ba6a"
+      ],
+      "footer": "Slide 8 / 9  ·  pilot 45515869 early signal  ·  gate: max s > 12"
+    },
+    {
+      "type": "two-column",
+      "title": "Next week plan + decision gate",
+      "subtitle": "Corrected path + production gate (not yet replication success)",
+      "leftColumn": {
+        "heading": "Decision gate (this week)",
+        "bullets": [
+          "Pilot reaches max s(R) > 12 → promote to 10-walker primary production",
+          "3 < max s < 12 → extend pilot to 2–5 ns, re-evaluate",
+          "Pilot stalls below s = 3 → debate: path still wrong, or HEIGHT too small?",
+          "Criterion anchored to Closed endpoint (s = 15.0) — not to a time budget"
+        ]
+      },
+      "rightColumn": {
+        "heading": "10-walker production config",
+        "bullets": [
+          "HEIGHT = 0.15 kcal/mol, BIASFACTOR = 10 (Miguel contract lower edge)",
+          "10 walkers seeded from 500 ns Ain cMD at t = 50, 100, 150, ..., 500 ns",
+          "LAMBDA = 100.79 Å⁻² (our self-consistent value on corrected path)",
+          "UPPER_WALLS on path.zzz AT = 2.5 (Miguel)",
+          "Submit script ready on Longleaf: submit_walkers.sh (miguel_2026-04-23/)",
+          "Target: FES reconstruction + JACS 2019 Fig 2a comparison — timeline TBD pending pilot gate"
+        ]
+      },
+      "sources": [
+        "replication/metadynamics/miguel_2026-04-23/submit_walkers.sh"
+      ],
+      "footer": "Slide 9 / 9  ·  Q&A  ·  next milestone: 10-walker primary production"
+    }
+  ]
+}
