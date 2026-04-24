@@ -18,19 +18,34 @@
       "title": "本周定位 — cartridge owner, not replicator",
       "subtitle": "Canonical v1.2 framing (PM-ratified 2026-04-22)",
       "bullets": [
-        {"text": "One-line position (memo § 0.1)", "bold": true, "color": "ACCENT"},
+        {
+          "text": "One-line position (memo § 0.1)",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    STAR-MD 把 generic protein trajectory generation 做满了",
         "    TrpB 需要的是 mechanism-grounded evaluation — 不是再造一个 dynamics model",
         "    I build the reusable MetaD cartridge that evaluates / filters / rescues lab's generative pipeline",
-        {"text": "Language boundaries (explicit)", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Language boundaries (explicit)",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    NOT: I'm building a new ML dynamics layer",
         "    NOT: I own the TrpB ground truth",
         "    YES: I'm building the mechanism-grounded reference cartridge",
         "    YES: STAR-MD and my cartridge are upstream-downstream, not competitors",
-        {"text": "Why this framing matters", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Why this framing matters",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    Replicator framing = asymptotic value 0 once FES converges; owner framing = reusable artifact for Yu/Amin/Raswanth"
       ],
-      "bulletsBox": {"y": 1.55, "h": 5.0},
+      "bulletsBox": {
+        "y": 1.55,
+        "h": 5.0
+      },
       "sources": [
         "新任务explore/MetaD_Cartridge_Feasibility_Memo_2026-04-22.md § 0.1-0.5"
       ],
@@ -42,24 +57,80 @@
       "subtitle": "7 components · this week closes 3 deliverables (D1 / D2 / D3)",
       "table": {
         "rows": [
-          ["#", "Component", "Status", "This-week scope"],
-          ["1", "Path definition (PATHMSD O→C)", "D1 reconciled", "Sequence-aligned path, Miguel contract"],
-          ["2", "Reference FES (WT / Aex1 / variants)", "WT pending 10-walker", "gated by pilot s>12"],
-          ["3", "State masks (O, PC, C, off-path, reactive)", "draft only", "sketch + crystal projection"],
-          ["4", "Block uncertainty (CI, not a pretty plot)", "not started", "Phase-2 task"],
-          ["5", "Rare-state frames (hard examples)", "not started", "post-WT"],
-          ["6", "Catalytic descriptors (PLP/K82/Y301/E104)", "spec only", "D2 API doc"],
-          ["7", "Scorer API (project_to_path / score_traj)", "D2 draft", "replication/cartridge/API_DESIGN.md"]
+          [
+            "#",
+            "Component",
+            "Status",
+            "This-week scope"
+          ],
+          [
+            "1",
+            "Path definition (PATHMSD O→C)",
+            "D1 reconciled",
+            "Sequence-aligned path, Miguel contract"
+          ],
+          [
+            "2",
+            "Reference FES (WT / Aex1 / variants)",
+            "WT pending 10-walker",
+            "gated by pilot s>12"
+          ],
+          [
+            "3",
+            "State masks (O, PC, C, off-path, reactive)",
+            "draft only",
+            "sketch + crystal projection"
+          ],
+          [
+            "4",
+            "Block uncertainty (CI, not a pretty plot)",
+            "not started",
+            "Phase-2 task"
+          ],
+          [
+            "5",
+            "Rare-state frames (hard examples)",
+            "not started",
+            "post-WT"
+          ],
+          [
+            "6",
+            "Catalytic descriptors (PLP/K82/Y301/E104)",
+            "spec only",
+            "D2 API doc"
+          ],
+          [
+            "7",
+            "Scorer API (project_to_path / score_traj)",
+            "D2 draft",
+            "replication/cartridge/API_DESIGN.md"
+          ]
         ],
-        "box": {"y": 1.55, "colW": [0.4, 3.6, 2.6, 5.733], "rowH": 0.38}
+        "box": {
+          "y": 1.55,
+          "colW": [
+            0.4,
+            3.6,
+            2.6,
+            5.733
+          ],
+          "rowH": 0.38
+        }
       },
       "bullets": [
-        {"text": "本周 3 deliverables (not 5)", "bold": true, "color": "ACCENT"},
+        {
+          "text": "本周 3 deliverables (not 5)",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    D1: Miguel path.pdb reconciled + WT reference defined  (this deck slides 4-10)",
         "    D2: replication/cartridge/API_DESIGN.md — signatures + I/O + use-case; no implementation",
         "    D3: lab-facing demo — Yu (simple CV fails → PATHMSD diagnoses states) OR Amin (STAR-MD output scored)"
       ],
-      "bulletsBox": {"y": 5.1, "h": 1.75},
+      "bulletsBox": {
+        "y": 5.1,
+        "h": 1.75
+      },
       "sources": [
         "新任务explore/MetaD_Cartridge_Feasibility_Memo_2026-04-22.md § 0.2-0.3"
       ],
@@ -100,17 +171,33 @@
       "title": "D1 start — Miguel author email contract (2026-04-23)",
       "subtitle": "Osuna-lab first-author reply — parameter set authoritative",
       "code": "# Miguel's METAD line (verbatim extract)\nUNITS         LENGTH=A  ENERGY=kcal/mol\nADAPTIVE      DIFF            # NOT GEOM  (FP-031 correction)\nHEIGHT        0.15 / 0.3 kcal/mol\nBIASFACTOR    10 / 15\nWALKERS_N     10\nLAMBDA        80 (A^-2)       # self-consistent on *his* path\nUPPER_WALLS   ARG=path.zzz  AT=2.5",
-      "codeBox": {"y": 1.55, "h": 2.1, "fontSize": 12},
+      "codeBox": {
+        "y": 1.55,
+        "h": 2.1,
+        "fontSize": 12
+      },
       "bullets": [
-        {"text": "Key corrections (vs our prior attempts)", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Key corrections (vs our prior attempts)",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    ADAPTIVE = DIFF, not GEOM  →  fixes FP-031 (adaptive σ projected wrong axis)",
         "    UNITS = A / kcal  — not nm / kJ  (FP-032 SIGMA-unit bookkeeping)",
         "    10 walkers with HEIGHT=0.15 kcal/mol, BF=10 (production set)",
-        {"text": "Important caveat", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Important caveat",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    Miguel's LAMBDA=80 is self-consistent on *his* path — not a universal constant",
         "    Must re-derive λ per-path from ⟨MSD⟩ (Branduardi 2007 prescription)"
       ],
-      "bulletsBox": {"y": 3.75, "h": 2.7, "fontSize": 13},
+      "bulletsBox": {
+        "y": 3.75,
+        "h": 2.7,
+        "fontSize": 13
+      },
       "sources": [
         "https://doi.org/10.1021/jacs.9b03646 (Maria-Solano et al., JACS 2019)",
         "replication/metadynamics/miguel_2026-04-23/plumed_template.dat",
@@ -124,20 +211,61 @@
       "subtitle": "Before touching path geometry, ruled out 3 parameter-level hypotheses",
       "table": {
         "rows": [
-          ["Hypothesis", "Test", "Result", "Verdict"],
-          ["A · HEIGHT too small", "cumulative bias at O basin", "13.6 kcal/mol (~19 kT), no escape", "rejected"],
-          ["B · SIGMA floor collapse", "Codex audit of PLUMED multivariate Cholesky", "σ behavior nominal, not pathological", "rejected"],
-          ["C · Wall AT=2.5 blocks escape", "Job 45448011 — z rose 3.4×, s flat", "walls did not contain walker", "rejected"],
-          ["D · Path geometry is wrong", "project PC crystals + re-audit residue mapping", "5DW0/5DW3/5DVZ land s≈1.07", "accepted → FP-034"]
+          [
+            "Hypothesis",
+            "Test",
+            "Result",
+            "Verdict"
+          ],
+          [
+            "A · HEIGHT too small",
+            "cumulative bias at O basin",
+            "13.6 kcal/mol (~19 kT), no escape",
+            "rejected"
+          ],
+          [
+            "B · SIGMA floor collapse",
+            "Codex audit of PLUMED multivariate Cholesky",
+            "σ behavior nominal, not pathological",
+            "rejected"
+          ],
+          [
+            "C · Wall AT=2.5 blocks escape",
+            "Job 45448011 — z rose 3.4×, s flat",
+            "walls did not contain walker",
+            "rejected"
+          ],
+          [
+            "D · Path geometry is wrong",
+            "project PC crystals + re-audit residue mapping",
+            "5DW0/5DW3/5DVZ land s≈1.07",
+            "accepted → FP-034"
+          ]
         ],
-        "box": {"y": 1.55, "colW": [2.5, 3.3, 4.3, 2.233], "rowH": 0.55}
+        "box": {
+          "y": 1.55,
+          "colW": [
+            2.5,
+            3.3,
+            4.3,
+            2.233
+          ],
+          "rowH": 0.55
+        }
       },
       "bullets": [
-        {"text": "Only D remained after A/B/C falsified — motivates FP-034 audit", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Only D remained after A/B/C falsified — motivates FP-034 audit",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    Parameter tuning cannot fix a physically-wrong path",
         "    Moved from METAD-line tuning to CV-construction audit"
       ],
-      "bulletsBox": {"y": 5.4, "h": 1.5},
+      "bulletsBox": {
+        "y": 5.4,
+        "h": 1.5
+      },
       "sources": [
         "https://www.plumed.org/doc-v2.9/user-doc/html/_m_e_t_a_d.html"
       ],
@@ -158,14 +286,22 @@
         "body": "NW alignment: uniform +5 offset\n112 Cα → true homologs\nIdentity: 59.0 %  (9.5×)\nO↔C RMSD: 2.115 Å  (5.1× tighter)\n⟨MSD⟩: 0.0228 Å²\nλ: 100.79 Å⁻²"
       },
       "bullets": [
-        {"text": "Silent bug in generate_path_cv.py", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Silent bug in generate_path_cv.py",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    Line 182 computed a Needleman-Wunsch alignment — line 670 never consumed it",
         "    Code ran clean, produced a usable-looking path.pdb — error only surfaced downstream as sampling failure"
       ],
-      "bulletsBox": {"y": 3.55, "h": 2.9},
+      "bulletsBox": {
+        "y": 3.55,
+        "h": 2.9
+      },
       "sources": [
         "replication/validations/failure-patterns.md (FP-034 entry)",
-        "replication/metadynamics/path_seqaligned/verify_and_materialize_seqaligned_path.py"
+        "replication/metadynamics/path_seqaligned/verify_and_materialize_seqaligned_path.py",
+        "replication/metadynamics/path_seqaligned/REVERSE_SANITY_CHECK.md (endpoint round-trip 1WDW→1.14, 3CEP→14.86)"
       ],
       "footer": "Slide 6 / 17  ·  FP-034 root cause  ·  silent for 3 weeks"
     },
@@ -175,21 +311,67 @@
       "subtitle": "7/8 strict PASS on independent recomputation",
       "table": {
         "rows": [
-          ["Metric", "Naive path", "Sequence-aligned", "Change"],
-          ["Cα identity (112 residues)", "6.2 %", "59.0 %", "9.5× higher"],
-          ["O↔C endpoint RMSD (Å)", "10.89", "2.115", "5.1× tighter"],
-          ["⟨MSD⟩ along path (Å²)", "0.606", "0.0228", "26.6× smaller"],
-          ["λ = 1/⟨MSD⟩ (Å⁻²)", "3.80", "100.79", "26.5× larger"],
-          ["Ratio vs Miguel's λ=80", "0.047×", "1.26×", "within tolerance"]
+          [
+            "Metric",
+            "Naive path",
+            "Sequence-aligned",
+            "Change"
+          ],
+          [
+            "Cα identity (112 residues)",
+            "6.2 %",
+            "59.0 %",
+            "9.5× higher"
+          ],
+          [
+            "O↔C endpoint RMSD (Å)",
+            "10.89",
+            "2.115",
+            "5.1× tighter"
+          ],
+          [
+            "⟨MSD⟩ along path (Å²)",
+            "0.606",
+            "0.0228",
+            "26.6× smaller"
+          ],
+          [
+            "λ = 1/⟨MSD⟩ (Å⁻²)",
+            "3.80",
+            "100.79",
+            "26.5× larger"
+          ],
+          [
+            "Ratio vs Miguel's λ=80",
+            "0.047×",
+            "1.26×",
+            "within tolerance"
+          ]
         ],
-        "box": {"y": 1.55, "colW": [4.0, 2.5, 2.8, 3.033], "rowH": 0.4}
+        "box": {
+          "y": 1.55,
+          "colW": [
+            4.0,
+            2.5,
+            2.8,
+            3.033
+          ],
+          "rowH": 0.4
+        }
       },
       "bullets": [
-        {"text": "λ=100.79 is self-consistent with our corrected path", "bold": true, "color": "ACCENT"},
+        {
+          "text": "λ=100.79 is self-consistent with our corrected path",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    Miguel's 80 on his path → ours 100.79 on ours; 1.26× ratio within tolerance per Branduardi 2007",
         "    Codex independent NW: score 286, identity 59.0331 %, offset +5 confirmed — 7/8 PASS (1 rounding)"
       ],
-      "bulletsBox": {"y": 5.15, "h": 1.75},
+      "bulletsBox": {
+        "y": 5.15,
+        "h": 1.75
+      },
       "sources": [
         "https://doi.org/10.1063/1.2432340 (Branduardi, Gervasio, Parrinello 2007, JCP 126, 054103)",
         "replication/metadynamics/path_seqaligned/VERIFICATION_REPORT.md"
@@ -202,22 +384,81 @@
       "subtitle": "βPC crystals that should sit mid-path actually do now",
       "table": {
         "rows": [
-          ["PDB", "Chain", "State (lit.)", "s on naive path", "s on corrected path"],
-          ["1WDW", "B", "Open endpoint", "1.00", "1.00"],
-          ["3CEP", "B", "Closed endpoint", "15.00", "15.00"],
-          ["5DW0", "A", "βPC + L-Ser (Aex1)", "1.07", "9.46"],
-          ["5DW3", "A", "βPC variant", "—", "8.51"],
-          ["5DVZ", "A", "βPC holo", "1.07", "5.37"],
-          ["4HPX", "B", "Pf A-A intermediate", "14.91", "14.90"]
+          [
+            "PDB",
+            "Chain",
+            "State (lit.)",
+            "s on naive path",
+            "s on corrected path"
+          ],
+          [
+            "1WDW",
+            "B",
+            "Open endpoint",
+            "1.00",
+            "1.00"
+          ],
+          [
+            "3CEP",
+            "B",
+            "Closed endpoint",
+            "15.00",
+            "15.00"
+          ],
+          [
+            "5DW0",
+            "A",
+            "βPC + L-Ser (Aex1)",
+            "1.07",
+            "9.46"
+          ],
+          [
+            "5DW3",
+            "A",
+            "βPC variant",
+            "—",
+            "8.51"
+          ],
+          [
+            "5DVZ",
+            "A",
+            "βPC holo",
+            "1.07",
+            "5.37"
+          ],
+          [
+            "4HPX",
+            "B",
+            "Pf A-A intermediate",
+            "14.91",
+            "14.90"
+          ]
         ],
-        "box": {"y": 1.55, "colW": [1.2, 0.9, 3.0, 3.1, 4.133], "rowH": 0.33}
+        "box": {
+          "y": 1.55,
+          "colW": [
+            1.2,
+            0.9,
+            3.0,
+            3.1,
+            4.133
+          ],
+          "rowH": 0.33
+        }
       },
       "bullets": [
-        {"text": "Three βPC crystals now sit mid-path (s = 5.4–9.5)", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Three βPC crystals now sit mid-path (s = 5.4–9.5)",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    On the naive path they all collapsed to s ≈ 1.07 (indistinguishable from Open)",
         "    Codex independent projection: 7/8 PASS (one partial-CV-coverage informational)"
       ],
-      "bulletsBox": {"y": 4.9, "h": 1.9},
+      "bulletsBox": {
+        "y": 4.9,
+        "h": 1.9
+      },
       "sources": [
         "replication/metadynamics/path_seqaligned/VERIFICATION_REPORT.md",
         "https://doi.org/10.1021/jacs.9b03646 (PC state definitions, Osuna 2019 SI)"
@@ -226,26 +467,55 @@
     },
     {
       "type": "bullets+code",
-      "title": "Pilot 45515869 — same start.gro, corrected path",
-      "subtitle": "Same Ain cMD starting frame, same walker — only CV changed",
+      "title": "Pilot 45515869 — corrected path reveals old coord-system was wrong",
+      "subtitle": "Same Ain cMD start.gro, only CV changed; walker now reaches s~11 region",
       "bullets": [
-        {"text": "t = 0 on corrected path", "bold": true, "color": "ACCENT"},
-        "    s(R) = 7.09 — not 1.0; 500 ns cMD endpoint sits mid-path",
-        {"text": "Escape speed", "bold": true, "color": "ACCENT"},
-        "    Within 110 ps walker reaches max s = 8.94",
-        "    Old naive path (45324928): 7.7 ns to reach s = 1.75",
-        "    ≈ 500× qualitative acceleration on path traversal",
-        {"text": "Interpretation — conservative", "bold": true, "color": "ACCENT"},
-        "    NOT claimed replication success; only says \"the CV now responds\"",
-        "    Production gate: max s(R) > 12 (approach Closed endpoint)"
+        {
+          "text": "t = 0 on corrected path → s = 7.09",
+          "bold": true,
+          "color": "ACCENT"
+        },
+        "    On old naive path same start.gro projected to s ≈ 1",
+        "    → old run was never in O-basin; it was on an artifact coordinate system",
+        {
+          "text": "Current pilot state (sim 1.4 ns, wall 1h51m)",
+          "bold": true,
+          "color": "ACCENT"
+        },
+        "    max s = 10.921 at t = 437 ps (new frontier in s = 5–11 band)",
+        "    Plateau since 437 ps — walker not yet past a secondary barrier at s ≈ 11",
+        "    z stays small (~1.5 Å²); wall-hit fraction well below 45324928",
+        {
+          "text": "Honest framing (NOT replication success)",
+          "bold": true,
+          "color": "ACCENT"
+        },
+        "    What this shows: coord-system fixed; CV now responds to motion",
+        "    What it does NOT show: walker can reach s = 15 (C-end) alone",
+        "    Gate for 10-walker launch: max s > 12 sustained, or pilot done without",
+        {
+          "text": "Caveat — path is linear-Cartesian, not mechanistic",
+          "bold": true,
+          "color": "ACCENT"
+        },
+        "    neighbor_msd_cv ≈ 1.96e-14 → no physical intermediate states",
+        "    intermediate s values are geometric waypoints, not validated basins"
       ],
-      "bulletsBox": {"y": 1.55, "h": 3.9},
-      "code": "# Corrected path — pilot 45515869 early window\nt=0      ps  s= 7.09  z=0.031\nt=50     ps  s= 7.92  z=0.048\nt=110    ps  s= 8.94  z=0.055\n# Old path (45324928): s=1.75 only after 7.7 ns",
-      "codeBox": {"y": 5.6, "h": 1.1, "fontSize": 11},
+      "bulletsBox": {
+        "y": 1.55,
+        "h": 3.9
+      },
+      "code": "# 45515869 COLVAR (sim time, s, z)\nt=0        ps  s=7.09    z=0.031\nt=110      ps  s=8.94    z=0.055\nt=437      ps  s=10.92   z=1.48   ← current max\nt=1404     ps  s=~10.2   z=~1.3   ← plateau\n# Old path 45324928: max s=1.75 after 7.7 ns, then retreat",
+      "codeBox": {
+        "y": 5.6,
+        "h": 1.1,
+        "fontSize": 11
+      },
       "sources": [
-        "Codex independent verification — commit 7e7ba6a"
+        "replication/metadynamics/path_seqaligned/REVERSE_SANITY_CHECK.md",
+        "Codex independent verify — commit 7e7ba6a"
       ],
-      "footer": "Slide 9 / 17  ·  pilot 45515869 early signal  ·  gate: max s > 12"
+      "footer": "Slide 9 / 17  ·  pilot: s-range 7→11 exposed  ·  s>12 gate still pending"
     },
     {
       "type": "two-column",
@@ -283,18 +553,41 @@
       "title": "本周尝试路线树 — 探索过的所有分支",
       "subtitle": "Show the work: 4 rejected hypotheses → 1 accepted fix",
       "bullets": [
-        {"text": "Miguel contract (2026-04-23)", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Miguel contract (2026-04-23)",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    Branch 0 — anchor: verbatim author reply, fixes FP-031 (DIFF) + FP-032 (units)",
-        {"text": "Branch A · probe_sweep (HEIGHT / BIASFACTOR 2×2)", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Branch A · probe_sweep (HEIGHT / BIASFACTOR 2×2)",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    Scanned filling pattern — excluded HEIGHT-too-small as cause (13.6 kcal/mol bias, no escape)",
-        {"text": "Branch B · wall4 falsification (AT=2.5 test)", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Branch B · wall4 falsification (AT=2.5 test)",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    Job 45448011 — z(R) rose 3.4×, s(R) flat → walls NOT the blocker",
-        {"text": "Branch C · piecewise PC-anchor (PC at MODEL8)", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Branch C · piecewise PC-anchor (PC at MODEL8)",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    Cross-model consultation rejected the single-λ piecewise design (lambda_audit 2026-04-23)",
-        {"text": "Branch D · sequence-aligned path (FP-034 fix) ← ACCEPTED", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Branch D · sequence-aligned path (FP-034 fix) ← ACCEPTED",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    NW alignment → 112 Cα mapped to homologs → λ=100.79 self-consistent on corrected path"
       ],
-      "bulletsBox": {"y": 1.55, "h": 5.0},
+      "bulletsBox": {
+        "y": 1.55,
+        "h": 5.0
+      },
       "sources": [
         "replication/metadynamics/miguel_2026-04-23/lambda_audit_2026-04-23.md",
         "replication/metadynamics/miguel_2026-04-23/path_construction_ABC_plan.md"
@@ -307,20 +600,61 @@
       "subtitle": "Every rejection narrows the hypothesis space — none of the probes was wasted",
       "table": {
         "rows": [
-          ["Branch", "Hypothesis tested", "Outcome", "Scientific residue"],
-          ["A · probe_sweep", "HEIGHT / filling pattern too soft", "rejected (bias 19 kT, no escape)", "rules out parameter-tuning rescue"],
-          ["B · wall4 AT=2.5", "UPPER_WALLS trapping walker", "rejected (z rose 3.4×)", "walls are not the cage"],
-          ["C · piecewise PC-anchor", "Single λ insufficient near PC", "rejected (cross-model audit)", "design-space evidence against 2-segment λ"],
-          ["D · sequence-aligned NW", "Residue-number alignment wrong", "accepted (FP-034)", "path geometry now Branduardi-compliant"]
+          [
+            "Branch",
+            "Hypothesis tested",
+            "Outcome",
+            "Scientific residue"
+          ],
+          [
+            "A · probe_sweep",
+            "HEIGHT / filling pattern too soft",
+            "rejected (bias 19 kT, no escape)",
+            "rules out parameter-tuning rescue"
+          ],
+          [
+            "B · wall4 AT=2.5",
+            "UPPER_WALLS trapping walker",
+            "rejected (z rose 3.4×)",
+            "walls are not the cage"
+          ],
+          [
+            "C · piecewise PC-anchor",
+            "Single λ insufficient near PC",
+            "rejected (cross-model audit)",
+            "design-space evidence against 2-segment λ"
+          ],
+          [
+            "D · sequence-aligned NW",
+            "Residue-number alignment wrong",
+            "accepted (FP-034)",
+            "path geometry now Branduardi-compliant"
+          ]
         ],
-        "box": {"y": 1.55, "colW": [2.3, 3.3, 3.0, 3.733], "rowH": 0.55}
+        "box": {
+          "y": 1.55,
+          "colW": [
+            2.3,
+            3.3,
+            3.0,
+            3.733
+          ],
+          "rowH": 0.55
+        }
       },
       "bullets": [
-        {"text": "What the failed branches bought us", "bold": true, "color": "ACCENT"},
+        {
+          "text": "What the failed branches bought us",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    Parameter tuning exhausted before CV audit → higher confidence that D was the real cause",
         "    failure-patterns.md gained FP-031, FP-032, FP-034 (reusable for future variants)"
       ],
-      "bulletsBox": {"y": 5.4, "h": 1.5},
+      "bulletsBox": {
+        "y": 5.4,
+        "h": 1.5
+      },
       "sources": [
         "replication/validations/failure-patterns.md"
       ],
@@ -332,21 +666,67 @@
       "subtitle": "External novelty audit (2024-2026 arXiv/Nature/JCTC): 1 ALIVE, 2 WEAKENED, 2 DEAD",
       "table": {
         "rows": [
-          ["#", "Proposed ML extension", "2026 verdict", "Killer prior art"],
-          ["A", "CRR · catalytic-readiness reward for GRPO", "WEAKENED", "PocketX / ResiDPO / ProteinZero"],
-          ["B", "PP-Prior · path-CV energy-guided diffusion", "WEAKENED", "Enhanced Diffusion Sampling 2602.16634"],
-          ["C", "LBP · learned bias potential", "DEAD", "NN-VES / Deep-TICA / OPES+mlcolvar"],
-          ["D", "TCR · FES-matching training loss", "DEAD-ish", "Thermodynamic Interpolation JCTC 2024"],
-          ["E", "MNG · Memory Necessity Gate", "ALIVE", "MEMnets is CV discovery, not runtime gate"]
+          [
+            "#",
+            "Proposed ML extension",
+            "2026 verdict",
+            "Killer prior art"
+          ],
+          [
+            "A",
+            "CRR · catalytic-readiness reward for GRPO",
+            "WEAKENED",
+            "PocketX / ResiDPO / ProteinZero"
+          ],
+          [
+            "B",
+            "PP-Prior · path-CV energy-guided diffusion",
+            "WEAKENED",
+            "Enhanced Diffusion Sampling 2602.16634"
+          ],
+          [
+            "C",
+            "LBP · learned bias potential",
+            "DEAD",
+            "NN-VES / Deep-TICA / OPES+mlcolvar"
+          ],
+          [
+            "D",
+            "TCR · FES-matching training loss",
+            "DEAD-ish",
+            "Thermodynamic Interpolation JCTC 2024"
+          ],
+          [
+            "E",
+            "MNG · Memory Necessity Gate",
+            "ALIVE",
+            "MEMnets is CV discovery, not runtime gate"
+          ]
         ],
-        "box": {"y": 1.55, "colW": [0.4, 4.8, 2.0, 5.133], "rowH": 0.45}
+        "box": {
+          "y": 1.55,
+          "colW": [
+            0.4,
+            4.8,
+            2.0,
+            5.133
+          ],
+          "rowH": 0.45
+        }
       },
       "bullets": [
-        {"text": "Meta-conclusion from audit agent", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Meta-conclusion from audit agent",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    \"The cartridge itself is likely more novel than any individual ML layer built on top.\"",
         "    Cartridge = main product; ML layers = optional downstream extensions"
       ],
-      "bulletsBox": {"y": 5.15, "h": 1.75},
+      "bulletsBox": {
+        "y": 5.15,
+        "h": 1.75
+      },
       "sources": [
         "新任务explore/MetaD_Cartridge_Feasibility_Memo_2026-04-22.md § 1.5 / § 3.1-3.7",
         "新任务explore/deep-research-report-3.md"
@@ -383,20 +763,35 @@
       "title": "Bytedance STAR-MD 定位 — upstream complement",
       "subtitle": "arXiv 2602.02128 (Feb 2026) — Shoghi et al., ByteDance Seed",
       "bullets": [
-        {"text": "What STAR-MD is (verbatim from abstract)", "bold": true, "color": "ACCENT"},
+        {
+          "text": "What STAR-MD is (verbatim from abstract)",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    \"Scalable SE(3)-equivariant diffusion model that generates physically plausible protein trajectories over microsecond timescales\"",
         "    \"Causal diffusion transformer with joint spatio-temporal attention\"",
         "    \"State-of-the-art on ATLAS benchmark · microsecond-scale stable rollouts\"",
-        {"text": "What STAR-MD is NOT", "bold": true, "color": "ACCENT"},
+        {
+          "text": "What STAR-MD is NOT",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    Enzyme-specific — ATLAS benchmark is generic proteins, not catalytic substates",
         "    Mechanism-aware — no PLP / Schiff-base / path-CV knowledge",
         "    Amin Jan-5 ask (\"recover substates consistent with metadynamics\") is NOT satisfied by STAR-MD alone",
-        {"text": "Cartridge relationship — complement, NOT competitor", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Cartridge relationship — complement, NOT competitor",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    STAR-MD = upstream trajectory generation (generic)",
         "    Cartridge = downstream mechanism evaluation (TrpB-specific)",
         "    Natural pitch to Amin: TrpB as adversarial enzyme-specific task in his SURF benchmark"
       ],
-      "bulletsBox": {"y": 1.55, "h": 5.0},
+      "bulletsBox": {
+        "y": 1.55,
+        "h": 5.0
+      },
       "sources": [
         "https://arxiv.org/abs/2602.02128 (Shoghi et al., ByteDance Seed, 2026-02-12)",
         "新任务explore/MetaD_Cartridge_Feasibility_Memo_2026-04-22.md § 0.1, § 0.6-1"
@@ -436,22 +831,41 @@
       "title": "Kill-switch 2026-05-01 — hard gate",
       "subtitle": "If WT FES has not passed sanity by this date, all extensions suspend",
       "bullets": [
-        {"text": "Hard criteria (binary)", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Hard criteria (binary)",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    WT MetaD convergence: 10-walker run produces FES with O / PC / C basins visible",
         "    Block-analysis CI defined (even if wide)",
         "    Path-CV 2-D occupancy projected for ≥ 2 PC crystals",
-        {"text": "If gate FAILS on 2026-05-01", "bold": true, "color": "ACCENT"},
+        {
+          "text": "If gate FAILS on 2026-05-01",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    All 5 ML-layer extensions (MNG / F / G / B+D / CRR) SUSPEND",
         "    Focus reverts to single-walker → 10-walker upgrade debugging",
         "    No pitch to Amin / Raswanth / Arvind until WT is defensible",
-        {"text": "If gate PASSES", "bold": true, "color": "ACCENT"},
+        {
+          "text": "If gate PASSES",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    D2 API freezes · D3 demo runs on real cartridge",
         "    Aex1 variant FES becomes next target",
         "    Lead ML extension (MNG) moves from memo to scoping doc",
-        {"text": "Q & A", "bold": true, "color": "ACCENT"},
+        {
+          "text": "Q & A",
+          "bold": true,
+          "color": "ACCENT"
+        },
         "    Anti-overclaim reminder: today's claim = \"D1 path reconciled + 10-walker gate queued\", NOT \"replication done\""
       ],
-      "bulletsBox": {"y": 1.55, "h": 5.3},
+      "bulletsBox": {
+        "y": 1.55,
+        "h": 5.3
+      },
       "sources": [
         "新任务explore/MetaD_Cartridge_Feasibility_Memo_2026-04-22.md § 0.8 / § 5"
       ],
