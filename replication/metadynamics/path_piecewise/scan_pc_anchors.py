@@ -109,14 +109,15 @@ def project_pathmsd(candidate: np.ndarray, frames: list, lam: float):
     N = len(frames)
     assert N == 15
     msds = np.array([kabsch_msd(candidate, fr) for fr in frames])
-    # Shift for numerical stability
-    shift = -lam * msds
-    shift -= shift.max()
-    w = np.exp(shift)
+    # log-sum-exp trick: save max BEFORE subtracting, don't mutate in place
+    raw_shift = -lam * msds
+    m = raw_shift.max()                # true max for log-sum-exp
+    stable = raw_shift - m             # non-mutating
+    w = np.exp(stable)
     i_idx = np.arange(1, N + 1)
     s = float(np.sum(i_idx * w) / np.sum(w))
-    # z with original (unshifted) kernel — reconstruct
-    log_sum = shift.max() + np.log(w.sum())
+    # z = -1/λ · ln Σ exp(-λ·MSDᵢ) = -(m + log Σ exp(stable)) / λ
+    log_sum = m + np.log(w.sum())
     z = float(-log_sum / lam)
     return s, z, msds
 
