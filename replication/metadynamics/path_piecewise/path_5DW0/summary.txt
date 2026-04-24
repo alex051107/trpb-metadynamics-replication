@@ -1,0 +1,41 @@
+Piecewise path summary — PC = 5DW0
+============================================================
+O  (MODEL 1)  = 1WDW chain B
+PC (MODEL 8)  = 5DW0 chain A
+C  (MODEL 15) = 3CEP chain B
+Residues: 97-184 + 282-305 (common Cα = 112)
+
+Anchor RMSDs (Kabsch onto O):
+  O ↔ PC  = 1.571 Å
+  PC ↔ C  = 11.061 Å
+  O ↔ C   = 10.895 Å
+
+Adjacent MSD (Å²):
+   1→ 2 [O→PC]: 0.0504
+   2→ 3 [O→PC]: 0.0504
+   3→ 4 [O→PC]: 0.0504
+   4→ 5 [O→PC]: 0.0504
+   5→ 6 [O→PC]: 0.0504
+   6→ 7 [O→PC]: 0.0504
+   7→ 8 [O→PC]: 0.0504
+   8→ 9 [PC→C]: 2.4969
+   9→10 [PC→C]: 2.4969
+  10→11 [PC→C]: 2.4969
+  11→12 [PC→C]: 2.4969
+  12→13 [PC→C]: 2.4969
+  13→14 [PC→C]: 2.4969
+  14→15 [PC→C]: 2.4969
+
+Statistics:
+  mean = 1.2737 Å²
+  std  = 1.2233 Å²
+  CV   = 0.960
+
+λ values (Branduardi 2.3/⟨MSD⟩):
+  Single-path λ  = 1.8058 Å⁻²  (= 180.5814 nm⁻²)
+  O→PC  segment  = 45.6424 Å⁻²
+  PC→C  segment  = 0.9211 Å⁻²
+
+Direct 1WDW→3CEP reference: ⟨MSD⟩≈0.61 Å², λ=3.77 Å⁻²
+  MSD ratio (piecewise/direct) = 2.09×
+  λ   ratio (piecewise/direct) = 0.48×

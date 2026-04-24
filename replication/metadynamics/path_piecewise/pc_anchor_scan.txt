@@ -1,0 +1,22 @@
+PC anchor projection scan — 2026-04-23
+Direct path: ../single_walker/path_gromacs.pdb
+λ = 3.77 Å⁻²
+Selection: residues 97-184 + 282-305 (112 Cα)
+
+code   chain    s(R)  z(R)[Å²]   RMSD→O   RMSD→C  MSD_min argmin verdict
+──────────────────────────────────────────────────────────────────────────────────────────
+5DW0   A       1.069   -0.0190    1.571   11.059   2.4692      1 ✗ O-proximal (not PC)
+5DW3   A       1.075   -0.0207    1.447   10.986   2.0926      1 ✗ O-proximal (not PC)
+5DVZ   A       1.067   -0.0185    1.324   11.032   1.7520      1 ✗ O-proximal (not PC)
+
+Healthy PC criteria:
+  • s(R) ∈ [5, 10]  (geometric midpoint of 15-frame path)
+  • |z(R)| < 1 Å²   (on-path, not off to the side)
+  • RMSD_to_O > 3 Å (substantial deformation from Open)
+  • RMSD_to_C > 3 Å (still far from Closed)
+
+Interpretation notes:
+  4HPX is a C-side (Q₂) reference — expected s ≈ 15, not PC.
+  5DVZ is LLP (internal aldimine) intermediate — chemical, not geom PC.
+  5DW0 / 5DW3 are β-partially-closed by label, but this scan tests
+  whether they land geometrically at s ≈ 5-10 in our CV space.

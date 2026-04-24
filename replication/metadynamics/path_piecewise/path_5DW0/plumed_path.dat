@@ -1,0 +1,3 @@
+# Piecewise path: 1WDW → 5DW0 → 3CEP
+# neighbor_msd_cv = 0.960
+p1: PATHMSD REFERENCE=path.pdb LAMBDA=1.8058 NEIGH_STRIDE=100 NEIGH_SIZE=6
