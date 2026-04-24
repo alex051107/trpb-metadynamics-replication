@@ -18,6 +18,14 @@
 
 ## 目录
 
+**Part I — 战略与全局 narrative（新增 2026-04-23 晚）**
+
+- A. [本周战略定位：从 replicator 到 cartridge owner](#第a章-本周战略定位)
+- B. [本周探索路线树：所有尝试过的分支](#第b章-本周探索路线树)
+- C. [ML-layer audit + STAR-MD 关系](#第c章-ml-layer-audit--star-md-关系)
+
+**Part II — D1 技术主线：FP-034 诊断 + sequence-aligned path（原 Ch 0–10，verbatim）**
+
 0. [本周核心结论](#第0章-本周核心结论)
 1. [上周复盘（2026-04-17 → 2026-04-23）](#第1章-上周复盘)
 2. [Miguel 2026-04-23 邮件 contract pivot](#第2章-miguel-邮件-contract-pivot)
@@ -30,7 +38,719 @@
 9. [未来方向 & Q&A 准备](#第9章-未来方向--qa-准备)
 10. [判断原则与诊断规则](#第10章-判断原则与诊断规则decision-rationale)
 
+> **阅读顺序建议**: Part I 三章是"为什么 D1 重要"、"本周还尝试了哪些被 reject 的
+> 分支"、"这件事和 lab 里 ML 层/STAR-MD 的关系是什么"。Part II 是"D1 到底怎么做的
+> 技术细节"，verbatim 保留。如果只有 10 分钟，读 Part I 的 A.1–A.3 + Ch 0；
+> 如果 30 分钟，读 Part I 全部 + Ch 0 + Ch 6；完整技术理解读全文。
+
 ---
+
+## 第A章 本周战略定位
+
+> **本章定位**: D1 进展（Part II）回答"path 怎么修的、pilot 怎么跑的"；本章
+> 回答 **"为什么这件事是 cartridge owner 的第一块砖，而不是一次孤立的 bug fix"**。
+> 所有 framing 引自 `新任务explore/MetaD_Cartridge_Feasibility_Memo_2026-04-22.md`
+> (下文简称 memo) v1.2，canonical 版本已 PM 签字。
+
+### A.1 从 replicator 到 cartridge owner 的定位转换
+
+过去 6 周（2026-03-15 → 2026-04-16）项目 self-framing 是 "**我在复刻 Osuna 2019
+的 TrpB MetaDynamics 结果**"——replicator 定位，目标是生成一张和 Figure 3 相似的
+FES。这个 framing 在 2026-04-22 之后被 PM + Claude + 三个独立 agent debate 之后
+pivot 了（memo v1.2 § 0.1 canonical line）：
+
+> **STAR-MD 把通用蛋白轨迹生成做满了。TrpB 需要的是 mechanism-grounded
+> evaluation。我把 TrpB 的 MetaD 机制真值做成可复用 cartridge，用来评价、
+> 筛选和纠偏 lab 里的生成式 enzyme-design pipeline。**
+> — `MetaD_Cartridge_Feasibility_Memo_2026-04-22.md` L14
+
+**语言边界**（memo § 0.1 L16–19）:
+
+- ❌ "I'm building a new ML model / dynamics layer"
+- ❌ "I own the TrpB ground truth"
+- ✅ "I'm building the mechanism-grounded reference cartridge"
+- ✅ "STAR-MD and my cartridge are upstream-downstream, not competitors"
+
+**为什么要做这个 pivot**:
+
+1. **外部压力**: ByteDance Seed 2026-02-12 发表 STAR-MD (`2602.02128v2.pdf` p1
+   abstract: "scalable SE(3)-equivariant diffusion model that generates
+   physically plausible protein trajectories over microsecond timescales...
+   state-of-the-art performance across all metrics"). 如果我们继续把
+   self-framing 说成"做 protein dynamics model"，在 Caltech/Anima lab 的视野
+   里会立刻被这条线盖掉。
+2. **内部 signal**: Anima 在 2026-01 内部 Slack 明确说过 generic dynamics line
+   "not concrete enough"（memo § 0 附录 A; deep-research-report-3.md L207 "她
+   最明确表达的...integration hygiene、以及 reward correctness"）。"再造一个
+   model" 不是 lab 想要的。
+3. **真正 open position**: lab 需要的是 *evaluation cartridge* —— Amin 在做
+   STAR-MD-based SURF benchmark 但没有 TrpB-specific ground truth；Raswanth
+   的 GRPO reward 缺 catalytic readiness head；Yu 做 MMPBSA ranking 缺 rare-state
+   rescue。这些都是 cartridge-shape 的 consumer，不是 model-shape。
+   (`deep-research-report_2.md` L5–7: "Slack 反复指向同一痛点: GRPO 可能因
+   wrong rewards 产出 false positives... 当前 reward 未覆盖全程、reprotonation
+   决定立体化学... Amin 明说 reward 必须 independent of alignment")
+
+**这个 pivot 对 D1 意味着什么**: 本周 path 重建不再是"复刻 Osuna 2019 Figure 3
+的一个前置步骤"，而是 **cartridge 第 1 个组件（path definition）的落地**。
+corrected path (`path_seqaligned/path_seqaligned_gromacs.pdb`) 是 cartridge 的
+foundation artifact；如果它本身是 FP-034 bug 的产物，cartridge 整栋楼都塌。
+所以本周 D1 在新 framing 下的 load-bearing 意义 = 给 cartridge 打地基。
+
+### A.2 Cartridge 的 7 个组件 + 本周状态
+
+Memo v1.2 § 0.2 L22–30 把 "cartridge" 这个抽象词 ground 到 7 个具体 artifact:
+
+| # | 组件 | 本周状态 | 来源 |
+|---|---|---|---|
+| 1 | **Path definition**: O/PC/C 的 PATHMSD 坐标（path.pdb + λ + state masks） | ✅ **本周完成**: `path_seqaligned_gromacs.pdb` + λ=80 + self-projection gate PASS | memo L24; `VERIFICATION_REPORT.md` L74–95 |
+| 2 | **Reference FES**: WT / Aex1 / 变体（WT 先做） | 🟡 pilot 45515869 运行中，10-walker 待 launch | memo L25 |
+| 3 | **State masks**: O / PC / C / off-path / reactive-ready | ⬜ 未开始（定义 rule + block analysis 脚本已部分写） | memo L26; memo § 2 表 L154 |
+| 4 | **Block uncertainty**: 带 CI 的可信区间 | ⬜ 未开始 | memo L27 |
+| 5 | **Rare-state frames**: 供生成模型/reward model 的 hard examples | ⬜ 未开始（需从 reweighted HILLS 导出） | memo L28, L156 |
+| 6 | **Catalytic descriptors**: PLP/K82/Y301/E104/indole tunnel 机制几何 | ⬜ 未开始 | memo L29, L157 |
+| 7 | **Scorer API**: `project_to_path()`, `score_trajectory()`, `state_occupancy()` | ⬜ 未开始（D2 本周 deliverable 要求写 `API_DESIGN.md` 草图） | memo L30, L37 |
+
+**1/7 完成**，但这个 1 是**地基**——其余 6 个全都依赖 corrected path 的几何
+正确性。FP-034 bug 过去 4 周没被发现意味着组件 2–7 即使写了也是污染产物（在 old
+path 上算的 state mask 和 rare-state frame 都错）。所以本周的 D1 = 让组件 2–7 变
+得可能。
+
+### A.3 本周 D1/D2/D3 deliverables
+
+Memo v1.2 § 0.3 L32–40 把本周 scope 从"5 个 ML 层 idea"收窄到 3 个 deliverable:
+
+| # | Deliverable | 本周要做 | 完成度 | Gate |
+|---|---|---|---|---|
+| **D1** | **Cartridge core (最小版本)** | 把 Miguel PATH.pdb 对齐问清楚；WT reference 定义；PLUMED input 清理；state masks 草稿 | **90%**: path + λ + plumed 完成，state masks 未开始 | path.pdb 和 Miguel 版本一致 ✅ (λ=80 逐字) |
+| **D2** | **Trajectory scoring wrapper (API 草图)** | 写 `replication/cartridge/API_DESIGN.md`：函数签名 + 输入输出 + 使用场景，不写实现 | **0%**: 未开始（本周精力全在 D1 救火）| 文件 commit |
+| **D3** | **One lab-facing demo** | 二选一: Yu demo (simple CV 失败 → PATHMSD cartridge 给更有意义的诊断) 或 Amin demo (STAR-MD 输出被 cartridge 打分) | **0%**: 未开始（pilot 还没跑完）| 有一个可给出去的 notebook 或短报告 |
+
+**不做的事**（memo § 0.3 L40）: MNG 作主线、Reactive PATHMSD、Arvind 电子效应。
+这些是未来 claim，不是本周价值展现。
+
+**自我评价**: D1 拿到 90% 是高分（预期 70%，因为 FP-034 吃掉 3 天），但 D2/D3
+拖欠是 realistic risk——如果下周 pilot gate 不过需要回到 D1 debug，D2/D3 可能
+直到 2026-05-01 kill-switch 都没开工。需要 PM 决策：是不是等 D1 完全通过 gate
+再推 D2，还是 D2 API 设计可以先写 skeleton？
+
+### A.4 五个 stakeholder 的 canonical 对话脚本
+
+Memo v1.2 § 0.4 L42–54 给了 5 个 stakeholder 的 exact language。本节抄写
+canonical 版，**不要** improvise——组会里直接读这几句：
+
+**对 Yu**（已和我结对，rare-state rescue consumer; memo L44–46）:
+
+> "I saw your OpenMM MetaD update. I'm working on the PLUMED/PATHMSD side and
+> recently got the original-author PLUMED input for the Osuna TrpB MetaD
+> protocol. I'm still reconciling the PATH.pdb construction, but I think this
+> could be directly useful for testing reaction-coordinate choices beyond
+> simple 1D/2D CVs."
+
+**对 Amin**（STAR-MD benchmark owner; memo L47–49）:
+
+> "I'm building a TrpB MetaD cartridge that can score generated trajectories
+> by projecting them onto a mechanism-grounded PATHMSD/FES reference. If your
+> STAR-MD/ConfRover benchmark needs an enzyme-specific task, TrpB could be a
+> useful adversarial case."
+
+**对 Raswanth**（GRPO reward owner, 被动 wait him come to me; memo L50–52）:
+
+> "I can help evaluate whether top designs are dynamically plausible along
+> the TrpB conformational coordinate, not just geometrically valid."
+
+**对 Arvind**（PI, 等 WT FES 收敛后再对话; memo L53–55）:
+
+> "I'm turning the TrpB MetaD replication into a reusable evaluation
+> cartridge for ML-generated enzyme dynamics and design candidates."
+
+**对自己**（internal framing; memo § 0.5 L57–58 一段话 pitch）:
+
+> "STAR-MD and related models are making generic protein dynamics generation
+> scalable. But enzyme design needs a different layer: mechanism-grounded
+> evaluation. For TrpB, the relevant question is not only whether a generated
+> trajectory is structurally valid, but whether it visits catalytic
+> conformational substates and preserves PLP-dependent reaction geometry.
+> I am building a MetaD-derived TrpB cartridge that turns expensive path-CV
+> simulations into reusable labels, reference FES, rare-state frames, and
+> scoring functions."
+
+**脚本纪律**（我 enforce 给自己的）: 组会 Q&A 时如果被问 "what are you doing?"，
+**不许** 说 "I'm replicating Osuna 2019" 或 "I'm building a dynamics model"。
+必须是 "I'm building a mechanism-grounded evaluation cartridge for TrpB."
+"Replicate" 这个词只在 section 级 scope 里用（"I replicated their path-CV"），
+不在 project-level self-description 里用。
+
+### A.5 硬 kill-switch：2026-05-01 前 WT FES 必须过 sanity check
+
+Memo v1.2 § 0.8 L78–83 + § 5 L490–503:
+
+| Gate | 当前状态 | 阻塞物 |
+|---|---|---|
+| WT MetaD 收敛 (pilot + 10-walker 跑完) | 🟡 pilot 45515869 rolling, 10-walker 待 launch | FP-030 O-end stall cause 在 corrected path 上是否仍存在？unknown until pilot reaches max_s > 12 |
+| 至少 1 个变体 FES | ⬜ 未开始 | 需 WT gate 先过 |
+| Path CV 已验证可用 | ✅ 已过 (driver self-projection PASS) | — |
+| Repo cartridge directory layout | ⬜ 未开始 | 大量 uncommitted changes |
+| Yu 能共享 MMPBSA 数据 | ⬜ 未确认 | 需 1 次对话（本周组会后启动 A.4 对 Yu 的脚本）|
+| Amin 愿意把 TrpB 做 benchmark task | ⬜ 未确认 | 需 1 次对话（本周组会后）|
+
+**kill-switch 定义**（memo § 0.8 L81, § 5 L503）: 如果 2026-05-01 前 WT FES 还
+没过 sanity check，**所有 5 个 ML-layer 方向全部暂缓**，回到单 walker → 10-walker
+升级，不推 cartridge framing。
+
+**什么叫 sanity check**（project-internal 定义，比 memo 更 concrete）:
+
+1. 10-walker 跑完 ≥ 50 ns（单 walker × 10 = 500 ns 等效）
+2. 2D FES (s, z) 上 O / PC / C **三个** local minima 都可见（不是只 PC basin）
+3. O→C 最 minimum-energy path 上的 barrier ≤ 20 kcal/mol（Osuna 2019 Figure 3
+   报告 barrier ~12–15 kcal/mol，我们允许 30% wiggle）
+4. Block CI（把 10-walker 分 2 组各算 FES）两组 O 基底深度差 < 2 kcal/mol
+
+如果 2026-04-30 晚上任意一条不过，5-01 早上发 PM 邮件汇报 kill-switch 触发，
+不继续扩到 D2/D3；专注让 WT 收敛。
+
+**为什么给自己设这个死线**: 如果没有 hard cutoff，FP-034 这种 bug 会继续消耗
+周级别时间；cartridge framing 会在一个不收敛的 foundation 上盖空中楼阁。
+2026-05-01 = Caltech SURF 最终决策周期前的最后一个"可以 pivot 路线而不是 pivot
+deadline" 时点。
+
+### A.6 cartridge framing 的 pitfall 预警（内部自省）
+
+新 framing 强但不是 free lunch。三个容易滑倒的地方，写在这里自己盯：
+
+**pitfall 1 — "cartridge owner" 口气过大**: 本科生 + 2026-05 Caltech offer
+未定，**不能**对外 claim "I own the TrpB ground truth"。memo L17 的否定列表就是
+防这个。实际 self-description: "building the reference cartridge for *my own*
+TrpB work, with the hope it can be useful to the lab". 低姿态但 specific.
+
+**pitfall 2 — scope creep 回到 5 个 ML 方向**: memo § 3 曾列 A-G 7 个 ML layer
+idea，§ 1.5 audit 后只有 MNG (方法 E) 独立活 (L131, L311)；cartridge 本身比任
+何 ML layer 更 novel (memo § 1.5 L134 "The cartridge itself ... is likely more
+novel than any individual ML layer built on top"). 如果下周有人问"你为什么不做
+learned bias potential"，答 "方法 C (LBP) 已在 2025 文献被 NN-VES 吃掉 (memo
+L240–245)，我 drop 了". 不 re-engage 被 audit kill 掉的分支.
+
+**pitfall 3 — 把 D1 技术进展 oversell 成 D3 demo**: 本周 D1 拿到 90%，但
+D3 (lab-facing demo) 是 0%. 组会不能讲成 "I have a cartridge". 正确表述:
+"I have the path definition for the cartridge". Demo 是 2026-05 才能给出来的
+东西。
+
+---
+
+## 第B章 本周探索路线树
+
+> **本章定位**: 一周的工作不是直线，是一棵 branch & reject 的树。本章记录
+> **所有被 reject 的分支**——不是为了 show 工作量，是为了 show "rejection
+> 本身是正面信息"（每条 reject 砍掉一个物理 hypothesis space）。这样组会后
+> 如果有人问"你们有没有试过 X"，我可以直接引 B.X 节说"试过，原因 A 否决".
+
+### B.1 Probe sweep P1–P5（已废弃，基于 GEOM 误读）
+
+**时间**: 2026-04-08 → 2026-04-15
+**目录**: `replication/metadynamics/probe_sweep/P1..P5/`
+**假设**: Osuna 2019 SI 只写了 "adaptive Gaussian width scheme to reach a
+better sampling"，我们读成 `ADAPTIVE=GEOM`（Branduardi 2012 几何缩放）。5 组
+σ-floor/ceiling 扫描：
+
+| Probe | σ_min_s | σ_max_s | σ_min_z | σ_max_z |
+|---|---|---|---|---|
+| P1 | 0.01 | 0.2 | 0.001 | 0.02 |
+| P2 | 0.02 | 0.3 | 0.002 | 0.04 |
+| P3 | 0.005 | 0.5 | 0.0005 | 0.05 |
+| P4 | 0.03 | 0.15 | 0.003 | 0.015 |
+| P5 | 0.015 | 0.25 | 0.0015 | 0.025 |
+
+（具体值见各 P*/plumed.dat；locked-vs-tunable 规则在
+`probe_sweep/ladder.yaml`, 参见 userMemory `feedback_si_locked_factors`）
+
+**Rejection trigger**（2026-04-23 Miguel 邮件）: Miguel 的 plumed.dat 给的是
+`ADAPTIVE=DIFF SIGMA=1000`——不是 GEOM 模式，SIGMA=1000 是 **时间窗步数**不是
+Gaussian 宽度标量。PLUMED 里 GEOM vs DIFF 同名不同语义
+(`failure-patterns.md` FP-031 L454–465).
+
+**Verdict**: P1–P5 5 组运行在 GEOM 下做——对 Osuna 协议不再具参考性。全部标
+deprecated (task #36 in `NEXT_ACTIONS.md`)，运行数据保留作为 "GEOM vs DIFF"
+敏感度对照数据资产，但不计入本周 FES 分析。
+
+**这条 rejection 给了什么信息**: Osuna SI 的 "adaptive scheme" 字面不唯一，
+**必须问原作者**。这直接导致 2026-04-20 给 Miguel 写邮件（`miguel_email.md`
+往来存档），否则 probe sweep 还会继续扩到 P6–P10 浪费周级时间。
+
+### B.2 Pilot matrix 2×2（anchor × sigma_seed；axis invalid 后部分保留）
+
+**时间**: 2026-04-16 → 2026-04-19
+**目录**: `replication/metadynamics/pilot_matrix/`
+**设计**: 2 × 2 design of experiments，4 个 cell:
+
+| | sigma_seed_A (GEOM-based) | sigma_seed_B (GEOM-based) |
+|---|---|---|
+| anchor_1WDW | cell 11 | cell 12 |
+| anchor_3CEP | cell 21 | cell 22 |
+
+**Rejection partial**（2026-04-23 Miguel 邮件）: sigma_seed 维度 invalid (基于
+GEOM 误读)；anchor 维度 (1WDW vs 3CEP 作 starting structure) 仍合法，但必须
+re-run 在 DIFF 下。
+
+**Verdict**: axis 2/4 invalid，axis 1/3 scaffold 保留，实际 re-run pending 10-walker
+收敛后再重启。commit `65625fc "pilot_matrix: scaffold 2x2 (anchor x sigma_seed)
+without touching locked probe_sweep"` 留档。
+
+**这条 rejection 给了什么信息**: DoE 级别的 sweep 在 contract 未锁的时候做是高
+风险；**必须先 freeze contract 再 sweep**. 未来 sweep 规则 (`failure-patterns.md`
+FP-031 防范): 任何 factorial design 前置检查是否每个 factor 都有 SI 明文或作者
+邮件支持。
+
+### B.3 Wall falsification（45448011, z↑ s 不动 → "wall 压制" 证伪）
+
+**时间**: 2026-04-22
+**目录**: `replication/metadynamics/miguel_2026-04-23/45448011_wall_test/`（本地
+archive），Longleaf `/work/.../AnimaLab/metadynamics/miguel_2026-04-23/45448011/`
+**假设**: 若 `UPPER_WALLS AT=2.5 KAPPA=800` 把 walker z 方向压死，则 z(R) 不能
+escape path 邻域，可能连带把 s(R) 锁在 O basin。解锁 wall (KAPPA 800→0) 测试。
+
+**结果**（现有 Ch 1.3 已讲，此处补 reject 逻辑）:
+- z 方向: 从 ~0.8 Å² 飙到 ~2.7 Å²（上升 3.4×），说明 wall 确实在
+  compress z
+- s 方向: 完全不动，max_s 仍卡在 1.5 附近
+- **→ wall 不是 bottleneck**. walker 不出 O basin 的原因不是 "wall 把它压回去"
+
+**Verdict**: "wall 压制" 假设被 z↑/s→ 的解耦证伪。注意：z↑ 的结果同时也在暗示
+"path 本身几何上就不对"——如果 path 是 valid 的，z 应该对 walker 不那么 invasive；
+z 一解锁就飙说明 walker 在 old path 坐标系里离 path 本来就远。
+
+**这条 rejection 给了什么信息**: 这是 → FP-034 的第一个硬物理 trigger。之前所有
+"stall" 讨论都在参数空间 (σ, height, biasfactor)；wall test 之后才真正把注意力
+推到 **coordinate space 本身是否 valid**. 所以 B.3 是 B.7（cross-model
+consultation）和 Ch 3（FP-034 诊断）的前奏。没有这条 rejection，我们可能还在
+调 HEIGHT 和 BIASFACTOR。
+
+### B.4 Piecewise PC anchor at MODEL 8（5DW0/5DW3/5DVZ rejected；后被撤稿）
+
+**时间**: 2026-04-20 → 2026-04-22
+**目录**: `replication/metadynamics/path_piecewise/`
+**假设**: 三-anchor piecewise path O=1WDW → PC=5DW0/5DW3 → C=3CEP 能让 walker
+更容易穿过中间区（vs 两点 1WDW→3CEP linear interp）。测 PC 位置是否作为 MODEL 8
+（15 帧的几何中点）是否合理。
+
+**当时的 rejection**:
+- 5DW0 chain A on naive path: s ≈ 1.069
+- 5DW3 chain A on naive path: s ≈ 1.075
+- 5DVZ chain A on naive path: s ≈ 1.067
+- neighbor_msd_cv @ MODEL 8 = 0.96（threshold 0.3，FAIL）
+- **原结论**: "biological βPC label ≠ 几何中点; PC-at-MODEL8 single-λ design 不
+  成立" (`path_piecewise/README.md` verdict section, 现 RETRACTION)
+
+**Retraction**（`path_piecewise/RETRACTION.md` L17–28）: corrected path 上同样
+的投影:
+- 5DW0 chain A: **s = 9.455** ✓
+- 5DW3 chain A: **s = 8.508** ✓
+- 5DVZ chain A: **s = 5.371** ✓
+
+**→ 生物学 βPC label 一直是对的**. 2026-04-20 ~ 2026-04-22 三天的 piecewise
+debugging 全部 invalid, 因为被 audit 的 path 本身是 FP-034 bug 的产物.
+
+**这条 rejection 给了什么信息**:
+
+1. FP-034 污染链的教材: naive mapping bug → spurious βPC rejection → 3 天
+   lost debugging → FP-034 discovery (`RETRACTION.md` L54–58)
+2. **Retraction 行为本身是正面贡献**: 保留整个旧目录 + 撤稿通知，作为 "AI 在
+   corrupted foundation 上 debug 会产生 emergent false signal" 的案例记录。
+   不删除。
+3. `generate_piecewise_path.py` 和 `scan_pc_anchors.py` 的 projection logic
+   本身是对的（commit `0dc49ab` 修的 z(R) log-sum-exp bug 也是有效修复）——
+   当 cartridge 组件 3 (state masks) 开始开发时，这两个脚本可以被直接复用
+   在 corrected path 上。
+
+### B.5 Cross-model consultation（Pro + Codex + 2 Agent 独立 research）
+
+**时间**: 2026-04-21 → 2026-04-22
+**目录**: `chatgpt_pro_consult_45324928/` + `colab_review/`
+**四路并行** (Ch 1.5 的扩展):
+
+| 渠道 | 任务 | 输入 | 结论 |
+|---|---|---|---|
+| ChatGPT Pro (O1 长思考) | 审 HILLS 形态 + walker 动力学 | 45324928 HILLS + COLVAR + plumed.dat | "Probably path CV 坐标系本身有问题" (qualitative). 指出 σ_ss 在 DIFF scheme 下偏小 → 但不是 root cause |
+| Codex peer review (MCP) | 独立复算 path_piecewise audit 的数值 | `generate_piecewise_path.py` + 5DW0/5DW3 PDB | 算数对，但指出 audit 的 path 源文件是 naive resid mapping 产物（Codex 第一个指出 bug 所在文件 + 行号）|
+| Agent #1 (physics angle, web research) | 推算 barrier height vs 实际 bias 沉积 | Osuna 2019 FES + 45324928 HILLS cumulative bias | bias ≪ 理论 barrier，但 walker 动不了 → "CV 不是 good reaction coordinate" hint |
+| Agent #2 (PLUMED internals, code archaeology) | 读 PATHMSD 源码 | PLUMED 2.9 src | "PATHMSD 对 reference frame 做 internal Kabsch alignment；它不检查 reference frames 是否合理" → 把 "path 是否合理" 这个问题从 PLUMED 层面 raise 到 user 层面 |
+
+**四路 convergence**: 四条独立路径收敛到**同一方向**——"问题在 path 本身，不在
+bias/wall/σ". 这种 4-way convergence 是 Claude 决定"集中火力重查 path
+construction" 的 trigger（单一 consultation 不足，4 条独立 channel 同方向 = 极
+低误报率 signal）。
+
+**这条 rejection 给了什么信息**:
+
+1. 多 agent consultation 的**方向 signal** 比单 agent "答案" 可靠。具体数字
+   (σ_ss 多少) 每个 agent 各说各话，但"方向"（path vs param）一致 → 更可信.
+2. Codex MCP 在 "code archaeology" 类任务上稳定（能指出第几行）;
+   `plan-codex` workflow 本周启用得正是时候.
+3. Deep-research agent 在 "novelty audit" 类任务（memo § 1.5 + § 3 AUDIT
+   verdicts）上给出的结论和本周 path 诊断 orthogonal，两个 research track 都
+   值得保留.
+
+### B.6 path_construction_ABC_plan（A/B/C 对照设计，后被 FP-034 取代）
+
+**时间**: 2026-04-22 下午
+**文件**: `replication/metadynamics/miguel_2026-04-23/path_construction_ABC_plan.md`
+（uncommitted，草稿）
+**动机**: lambda_audit_2026-04-23.md L44 "A faithful-replication path forward
+is not to run λ=80 on our path (that's a stress test, not replication), but
+to reconstruct Miguel's path-construction recipe". 基于这个判断设计了 A/B/C
+三条 candidate path recipes:
+
+- **Plan A**: pure linear interp 1WDW→3CEP, naive resid mapping (status quo;
+  本周被 FP-034 否决)
+- **Plan B**: linear interp 1WDW→3CEP, **subset 选择不同**（只选 COMM domain
+  97-184, 不包括 base 282-305）
+- **Plan C**: **multi-crystal anchored**, insert 5DVZ/5DW0 as intermediate
+  frames，interpolate by cluster rather than pure linear
+
+**Rejection**（2026-04-23 凌晨 FP-034 发现）: A/B/C 三个都建立在 "naive resid
+mapping" 上，修了 mapping (FP-034) 之后 Plan A (pure linear + sequence-aligned
+mapping) 就够了——不需要 B 和 C 的复杂性。ABC plan 文件保留作 decision trail，
+但不执行。
+
+**这条 rejection 给了什么信息**: 在 bug 没定位前提前设计 A/B/C 实验组，会**在
+bug 上再盖 3 层**. 正确顺序是 root-cause debug → 再设计对照. ABC plan 的教训：
+lambda_audit 的 path-density hypothesis 本身是对的，但 path density 差异**不是
+**21× 的 ratio 来源（实际来源是 naive mapping）。这提醒 lesson: debugging 层数
+不能叠太深。
+
+### B.7 Rejection 作为正面贡献（meta-narrative）
+
+**本章的 meta 论点**: 5 条 rejection（B.1–B.5，B.6）每条都砍掉一个 hypothesis
+space:
+
+| Rejection | 砍掉的 hypothesis |
+|---|---|
+| B.1 probe sweep invalid | "σ schedule 是 bottleneck" |
+| B.2 pilot matrix partial | "anchor + σ 二因素交互是 bottleneck" |
+| B.3 wall unlock | "upper_wall 压制是 bottleneck" |
+| B.4 piecewise at MODEL 8 | "PC 不在几何中点 = biology ≠ geometry" |
+| B.5 cross-model 4-way convergence | "root cause 在参数空间" |
+| B.6 ABC plan preempted by FP-034 | "path-construction recipe 差异是 21× ratio 来源" |
+
+**最终剩下的 hypothesis**（唯一未被 reject 的）: "path 的 residue-to-residue
+mapping 错了". 这就是 FP-034. 五条 rejection 不是失败的集合——是**归因过程本身**.
+
+Group meeting Q 可能会问: "你们一周只修了一个 bug？"
+Answer: "我们一周排除了 5 个其他 hypothesis，把 bug 从一个 1000-dim 的 'something
+is wrong somewhere' 问题收窄到 `generate_path_cv.py` L668–671 的 3 行 hardcoded
+residue list. Rejection tree 本身就是归因."
+
+---
+
+## 第C章 ML-layer audit + STAR-MD 关系
+
+> **本章定位**: 为什么 cartridge 这个定位是 **与 STAR-MD 互补的 upstream-downstream
+> 关系**，不是竞争；以及 5 个 ML-layer extension 方向在 2026-04-22 外部文献
+> audit 之后的 verdict. 来源: memo § 1 + § 1.5 + § 3 + `2602.02128v2.pdf`
+> abstract/intro.
+
+### C.1 五个 ML-layer 扩展原初假设
+
+Memo § 1 L107–116 + § 3 L164–388 列了 5 种"把 cartridge 延伸成 ML 层"的方法:
+
+| 方法 | WHAT | Consumer | 原初 novelty 评估 |
+|---|---|---|---|
+| A — CRR (CatalyticReadinessReward) | 从 MetaD FES 拟合 state-conditional geometry scorer，作为 GRPO reward | Raswanth | 中-高 |
+| B — PP-Prior (Path-Progress Conditioning) | reweighted p(s,z) 作为 pickled artifact 喂给 SE(3) diffusion | Amin / STAR-MD fork | 中 |
+| C — LBP (Learned Bias Potential) | NN 参数化 V_bias(s,z) 替代手调 Gaussian | 跑变体 MetaD 的人 | 不确定 |
+| D — TCR (Thermodynamic Consistency Regularizer) | 可微 loss 项 KL(p_model ‖ p_MetaD) 加到生成模型训练 | STAR-MD retrainer | 不确定 |
+| E — MNG (Memory Necessity Gate) | lag-stratified Markov-vs-qMSM 诊断作为 adaptive-sampling rescue trigger | DeepDriveMD-like workflow | 高 |
+
+这 5 个 idea 是 2026-04-20 3-agent debate 的合成输出（memo 附录 A L540–545），
+不是 brainstorm list——每条都对应一个 lab stakeholder + 一个 load-bearing test.
+
+### C.2 2026-04-22 外部文献 audit verdict
+
+Memo § 1.5 L122–145 + § 3 各 subsection 末尾的 AUDIT VERDICT:
+
+| 方法 | Verdict | 关键杀手 |
+|---|---|---|
+| A — CRR | **WEAKENED** (MED conf.) | PocketX (bioRxiv 2025.12.28.696754), ResiDPO (arXiv 2506.00297), ProteinZero (arXiv 2506.07459) 已做 GRPO+reward on protein design |
+| B — PP-Prior | **WEAKENED** (MED-HIGH conf.) | Enhanced Diffusion Sampling (arXiv 2602.16634), Training-free molecular guidance (arXiv 2409.07359) 已占 energy-guided diffusion |
+| C — LBP | **DEAD** (HIGH conf.) | NN-VES (Bonati/Parrinello PNAS 2019 arXiv 1904.01305), Deep-TICA+OPES+mlcolvar 已占完整空间 |
+| D — TCR | **DEAD-ish** (HIGH conf.) | Thermodynamic Interpolation (JCTC 2024 10.1021/acs.jctc.4c01557), Energy-Based CG Flow (JCTC 2025 arXiv 2504.20940) |
+| E — MNG | **ALIVE** (MED conf.) | 唯一独立可立得住的 |
+
+（完整引用链见 memo 附录 C L562–591）
+
+**Meta-结论**（memo § 1.5 L134）:
+
+> "The cartridge itself (the FES + state labels + path CVs as a reusable
+> artifact for TrpB specifically) is likely more novel than any individual
+> ML layer built on top."
+
+**这意味着什么**（memo L135–141）:
+- Cartridge 本身（非 ML layer）是主产品
+- ML 层是 **可选 extension**，不是主 contribution
+- Pitch 重心 = "I own the only MetaD-grounded TrpB-family evaluation
+  cartridge". ML 层作为 "cartridge 能解锁的下游"
+- 5 个 ML 层里，**只有 MNG 独立可立得住**；其他需降级为"cartridge 的
+  demonstration/plug-in"，不是主 claim
+
+### C.3 每个方向详细 reasoning（audit 后的处置）
+
+**CRR (方法 A)**—降级为 projection metric:
+- memo § 3.1 L188 AUDIT verdict 原话: "唯一保留：将 CRR 重新定位为
+  *projection metric*（把候选几何投到 parent TrpB 的 MetaD-validated 催化
+  basin），不是 RL 框架本身. pitch 时强调 'conformational-readiness
+  projection'，不要说 'new GRPO reward'."
+- 对话 Raswanth 时（A.4 canonical 脚本）只说 "evaluate whether top designs
+  are dynamically plausible"，不 claim "new reward function".
+
+**PP-Prior (方法 B)**—路径 specific 保留，通用能量引导 drop:
+- memo § 3.2 L214 AUDIT verdict: "通用能量引导死。保留：path-CV 专用的
+  (s,z) conditioning for STAR-MD/MDGen-class trajectory models 还是空位。
+  必须把 pitch 锁死在 'PATHMSD axis, not generic energy'"
+- 和方法 D 合并为 "FES-consistent trajectory generation" 子模块（single
+  artifact，两个消费模式：rejection sampling + classifier guidance）.
+
+**LBP (方法 C)**—drop:
+- memo § 3.3 L246 AUDIT verdict: "drop 这条作为独立 novelty. 如果用到，
+  cite + apply，不 claim."
+- 由方法 F (Reactive PATHMSD, memo § 3.6) 替换在 "5 个 active 方向" 里的
+  位置.
+
+**TCR (方法 D)**—merge 入 B:
+- memo § 3.4 L281 AUDIT verdict: "作为独立 contribution 死. 保留作 3.2
+  PP-Prior 的 training-time counterpart"
+- 由方法 G (Physics Audit Layer, memo § 3.7) 替换 "作为独立 ML 层"的位置.
+
+**MNG (方法 E)**—lead claim:
+- memo § 3.5 L311 AUDIT verdict: "5 个方法里**唯一一个独立可立得住的**"
+- 从原 priority #5 晋升 **lead #1**. "即使其它 4 条全被吃，MNG 这条单独也
+  能立得住."（memo L318）
+- 但本周 **不做** MNG implementation（memo § 0.3 L40 "MNG 作主线... 不做"）
+  ——10-周 V0 先做 cartridge 本体，MNG 作为 "cartridge 能解锁的 runtime
+  tool" 在 2026-06 以后考虑.
+
+### C.4 新候选 F (Reactive PATHMSD) + G (Physics Audit Layer)
+
+audit 杀掉 C 和 D 之后，memo § 3.6 + § 3.7 新增两条替代:
+
+**方法 F — PLP-aware Reactive-Coordinate CV Extension**（memo § 3.6 L322–343）
+
+- WHAT: 扩展现有 PATHMSD 把 PLP Schiff-base 几何（K82-Cε ↔ PLP-C4' 距离、
+  Schiff-base 平面扭转、Dunathan-like 角）纳入 path 定义, 产出 "reactive
+  PATHMSD"——原生带化学态辨识力的 CV.
+- Consumer: 我自己做变体 MetaD、Yu 做 catalytic MD、Amin 做 benchmark 时的
+  TrpB task.
+- Load-bearing test (memo L330–332):
+  1. Reactive PATHMSD 在 WT TrpB 上能把 O/PC/C 再分出 "catalytically
+     competent C" vs "COMM-closed but Schiff-base misaligned" 两子态
+  2. 对 Y301K 等已知变体，reactive-path FES 里子态 occupancy 能预测实验
+     活性方向
+- 10-wk V0 可行: ✅ PLUMED template + 一轮 WT 验证
+- AUDIT: "novelty HIGH 的可能性中等；最大风险是 Reviewer 认定'只是应用级
+  改动'"（memo L342）
+
+**方法 G — Generative-Model Physics-Consistency Audit Layer**（memo § 3.7
+L346–370）
+
+- WHAT: `physics_audit(trajectory, reference_cartridge)` wrapper. 输入: 任何
+  生成式轨迹模型的输出 N 帧. 输出: 结构化 audit 报告含 reweight JSD, FDT
+  closure residual, path-progress matching, state-occupancy CI overlap,
+  rare-state recall on hard bins.
+- Consumer: 发表生成式 MD 模型的论文作者; Amin SURF benchmark; Reviewer.
+- Integration: pip-installable Python package.
+- 10-wk V0 可行: ✅ 如果只实现 reweight + path-distribution + state-occupancy
+  三项
+- AUDIT: "作为独立贡献相对单薄；作为 MNG (3.5) 的姊妹 callable tool 是合理
+  组合"（memo L370）
+
+### C.5 STAR-MD 定位：arXiv 2602.02128v2 摘要解读
+
+`2602.02128v2.pdf` p1 abstract (verbatim, 本地文件首页):
+
+> "Molecular dynamics (MD) simulations remain the gold standard for studying
+> protein dynamics, but their computational cost limits access to biologically
+> relevant timescales. Recent generative models have shown promise in
+> accelerating simulations, yet they struggle with long-horizon generation
+> due to architectural constraints, error accumulation, and inadequate
+> modeling of spatio-temporal dynamics. We present **STAR-MD**
+> (Spatio-Temporal Autoregressive Rollout for Molecular Dynamics), a scalable
+> SE(3)-equivariant diffusion model that generates physically plausible
+> protein trajectories over microsecond timescales. ... On the standard
+> ATLAS benchmark, STAR-MD achieves state-of-the-art performance across all
+> metrics–substantially improving conformational coverage, structural
+> validity, and dynamic fidelity compared to previous methods. STAR-MD
+> successfully extrapolates to generate stable microsecond-scale trajectories
+> where baseline methods fail catastrophically, maintaining high structural
+> quality throughout the extended rollout."
+
+**Introduction 关键句** (p1–2):
+
+> "existing methods are still constrained by short time horizons (typically
+> up to nanoseconds) and struggle to scale to larger proteins."
+>
+> "We introduce Spatio-Temporal Autoregressive Rollout for Molecular Dynamics
+> (STAR-MD), an SE(3)-equivariant autoregressive diffusion model for
+> generating physically plausible protein trajectories over microsecond
+> timescales, even for large protein systems."
+
+**STAR-MD 做的 + STAR-MD 不做的**:
+
+| 做的 | 不做的 |
+|---|---|
+| 通用蛋白 SE(3) equivariant trajectory 生成 (ATLAS benchmark) | enzyme-specific catalytic state 评估 |
+| microsecond 级长时 horizon | MetaD-grounded rare state |
+| conformational coverage / structural validity / dynamic fidelity 的通用指标 | path-CV 上的 (s,z) 分布匹配 |
+| 通用 Joint spatio-temporal attention 架构 | PLP-dependent Schiff-base 几何 |
+| Causal diffusion transformer, KV-caching | TrpB 特定的 O/PC/C state + Y301/E104 突变效应 |
+
+**左列 = STAR-MD 领先地很远, 不要碰; 右列 = cartridge 的 natural niche**.
+
+### C.6 Cartridge + STAR-MD 的联合使用场景
+
+**Upstream-downstream 图解**:
+
+```
+             STAR-MD (ByteDance)                cartridge (me)
+             ─────────────────                  ──────────────
+Input:       [seq + initial structure]          [trajectory N frames + PDB]
+Process:     SE(3) diffusion rollout            project_to_path(s, z)
+             microsecond horizon                score vs reference p(s, z)
+Output:      N-frame trajectory                 audit report:
+                                                 - JSD / Wasserstein to p_ref
+                                                 - state occupancy error (O/PC/C)
+                                                 - rare-state recall
+                                                 - FDT closure residual (optional)
+                                                 - catalytic-geometry descriptor score
+```
+
+**具体 demo scenario — Amin's STAR-MD SURF benchmark on TrpB**:
+
+1. Amin 拿 STAR-MD fork 在 TrpB WT (seq + 5DVZ starting) 上 rollout
+   1 μs trajectory (100 frames × 10 ns 间隔)
+2. Amin 调用 `cartridge.score_trajectory(trajectory, reference="TrpB_WT")`
+3. Cartridge 返回:
+   - O/PC/C 三态 occupancy: STAR-MD 输出 `[60%, 35%, 5%]` vs cartridge
+     reference `[50%, 30%, 20%]` → C 态 **4× under-represented**
+   - Rare-state recall on "catalytic-ready C" bin: **12%** vs cartridge
+     oracle 70% → STAR-MD miss 了催化 relevant 的 rare state
+   - FDT closure residual: *LARGE* → STAR-MD 在 barrier region 明显低估
+     memory kernel (对应 MNG 方法 E 的 diagnostic 预测)
+4. Amin 在 benchmark report 里列 TrpB 作为 **adversarial case**:
+   "generic SE(3) rollout captures overall dynamics but under-represents
+   catalytic substates by 4×; this is the kind of failure mode cartridge
+   identifies."
+
+**这对双方都是 win**:
+- Amin 的 benchmark paper 有了 enzyme-specific stress test 材料（不再只
+  ATLAS）
+- 我的 cartridge 有了第一个 external consumer 证明 "scorer API 不只是自
+  娱自乐"
+- Arvind Jan-5 原话 "recover substates consistent with metadynamics ground
+  truth"（memo § 4.2 L422）第一次有了 load-bearing validation
+
+**Why this doesn't happen without cartridge**: STAR-MD 的 ATLAS benchmark
+里没有 TrpB，也没有 PATHMSD reference 可以 project。如果不把 cartridge 做
+出来，Amin 就只能说 "STAR-MD 在 TrpB 上看起来 trajectory reasonable"，但
+"reasonable" 没有可验证含义。这是 memo § 0.1 L14 canonical line 的具体化：
+"STAR-MD and my cartridge are upstream-downstream, not competitors."
+
+### C.7 Cartridge 为什么不是 "再造一个 benchmark"
+
+可能的攻击面: "你这不就是 ATLAS benchmark 的 TrpB 版本？"
+
+**反驳**:
+
+1. **ATLAS 不是 enzyme benchmark**. ATLAS 主要是小蛋白/快折叠/CASP-like
+   targets; cartridge 是 **PLP-dependent enzyme** specific，包含 catalytic
+   geometry descriptors (PLP-Lys, Schiff-base 平面性等) ATLAS 完全不含.
+2. **Cartridge 不只是静态 benchmark**，是 **callable scorer API**.
+   `project_to_path(traj) → (s, z)`, `score_trajectory(traj, ref) → report`.
+   任何下游模型能直接 `pip install trpb_cartridge` 调用.
+3. **Cartridge 自带 MetaD ground truth**，而 ATLAS 的 reference 只是
+   oracle MD. MetaD reweighted rare-state FES 比 oracle MD 的 equilibrium
+   sampling 在 rare-state 上 orders of magnitude 更密.
+4. **Cartridge 的主要 consumer 是 Reviewer，不是 modeler**. Reviewer 读
+   一篇 generative MD paper 问 "它在 TrpB 这种酶上能不能工作?"——cartridge
+   提供 "TrpB 评分是多少" 的标准答案. 这和 benchmark paper 的受众 (modeler
+   想 self-evaluate) 不同.
+
+**这 4 点是 Anima 如果发出 "not concrete enough" 第二次时的 canonical
+rebuttal**（memo § 4.5 L460–472 的 2-page brief 主体内容）. 组会上不用主动
+抛，但如果她问，按这四条顺序回答.
+
+### C.8 两份 deep-research report 的结论 reconciliation
+
+2026-04-22 同一天跑了两份独立 deep-research (`deep-research-report-3.md` 229
+L; `deep-research-report_2.md` 55 L). 两份都在 "cartridge vs ML-model" 框架外，
+从 **lab-internal objective / reward correction** 视角重新 frame 项目。这是对
+memo 的 **orthogonal 第二意见**，值得并列记录。
+
+**`deep-research-report_2.md` L5–7 的 canonical framing** (凝练版):
+
+> "结论: 你现在最该 owner 的不是 MetaD 复现，也不是 generic dynamics/RNO，而
+> 是 TrpB-specific objective layer: 把 D/L selectivity + catalytic progression
+> + false-positive control 做成会改变 ranking/decision flow 的 F0 evaluator.
+> 直证: Slack 反复指向同一痛点——GRPO 可能因 wrong rewards 产出 false
+> positives (435–450); 当前 reward 未覆盖全程、reprotonation 决定立体化学
+> (603–609); Amin 明说 reward 必须 independent of alignment (828–829); 当前
+> 计划是 F0 quick signals→GRPO, F1/F2→MFBO (1041–1043). MetaD 仅被表述为
+> OpenMM benchmark (1128); protein dynamics 被放在 SURF side project
+> (1152–1153)."
+
+**`deep-research-report-3.md` L37 的 problem statement**:
+
+> "能不能定义一个 alignment-independent、TrpB-specific、multi-stage-aware 的
+> cheap evaluation/reward layer，使它在大规模生成与筛选时，优先保留更可能走
+> 完整个 D-selective catalytic progression 的候选，而不是只保留 external
+> aldimine 几何上好看的 false positives."
+
+**和 memo cartridge framing 的比较**:
+
+| 维度 | memo (2026-04-22 canonical) | deep-research-report_2/3 (2026-04-22 orthogonal) |
+|---|---|---|
+| 核心 artifact | 7 组件 cartridge（path + FES + masks + CI + frames + descriptors + scorer API）| F0 evaluator (alignment-independent, D/L-aware, multi-stage-aware) |
+| 主 consumer | Amin STAR-MD benchmark / Yu MMPBSA / 外部生成式 MD 论文 | Raswanth GRPO / MFBO F0-F2 / Amin reward-code |
+| novelty 定位 | mechanism-grounded evaluation cartridge | objective correction layer |
+| 10-wk V0 | WT FES + 1 变体 FES + path + state masks + scorer | retrospective calibration on existing RFD3 candidates |
+| 对 STAR-MD | upstream-downstream (cartridge 评 STAR-MD 输出) | 不直接相关 (F0 是 RFD3 → MD 链上的过滤层) |
+| 最强 anchor stakeholder | Amin (evaluation gap) | Raswanth (reward) + Amin (alignment-independence) |
+| 最强外部 prior art pressure | cartridge 本身没被吃 (memo § 1.5 meta-结论) | reward correction 方向 (PocketX, ResiDPO, ProteinZero) 有压力 |
+
+**PM decision pending**: 两份 framing 不互斥——cartridge 的组件 6 (catalytic
+descriptors) + 组件 7 (scorer API) 如果做成 alignment-independent，就天然能
+serve F0 evaluator 的 consumer. 但本周精力不够两条全推; cartridge framing
+胜在 **path + FES 已经在推进**，F0 framing 胜在 **直接打痛 lab-internal 痛点**.
+
+**本周 working plan**: 沿 cartridge framing 做 D1/D2/D3 (memo § 0.3), 把
+deep-research-report 的 framing 作为 **下周组会后 next-pivot 候选**——等
+PM (Zhenpeng 自己 + Arvind 对话后) 决定是否把 cartridge 的 API 层往
+alignment-independent F0 evaluator 的方向收敛. 不在本周组会上抛出这个 pivot.
+
+### C.9 本章遗留不确定项（带到 PM）
+
+Memo § 6 L508–519 + deep-research reports 交叉后，下列问题需 PM 决策:
+
+1. **Cartridge 是否包含反应态 (Aex1 / A-A / Q₂) 而不仅 O/PC/C?**
+   memo § 6 item 7. 如果 Yu 的化学优先级要求包含反应态，组件 3 (state
+   masks) 需要从 3 态扩到 6–7 态，workload 翻倍.
+2. **10-周 deadline 具体是什么日期?**
+   SURF 开始日 (2026-06-01)? Caltech offer 决策 (2026-05 中旬)? 自设?
+   memo § 6 item 8.
+3. **v0 是否期望公开 release?** 还是 lab-internal? memo § 6 item 9. 这决定
+   license (CC-BY-4.0 + MIT vs internal).
+4. **cartridge 和 Phase 1 复刻的优先级关系?** cartridge 算 Phase 1 延伸还是
+   Phase 2 启动? memo § 6 item 10.
+5. **Yu MMPBSA 数据能否共享?** memo § 6 item 3. 本周组会后**第一个要问的
+   question**.
+6. **Amin STAR-MD fork 是否有 checkpoint?** memo § 6 item 4. 决定 C.6 demo
+   scenario 是否能实际落地.
+7. **deep-research-report F0 framing vs memo cartridge framing 的 pivot
+   时机**: 下周？5-01 kill-switch 后？
+
+**这些问题不在组会上当众抛**（组会时间有限），但列在这里作为组会后 1-on-1
+的 agenda 底稿。
+
+---
+
+
 
 ## 第0章 本周核心结论
 
