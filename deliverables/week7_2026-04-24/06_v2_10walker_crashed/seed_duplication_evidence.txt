@@ -1,0 +1,29 @@
+v2 seed-duplication evidence — first row of each walker's COLVAR
+Source: /work/users/l/i/liualex/AnimaLab/metadynamics/miguel_2026-04-23/seqaligned_walkers_v2/walker_NN/COLVAR
+
+The materialize script was supposed to pick, for each target_s in {1..10}, the
+pilot COLVAR frame with |s - target_s| < 0.1 and minimum z. First-row path.sss
+(the seed s value) should therefore approximate {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}.
+
+Observed first-row s:
+  w0 : 1.9871     ← target_s was supposed to be 1
+  w1 : 1.9871     ← identical to w0 (DUPLICATE)
+  w2 : 2.8015
+  w3 : 3.5621
+  w4 : 4.3168
+  w5 : 6.5957
+  w6 : 6.5957     ← identical to w5 (DUPLICATE)
+  w7 : 8.1723
+  w8 : 8.4764
+  w9 : not logged (COLVAR truncated before first row recorded — crashed too fast)
+
+Diagnosis: the seed-selection loop had no unique-frame guard. In the pilot
+COLVAR, the target-s = 1 window was sparse (the walker only briefly dipped
+to s = 1 once, around t = 4920 ps); the "nearest frame with min z" in that
+window happened to also be the winning candidate for target_s = 2 under a
+soft tolerance, so both walkers received the same frame.
+
+v3 materialize script adds the following assertion (Codex-suggested):
+  assert len({x.frame_index for x in seed_frames}) == 10, "duplicate seed frame"
+  assert min(np.diff(sorted(x.s for x in seed_frames))) > 0.25
+  assert np.std([x.s for x in seed_frames]) > 2.0

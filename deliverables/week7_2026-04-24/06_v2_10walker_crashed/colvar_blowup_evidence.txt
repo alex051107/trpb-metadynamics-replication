@@ -1,0 +1,31 @@
+Last 3 rows of each v2 walker's COLVAR showing metad.bias going negative.
+Source: /work/users/l/i/liualex/AnimaLab/metadynamics/miguel_2026-04-23/seqaligned_walkers_v2/walker_NN/COLVAR
+
+PLUMED COLVAR format:
+time     path.sss  path.zzz   metad.bias  wall4.bias  rct
+(metad.bias is a sum of positive Gaussians and MUST be >= 0 at all times)
+
+--- walker 0 (last 3 rows) ---
+179.600   1.0000    2.1931     2.3538      0.0000   0.0000
+179.800   1.0000    2.2252     1.7553      0.0000   0.0000
+180.000   1.0004    2.3944   -26.5306      0.0000   0.0000          ← NEGATIVE
+
+--- walker 1 (last 3 rows) ---
+430.200   1.1507    2.2048     0.9098      0.0000   0.0000
+430.400   1.2654    2.1580     1.0176      0.0000   0.0000
+430.600   1.0378    2.1463   -35.4931      0.0000   0.0000          ← NEGATIVE
+
+--- walker 5 (last 3 rows) ---
+786.400   1.0962    2.5180     0.4615      0.2585   827.1151        ← wall4 active
+786.600   1.0817    2.4828     0.5421      0.0000     0.0000
+786.800   1.0302    2.6194  -548.0199     11.3975   36472.1354     ← NEGATIVE + wall broken
+
+--- walker 7 (last 3 rows) ---
+1442.400  1.0814    2.1739     2.0910      0.0000      0.0000
+1442.600  1.1170    2.3068     1.6268      0.0000      0.0000
+1442.800  1.0110    2.7214  -838.1897    39.2213  125508.2687    ← CATASTROPHIC
+
+Interpretation: once LINCS failed on the CH3 methyl bond (atoms 4463-4465) and
+SETTLE failed on water, the coordinates fed into PATHMSD went out of bounds,
+then PLUMED's internal state was corrupted. The negative metad.bias is not a
+PLUMED bug; it is downstream arithmetic on garbage coordinates.

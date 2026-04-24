@@ -1,0 +1,17 @@
+# Miguel contract (fallback single-walker) on SEQUENCE-ALIGNED path.
+# Path built 2026-04-23 after discovering naive resid-number mapping bug.
+# Our new path has <MSD_adj>=0.0228 A^2, Branduardi lambda=100.79 A^-2.
+# Miguel email value LAMBDA=80 is self-consistent on this path (26% denser
+# than his Branduardi target, kernel weight ratio 0.16 vs 0.10).
+
+UNITS LENGTH=A ENERGY=kcal/mol
+
+WHOLEMOLECULES ENTITY0=1-39268
+
+p1: PATHMSD REFERENCE=path_seqaligned_gromacs.pdb LAMBDA=80 NEIGH_STRIDE=100 NEIGH_SIZE=6
+
+METAD ARG=p1.sss,p1.zzz ADAPTIVE=DIFF SIGMA=1000 SIGMA_MIN=0.1,0.01 HEIGHT=0.3 PACE=1000 BIASFACTOR=15.0 TEMP=350.0 GRID_MIN=0.5,0.0 GRID_MAX=15.5,2.8 GRID_BIN=300,100
+
+UPPER_WALLS ARG=p1.zzz AT=2.5 KAPPA=800 LABEL=uwall
+
+PRINT ARG=* STRIDE=100 FILE=COLVAR FMT=%8.4f

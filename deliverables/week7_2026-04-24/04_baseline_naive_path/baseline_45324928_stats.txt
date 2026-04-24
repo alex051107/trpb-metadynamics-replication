@@ -1,0 +1,27 @@
+Job 45324928 — single-walker MetaD on naive path
+========================================================================
+
+Source COLVAR    : chatgpt_pro_consult_45558834/raw_data/baseline_45324928_COLVAR
+PLUMED format    : time  path.sss  path.zzz  metad.bias  wall4.bias  rct
+Rows             : 81,479
+Simulation time  : 16.296 ns  (16295.6 ps)
+
+path.s statistics
+  min(s)         : 1.0047  at t =   8217.8 ps
+  max(s)         : 1.8958  at t =  14150.0 ps
+  mean(s)        : 1.1710
+  median(s)      : 1.1118
+  std(s)         : 0.1749
+
+path.z statistics  (off-path deviation, squared A)
+  min(z)         : 0.1716
+  max(z)         : 2.6336
+  mean(z)        : 1.6318
+  median(z)      : 1.7423
+
+Histogram of path.s
+  s = [ 1,  2)  100.00 %  ####################################################################################################
+
+Fraction at s < 1.25  : 75.24 %
+Fraction at s >= 10   :  0.00 %
+Fraction at s >= 12   :  0.00 %

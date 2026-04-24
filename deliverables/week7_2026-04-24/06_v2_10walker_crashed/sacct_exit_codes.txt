@@ -1,0 +1,20 @@
+SLURM accounting output — job 45570699 (v2 10-walker array)
+Captured 2026-04-24 17:22 via: sacct -j 45570699 --format=JobID,JobName,State,ExitCode,Elapsed
+
+JobID         JobName       State     ExitCode  Elapsed
+-----------   -----------   --------- --------  -----------
+45570699_0    seqaligned_v2 FAILED    139:0     00:13:56
+45570699_1    seqaligned_v2 FAILED      1:0     00:35:35
+45570699_2    seqaligned_v2 FAILED    139:0     00:55:40
+45570699_3    seqaligned_v2 FAILED    139:0     01:48:41
+45570699_4    seqaligned_v2 FAILED    139:0     03:05:39   (longest)
+45570699_5    seqaligned_v2 FAILED    139:0     01:14:20
+45570699_6    seqaligned_v2 FAILED    139:0     01:27:10
+45570699_7    seqaligned_v2 FAILED    139:0     01:54:19
+45570699_8    seqaligned_v2 FAILED    139:0     01:38:43
+45570699_9    seqaligned_v2 FAILED    139:0     — (slurm-log tail unavailable)
+
+Exit 139 = SIGSEGV segmentation fault (core dumped) after LINCS could not
+re-converge SETTLE on one or more water molecules.
+Exit 1   = walker 1 exited before LINCS failure, cause differs but same class
+           (LINCS WARNING lines preceding, then early termination).

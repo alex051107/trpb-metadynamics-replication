@@ -1,0 +1,4 @@
+# Sequence-aligned 15-frame path
+# neighbor_msd_cv = 0.0000, O↔C RMSD = 2.115 Å
+# Branduardi λ = 100.79 Å⁻²; Miguel's email uses LAMBDA=80 Å⁻²
+p1: PATHMSD REFERENCE=path_seqaligned.pdb LAMBDA=80 NEIGH_STRIDE=100 NEIGH_SIZE=6

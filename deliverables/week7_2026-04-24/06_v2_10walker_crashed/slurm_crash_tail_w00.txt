@@ -1,0 +1,37 @@
+Tail of slurm-seqaligned_v2-45570699_0.out — LINCS blow-up progression
+
+Step 90093, time 180.186 (ps)  LINCS WARNING
+relative constraint deviation after LINCS:
+rms 0.000066, max 0.002559 (between atoms 4463 and 4464)
+bonds that rotated more than 30 degrees:
+ atom 1 atom 2  angle  previous, current, constraint length
+   4463   4465   39.1    0.1097   0.1099      0.1097
+   4470   4471   31.8    0.1097   0.1097      0.1097
+   4433   4434   31.6    0.1097   0.1097      0.1097
+
+Step 90098, time 180.196 (ps)  LINCS WARNING
+relative constraint deviation after LINCS:
+rms 0.154427, max 6.534671 (between atoms 4461 and 4462)
+bonds that rotated more than 30 degrees:
+ atom 1 atom 2  angle  previous, current, constraint length
+   4463   4465   90.0    0.1098   0.6979      0.1097   ← 6.4× stretched
+   4461   4462   90.0    0.1013   0.7633      0.1013   ← 7.5× stretched
+   4470   4471   30.5    0.1097   0.1097      0.1097
+Wrote pdb files with previous and current coordinates
+
+Step 90099, time 180.198 (ps)  LINCS WARNING
+relative constraint deviation after LINCS:
+rms 0.592463, max 32.428905 (between atoms 4463 and 4465)
+bonds that rotated more than 30 degrees:
+ atom 1 atom 2  angle  previous, current, constraint length
+   4463   4465   90.0    0.6979   3.6672      0.1097   ← 33× stretched!
+   4461   4462   54.0    0.7633   0.1013      0.1013
+   4448   4449   42.6    0.1097   0.1097      0.1097
+   4450   4452   37.6    0.1090   0.1092      0.1090
+
+step 90099: One or more water molecules can not be settled.
+Check for bad contacts and/or reduce the timestep if appropriate.
+Wrote pdb files with previous and current coordinates
+
+/var/spool/slurmd/job45570699_0/slurm_script: line 29: 550085 Segmentation fault (core dumped)
+    gmx mdrun -deffnm metad -plumed plumed.dat -ntmpi 1 -ntomp ${OMP_NUM_THREADS}
