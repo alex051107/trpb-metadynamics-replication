@@ -1,17 +1,30 @@
-"""Plot TrpB path-CV surfaces in the visual convention used by the SI.
+"""Plot TrpB path-CV surfaces with rigorous unit-correctness.
 
 Inputs are PLUMED `sum_hills` grids generated on Longleaf from the HILLS files:
 
     plumed sum_hills --hills HILLS --min 0.5,0.0 --max 15.5,2.8 \
         --bin 300,140 --mintozero --outfile fes_*.dat
 
-Two figures are written:
-  1. SI-literal: raw p1.zzz on the y-axis, labelled as RMSD Deviation (A)
-     to match the JACS 2019/SI visual convention.
-  2. Unit-checked: sqrt(p1.zzz) on the y-axis, labelled explicitly.
+The PLUMED `path.zzz` column is in length-squared units (Å² = MSD) when
+`UNITS LENGTH=A` is set, because the Branduardi soft-min closed form
+    z(R) = -(1/lambda) * ln  Sum_i exp(-lambda * MSD_i(R))
+must have the same units as MSD_i. Plotting it directly under an Angstrom
+label would be a unit lie. We take sqrt(p1.zzz) to recover the per-atom RMSD
+deviation in Angstrom, matching JACS 2019 SI Fig 3.
 
-The data are short single-walker pilots, so these are diagnostic surfaces rather
-than converged production FELs.
+Two figures are written:
+  1. CANONICAL — y = sqrt(p1.zzz) [Å], y-label "RMSD Deviation (Å)".
+                 Saved to sz_2d_unit_checked_sumhills.png AND copied as the
+                 canonical filename `sz_2d_distribution.png`.
+  2. AUDIT     — y = raw p1.zzz [Å²], y-label "p1.zzz (Å² = MSD)".
+                 Saved as audit artefact only, NEVER overwrites canonical.
+
+Single-walker fallback variant of the Miguel contract was used for both runs
+(HEIGHT=0.3, BIASFACTOR=15, KAPPA=800 wall) — NOT the Miguel primary 10-walker
+contract (HEIGHT=0.15, BIASFACTOR=10, KAPPA=500). Captions hedge accordingly.
+
+Codex independent verdict on the units: agreed (CCB task 20260424-234500).
+Full audit log: deliverables/week7_2026-04-24/08_figures/UNIT_AUDIT.md
 """
 from __future__ import annotations
 
@@ -40,10 +53,11 @@ SEQALN_FES = DATA_DIR / "fes_initial_seqaligned_sumhills.dat"
 NAIVE_COLVAR = DATA_DIR / "longleaf_initial_single_COLVAR"
 SEQALN_COLVAR = DATA_DIR / "longleaf_initial_seqaligned_COLVAR"
 
-OUT_SI = FIG_DIR / "sz_2d_si_literal_sumhills.png"
-OUT_SI_PDF = FIG_DIR / "sz_2d_si_literal_sumhills.pdf"
-OUT_UNIT = FIG_DIR / "sz_2d_unit_checked_sumhills.png"
-OUT_CANONICAL = FIG_DIR / "sz_2d_distribution.png"
+OUT_AUDIT = FIG_DIR / "sz_2d_raw_msd_audit.png"          # raw p1.zzz (Å²) — audit only
+OUT_AUDIT_PDF = FIG_DIR / "sz_2d_raw_msd_audit.pdf"
+OUT_UNIT = FIG_DIR / "sz_2d_unit_checked_sumhills.png"   # sqrt(p1.zzz) (Å) — canonical
+OUT_UNIT_PDF = FIG_DIR / "sz_2d_unit_checked_sumhills.pdf"
+OUT_CANONICAL = FIG_DIR / "sz_2d_distribution.png"        # historical name
 
 FES_MAX = 14.0
 UPPER_WALL_Z_RAW = 2.5
@@ -101,22 +115,33 @@ def draw_pair(
     stats_a = read_colvar_stats(NAIVE_COLVAR)
     stats_b = read_colvar_stats(SEQALN_COLVAR)
 
-    if transform == "si_literal":
+    if transform == "raw_msd":
+        # Audit-only: plot raw p1.zzz in length-squared (MSD) units.
+        # Never used as the canonical figure — this is here so a reviewer can
+        # verify the sqrt transform matches the PLUMED grid before scaling.
         z_a = z_a_raw
         z_b = z_b_raw
-        y_label = r"RMSD Deviation ($\AA$)"
-        y_limit = (0.2, 2.65)
+        y_label = r"$p1.zzz$  ($\AA^2$ = MSD, raw PLUMED output)"
+        y_limit = (0.0, 2.85)
         wall_y = UPPER_WALL_Z_RAW
         start_y = stats_b["z0"]
-        subtitle = "SI-literal axes: raw PLUMED p1.zzz plotted with the paper's RMSD-Deviation label"
+        subtitle = (
+            "AUDIT ARTEFACT — y = raw p1.zzz in $\\AA^2$ (MSD). "
+            "Not the canonical figure; canonical uses sqrt(p1.zzz) in $\\AA$."
+        )
     elif transform == "sqrt":
+        # Canonical: y = sqrt(p1.zzz) recovers per-atom RMSD deviation in Å,
+        # matching the JACS 2019 SI Fig 3 axis convention.
         z_a = np.sqrt(np.clip(z_a_raw, 0.0, None))
         z_b = np.sqrt(np.clip(z_b_raw, 0.0, None))
-        y_label = r"$\sqrt{\mathrm{p1.zzz}}$  ($\AA$)"
+        y_label = r"RMSD Deviation ($\AA$)  =  $\sqrt{p1.zzz}$"
         y_limit = (0.0, 1.7)
         wall_y = np.sqrt(UPPER_WALL_Z_RAW)
         start_y = np.sqrt(stats_b["z0"])
-        subtitle = "Unit-checked axes: y = sqrt(raw PLUMED p1.zzz)"
+        subtitle = (
+            "Single-walker fallback variant (HEIGHT=0.3, BIASFACTOR=15, KAPPA=800); "
+            "diagnostic surfaces clipped to SI 0-14 kcal/mol — not a converged WT FES."
+        )
     else:
         raise ValueError(transform)
 
@@ -201,12 +226,13 @@ def main() -> None:
     for path in (NAIVE_FES, SEQALN_FES, NAIVE_COLVAR, SEQALN_COLVAR):
         if not path.exists():
             raise FileNotFoundError(path)
-    draw_pair(transform="si_literal", out_png=OUT_SI, out_pdf=OUT_SI_PDF)
-    draw_pair(transform="sqrt", out_png=OUT_UNIT)
-    # Keep the historical filename pointing at the SI-literal version, because
-    # this is the file used in existing reports/results pages.
-    OUT_CANONICAL.write_bytes(OUT_SI.read_bytes())
-    print(f"updated canonical {OUT_CANONICAL}")
+    # Canonical (unit-correct) figure — y = sqrt(p1.zzz) in Å.
+    draw_pair(transform="sqrt",    out_png=OUT_UNIT,  out_pdf=OUT_UNIT_PDF)
+    # Audit artefact — raw p1.zzz in Å². Never overwrites canonical.
+    draw_pair(transform="raw_msd", out_png=OUT_AUDIT, out_pdf=OUT_AUDIT_PDF)
+    # Historical filename now points at the unit-correct figure.
+    OUT_CANONICAL.write_bytes(OUT_UNIT.read_bytes())
+    print(f"canonical (unit-correct, sqrt) -> {OUT_CANONICAL}")
 
 
 if __name__ == "__main__":

@@ -11,11 +11,11 @@ This directory contains only clean, English, publishable artefacts. Raw COLVAR t
 ![FES(s,z) side-by-side](sz_2d_distribution.png)
 
 - **Panel a** — Naive path (pre-FP-034): single-walker baseline job 45324928, 17.7 ns after the latest Longleaf sync. Walker is trapped at `s < 1.9` for the entire trajectory.
-- **Panel b** — Sequence-aligned path (post-FP-034): single-walker pilot job 45515869, 8.9 ns after the latest Longleaf sync. Walker explores `s = 1.00 → 12.87`; the red star marks the starting configuration (`s = 7.09, z = 1.68` in raw `p1.zzz`), which is a soft-min artifact (see Technical Note below), not a biological assignment.
+- **Panel b** — Sequence-aligned path (post-FP-034): single-walker pilot job 45515869, 8.9 ns after the latest Longleaf sync. Walker explores `s = 1.00 → 12.87`; the red star marks the starting configuration at `(s = 7.09, RMSD Deviation = 1.30 Å)` — a soft-min artefact (see Technical Note below), not a biological assignment.
 
-Identical `start.gro`, identical Miguel MetaD parameters, identical single-walker protocol — the **only** variable between the two panels is `path.pdb`.
+Identical `start.gro`, identical **single-walker fallback variant** of the Miguel contract (HEIGHT=0.3 kcal/mol, BIASFACTOR=15, KAPPA=800 kcal/mol/Å⁴, PACE=1000 steps; **not** Miguel's primary 10-walker contract HEIGHT=0.15 / BF=10 — same KAPPA, same PACE, only HEIGHT/BF/walker-count differ), identical single-walker protocol — the **only** variable between the two panels is `path.pdb` (and the path-derived self-consistent `LAMBDA`: 3.77 Å⁻² on the naive path → 80 Å⁻² on the sequence-aligned path, matching Miguel's reported value exactly). HILLS-file verification confirms HEIGHT=0.3 / BF=15 from deposit-height and biasf columns.
 
-**Reproducibility**: the current figure is regenerated from Longleaf HILLS files with PLUMED `sum_hills`, then rendered by [`../../reports/figures/plot_sz_si_sumhills.py`](../../reports/figures/plot_sz_si_sumhills.py). The colorbar uses the SI/main-paper `0-14 kcal/mol` range. The y-axis follows the SI-literal plotting convention: raw `p1.zzz` is shown with the paper's `RMSD Deviation (Å)` label.
+**Reproducibility**: the current figure is regenerated from Longleaf HILLS files with PLUMED `sum_hills`, then rendered by [`../../reports/figures/plot_sz_si_sumhills.py`](../../reports/figures/plot_sz_si_sumhills.py). The colorbar uses the SI/main-paper `0-14 kcal/mol` range. The y-axis is **unit-correct**: PLUMED writes `path.zzz` in MSD units (Å²) when `UNITS LENGTH=A` is set, and the figure plots `√path.zzz` so the axis reads in Å (per-atom RMSD deviation), matching the JACS 2019 SI Fig 3 convention. The unit chain is documented end-to-end in [`../../deliverables/week7_2026-04-24/08_figures/UNIT_AUDIT.md`](../../deliverables/week7_2026-04-24/08_figures/UNIT_AUDIT.md), with independent Codex verification (CCB task `20260424-234500`).
 
 ---
 
@@ -50,7 +50,7 @@ The single-walker pilot cannot and does not show:
 
 - A converged WT free-energy surface. 10-walker production with `EM + NVT settle + production MetaD` is required (v3 pipeline pending; see `../../reports/GroupMeeting_2026-04-24_TechDoc_Bilingual.md` § 5.4).
 - A clean barrier crossing. `max(s) = 12.87` is a single ≈120 ps transient near the `UPPER_WALLS z = 2.5` boundary, not a sustained basin occupancy.
-- "Ain is in the PC basin." `start.gro` projects to `s = 7.09` because it is **nearly equidistant** to all 15 MODELs (Cα RMSD to each is 1.30 – 1.76 Å), so the Branduardi soft-min returns the weighted-average index `≈ N/2 = 7`. The complementary `z = 1.68` confirms the walker is off-path; there is no biological claim here.
+- "Ain is in the PC basin." `start.gro` projects to `s = 7.09` because it is **nearly equidistant** to all 15 MODELs (Cα RMSD to each is 1.30 – 1.76 Å), so the Branduardi soft-min returns the weighted-average index `≈ N/2 = 7`. The complementary RMSD Deviation = 1.30 Å (`p1.zzz = 1.68 Å²` raw) confirms the walker is off-path; there is no biological claim here.
 - A "500× speedup". The apparent acceleration is coordinate rescaling (kernel λ went from 3.80 to 100.79 Å⁻²), not a genuine MetaD sampling-efficiency gain. The true efficiency can only be measured against a converged FES under identical sampling budget.
 
 ---

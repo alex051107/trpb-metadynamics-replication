@@ -96,19 +96,19 @@ Slide content: large table with 10 rows (metric comparison + independent PC crys
 
 Slide content: `sz_2d_distribution.png` (side-by-side FES) + bullets explaining how figure made + start.gro rationale.
 
-**EN — the figure**: "This is the single most important figure of the week. Panel a — baseline on the naive path, 16 ns, 81 479 single-walker frames; density compressed into the narrow `s < 2` ridge. Panel b — pilot on the sequence-aligned path, 8 ns, 40 193 single-walker frames; density spread across `s = 1 – 12`. The **only** variable between the two panels is `path.pdb` — same start.gro, same Miguel parameters, same single-walker protocol. Half the wall-clock time, 6.8× wider s-coverage."
+**EN — the figure**: "This is the single most important figure of the week. Panel a — baseline on the naive path, 17.7 ns, 88 357 single-walker frames; FES compressed into the narrow `s < 2` ridge. Panel b — pilot on the sequence-aligned path, 8.86 ns, 44 300 single-walker frames; FES spread across `s = 1 – 12`. The **only** variable between the two panels is `path.pdb` (and the path-derived self-consistent LAMBDA: 3.77 → 80 Å⁻²) — same start.gro, **same Miguel single-walker fallback variant** (HEIGHT=0.3, BF=15, KAPPA=800; **not** Miguel primary 0.15/10), same single-walker protocol. Half the wall-clock time, 6.8× wider s-coverage."
 
-**EN — how the figure was made**: "Left is 2D gaussian KDE of baseline COLVAR, right is the same KDE of pilot COLVAR, both converted to `F(s,z) = -kT ln(p/p_max)` at T = 350 K, clipped at 6 kcal/mol, identical grid and colorscale. Script is `reports/figures/plot_sz_distribution.py`, reproducible from raw COLVAR."
+**EN — how the figure was made**: "PLUMED `sum_hills` reconstruction of the well-tempered MetaD bias on a 300×140 grid, clipped to the JACS 2019 SI range 0–14 kcal/mol. Y-axis is unit-correct: PLUMED writes `path.zzz` in MSD (Å²) units when `UNITS LENGTH=A`, so the figure plots √path.zzz so the axis reads in Å — matching the SI Fig 3 convention. Script is `reports/figures/plot_sz_si_sumhills.py`, reproducible from the HILLS files in `reports/figures/raw_data/`. Full unit chain documented in `deliverables/week7_2026-04-24/08_figures/UNIT_AUDIT.md`, independently verified by Codex (CCB task 20260424-234500)."
 
-**EN — start.gro preempt**: "The red star on panel b marks `start.gro` at `(s = 7.09, z = 1.68)`. Someone will ask: 'does this mean Ain is in the PC basin?' I will argue no. Direct Kabsch RMSD of start.gro against each of the 15 MODELs is 1.30 – 1.76 Å — spread of only 0.3 – 0.5 Å. start.gro is **near-equidistant** to every MODEL; there is no dominant 'nearest'. Under the Branduardi soft-min, near-equidistant `MSD_i` values make the numerator a weighted average of all integer indices, concentrating at `N/2 = 7`. This is a known geometric property of linear-interpolation paths, not a numerical bug and not a biological claim. The `z = 1.68` corroborates — mean_z across the 8 ns pilot is 1.53, so the walker is generally off-path; `s = 7` is a soft-average artifact, not a PC-basin identification."
+**EN — start.gro preempt**: "The red star on panel b marks `start.gro` at `(s = 7.09, RMSD Deviation = 1.30 Å)` — equivalently, raw `path.zzz = 1.68 Å² → √ = 1.30 Å`. Someone will ask: 'does this mean Ain is in the PC basin?' I will argue no. Direct Kabsch RMSD of start.gro against each of the 15 MODELs is 1.30 – 1.76 Å — spread of only 0.3 – 0.5 Å. start.gro is **near-equidistant** to every MODEL; there is no dominant 'nearest'. Under the Branduardi soft-min, near-equidistant `MSD_i` values make the numerator a weighted average of all integer indices, concentrating at `N/2 = 7`. This is a known geometric property of linear-interpolation paths, not a numerical bug and not a biological claim. The off-path RMSD ≈ 1.30 Å (mean across the 8 ns pilot is 1.20 Å) confirms the walker is generally off-path; `s = 7` is a soft-average artifact, not a PC-basin identification."
 
-**中文 — 图讲解**: "这是本周最重要的一张图。panel a 是 naive path baseline, 16 ns, 81479 frames, 密度压在窄窄 `s<2` 条带; panel b 是 corrected path pilot, 8 ns, 40193 frames, 密度铺开到 `s=1-12`。**两个 panel 唯一变量是 path.pdb, 其他完全一样**。时间一半, s 宽度 6.8 倍。"
+**中文 — 图讲解**: "这是本周最重要的一张图。panel a 是 naive path baseline, 17.7 ns, 88357 frames, FES 被压在窄窄 `s<2` 条带; panel b 是 corrected path pilot, 8.86 ns, 44300 frames, FES 铺开到 `s=1-12`。**两个 panel 唯一变量是 path.pdb** (以及 path 几何自洽决定的 LAMBDA: 3.77→80 Å⁻²); 同 start.gro、**同 Miguel single-walker fallback 变体** (HEIGHT=0.3, BF=15, KAPPA=800; **不是** Miguel primary 0.15/10)、同 single-walker 协议。时间一半, s 宽度 6.8 倍。"
 
-**中文 — 图怎么做的**: "左右都是 COLVAR 的 2D gaussian KDE 转成 `F(s,z) = -kT ln(p/p_max)`, T=350 K, clip 在 6 kcal/mol, 相同 grid 相同色标。脚本 `reports/figures/plot_sz_distribution.py`, 从 raw COLVAR 完全 reproducible。"
+**中文 — 图怎么做的**: "PLUMED `sum_hills` 重构 well-tempered MetaD bias, 300×140 grid, clip 到 JACS 2019 SI 视觉范围 0–14 kcal/mol。**y 轴单位严格**: `UNITS LENGTH=A` 下 PLUMED 把 `path.zzz` 写成 MSD (Å²), 图画的是 √path.zzz 所以读作 Å (per-atom RMSD deviation), 跟 SI Fig 3 axis convention 一致。脚本 `reports/figures/plot_sz_si_sumhills.py`, 从 `reports/figures/raw_data/` 的 HILLS 文件完全 reproducible。完整单位链 `deliverables/week7_2026-04-24/08_figures/UNIT_AUDIT.md`, Codex 独立验证 (CCB task 20260424-234500)。"
 
-**中文 — start.gro 这点必须 preempt**: "右图红色星星是 start.gro, 投到 `(s=7.09, z=1.68)`。有人会问 '这不就说明 Ain 在 PC basin 吗' —— **我不这么读, 是 overclaim**。"
+**中文 — start.gro 这点必须 preempt**: "右图红色星星是 start.gro, 投到 `(s=7.09, RMSD Deviation = 1.30 Å)` — 也就是 raw `path.zzz = 1.68 Å² → √ = 1.30 Å`。有人会问 '这不就说明 Ain 在 PC basin 吗' —— **我不这么读, 是 overclaim**。"
 
-**中文 — soft-min 解释**: "start.gro 对 path 每个 MODEL 做直接 Kabsch, RMSD 都在 1.30-1.76 Å, **差距只有 0.3-0.5 Å**。start.gro **离每个 MODEL 都差不多近**, 没有 dominant 'nearest MODEL'。Branduardi soft-min 公式下, 当所有 MSD_i 差不多时, 分子变成整数 index 的加权平均, 自然集中到 `N/2 ≈ 7`。这是 **linear-interp path 的已知几何性质**, 不是 numerical bug, **也不是生物学陈述**。`z=1.68` 也佐证: 8 ns 全程 mean_z=1.53, walker 本来就不在 path 上, `s=7` 是 soft-average 伪影, 不是 basin identification。"
+**中文 — soft-min 解释**: "start.gro 对 path 每个 MODEL 做直接 Kabsch, RMSD 都在 1.30–1.76 Å, **差距只有 0.3–0.5 Å**。start.gro **离每个 MODEL 都差不多近**, 没有 dominant 'nearest MODEL'。Branduardi soft-min 公式下, 当所有 MSD_i 差不多时, 分子变成整数 index 的加权平均, 自然集中到 `N/2 ≈ 7`。这是 **linear-interp path 的已知几何性质**, 不是 numerical bug, **也不是生物学陈述**。off-path RMSD ≈ 1.30 Å (8 ns 全程 mean ≈ 1.20 Å) 也佐证: walker 本来就不在 path 上, `s=7` 是 soft-average 伪影, 不是 basin identification。"
 
 **Transition**: "Topic 1 讲完——bug 找到, fix 对, 视觉也看见。下一个讲最重要的外部输入, Miguel 的 email。"
 
@@ -156,11 +156,11 @@ Slide content: `s_trend_slide.png` on left + bullets describing pilot / baseline
 
 Slide content: `sz_2d_pilot_jacs_style.png` (single panel, JACS Fig 3 analog) + bullets.
 
-**EN**: "This is the pilot walker's (s, z) density in JACS-2019-Fig3 style, single panel. Density spread across `s = 1 → 12`, highest occupancy at `s = 1 – 7` (walker starts near Open, drifts toward Closed). The red star marks start.gro at `(7.09, 1.68)` — **not** in the highest-density region, because `z = 1.68` is elevated vs `mean_z = 1.53`, confirming start.gro is off-path. Tail at `z > 2` near `s = 12` corresponds to the `max(s) = 12.87` transient that approached the `UPPER_WALLS z = 2.5` cap."
+**EN**: "This is the pilot walker's (s, √p1.zzz) density in JACS-2019-Fig3 style, single panel — y-axis is unit-correct (Å, after sqrt of the raw MSD-units `p1.zzz`). Density spread across `s = 1 → 12`, highest occupancy at `s = 1 – 7` (walker starts near Open, drifts toward Closed). The white square marks start.gro at `(s = 7.09, √p1.zzz = 1.30 Å)` — close to the most-populated band, slightly above `mean_z_sqrt = 1.20 Å`, confirming start.gro sits off-path. Tail at √p1.zzz ≈ 1.58 Å near `s = 12` corresponds to the `max(s) = 12.87` transient that touched the `UPPER_WALLS p1.zzz = 2.5 Å²` cap (= 1.58 Å on the sqrt axis)."
 
 **EN — caveat**: "WT FES is **not** reproduced here. A single walker over 8 ns does not give uniform s-space coverage; FES reconstruction requires 10-walker production plus `sum_hills.py`."
 
-**中文**: "pilot 单 walker 的 (s, z) 2D 密度, JACS 2019 Fig 3 风格, 单面板。密度 s=1 到 12 都有, 最高在 s=1-7 (walker 从 Open 出发往 Closed 漂)。红色星星 start.gro (7.09, 1.68) **不**在最高密度区, 因为 z=1.68 比 mean_z=1.53 高, 说明 start.gro 偏离 path。右上 z>2 的尾巴对应 max_s=12.87 那次 transient, 到了 UPPER_WALLS z=2.5 附近。"
+**中文**: "pilot 单 walker 的 (s, √p1.zzz) 2D 密度, JACS 2019 Fig 3 风格, 单面板 — **y 轴单位严格** (Å, 对原始 MSD 单位的 p1.zzz 开根号)。密度 s=1 到 12 都有, 最高在 s=1-7 (walker 从 Open 出发往 Closed 漂)。白色方块 start.gro (s=7.09, √p1.zzz = 1.30 Å) 落在最密带附近, 比 mean_z_sqrt = 1.20 Å 略高, 说明 start.gro 偏离 path。右上 √p1.zzz ≈ 1.58 Å 那个尾巴对应 max_s=12.87 那次 transient, 摸到了 UPPER_WALLS p1.zzz = 2.5 Å² (= sqrt 轴上的 1.58 Å)。"
 
 **中文 — 关键 line**: "**WT FES 没复现**。单 walker 8 ns 在 s 空间采样**不均匀**, FES 重建需要 10-walker production 加 sum_hills 才算数。"
 
@@ -272,7 +272,7 @@ Slide content: can-claim / cannot-claim two-column, last-line takeaway.
 
 **EN — what I DO NOT claim**:
 - Not "500× speedup" — only coordinate rescaling.
-- Not "start.gro is Ain in PC basin" — soft-min artifact (z = 1.68 off-path).
+- Not "start.gro is Ain in PC basin" — soft-min artifact (RMSD Deviation 1.30 Å off-path; raw `path.zzz = 1.68 Å²`).
 - Not "barrier crossed" — `max(s) = 12.87` is a single ~120 ps transient.
 - Not "WT FES reproduced" — 10-walker production has not completed.
 - Not "Miguel's λ = 80 is universal" — self-consistent on his path only.
@@ -287,7 +287,7 @@ Slide content: can-claim / cannot-claim two-column, last-line takeaway.
 
 **中文 — 不能 claim 的 (指 slide 右列)**:
 - "❌ 500× speedup — 只是坐标 rescaling"
-- "❌ start.gro 在 PC basin — soft-min 伪影 (z=1.68 off-path)"
+- "❌ start.gro 在 PC basin — soft-min 伪影 (RMSD Deviation 1.30 Å off-path; raw `path.zzz = 1.68 Å²`)"
 - "❌ barrier crossed — max_s=12.87 是单次 ~120 ps transient"
 - "❌ WT FES 复现了 — 10-walker 没完"
 - "❌ Miguel 的 λ=80 普适 — 只在他 path 上自洽"
@@ -337,9 +337,9 @@ Slide content: can-claim / cannot-claim two-column, last-line takeaway.
 
 ### Q6 · Why MSD not RMSD in path CV? / 为什么 path CV 用 MSD 不用 RMSD?
 
-**EN**: RMSD is what structural biologists use in PyMOL / VMD / papers because it is in Å — directly interpretable. But PATHMSD (and any path-CV meant to drive metadynamics forces) must be differentiable everywhere in atomic coordinates. `z = RMSD = √MSD` has `∂z/∂Δr = Δr / RMSD`; at `RMSD = 0` (walker sits exactly on the path) the denominator blows up and the derivative is undefined — GROMACS hits NaN and segfaults. Using MSD (squared) gives `∂z/∂Δr = 2·Δr`, smooth everywhere including `MSD = 0`. So Branduardi 2007 was forced into MSD by the requirement that MetaD can compute forces. The reason our figure axis reads `Å²` is exactly this — when you want an interpretable "distance per Cα", take `√z`: for start.gro `z = 1.68 Å²` → `√z ≈ 1.3 Å` per Cα.
+**EN**: RMSD is what structural biologists use in PyMOL / VMD / papers because it is in Å — directly interpretable. But PATHMSD (and any path-CV meant to drive metadynamics forces) must be differentiable everywhere in atomic coordinates. `z = RMSD = √MSD` has `∂z/∂Δr = Δr / RMSD`; at `RMSD = 0` (walker sits exactly on the path) the denominator blows up and the derivative is undefined — GROMACS hits NaN and segfaults. Using MSD (squared) gives `∂z/∂Δr = 2·Δr`, smooth everywhere including `MSD = 0`. So Branduardi 2007 was forced into MSD by the requirement that MetaD can compute forces. The PLUMED `path.zzz` column is therefore in Å² (MSD units) when `UNITS LENGTH=A` is set — that is the raw value PLUMED writes to COLVAR. To plot on an interpretable Angstrom axis (matching JACS 2019 SI Fig 3), we take `√(path.zzz)`. For start.gro: raw `path.zzz = 1.68 Å²` → `√ = 1.30 Å` per-Cα RMSD deviation. The full unit chain and Codex-verified reasoning are in `deliverables/week7_2026-04-24/08_figures/UNIT_AUDIT.md`.
 
-**中文**: 结构生物学里大家确实用 RMSD (PyMOL / VMD / paper figure 都是), 因为 Å 直觉好。但 PATHMSD 要驱动 MetaD 的力, **必须处处可微**。`z = RMSD = √MSD` 的导数 `∂z/∂Δr = Δr / RMSD`, 在 RMSD=0 (walker 正好踩 path 上) 时分母爆 0 → NaN → GROMACS segfault。换成 MSD (平方), 导数 `2·Δr` 在 0 处也平滑, MetaD 能稳定积分。所以 Branduardi 2007 **被迫**选 MSD, 不是 MSD 更好, 是 RMSD 根本跑不起来。我们 2D 图 y 轴是 Å² 正是这个原因; 想要"每个 Cα 平均偏几 Å"的直觉, `√z` 一下就行 —— start.gro `z=1.68 Å² → √z ≈ 1.3 Å per Cα`。
+**中文**: 结构生物学里大家确实用 RMSD (PyMOL / VMD / paper figure 都是), 因为 Å 直觉好。但 PATHMSD 要驱动 MetaD 的力, **必须处处可微**。`z = RMSD = √MSD` 的导数 `∂z/∂Δr = Δr / RMSD`, 在 RMSD=0 (walker 正好踩 path 上) 时分母爆 0 → NaN → GROMACS segfault。换成 MSD (平方), 导数 `2·Δr` 在 0 处也平滑, MetaD 能稳定积分。所以 Branduardi 2007 **被迫**选 MSD, 不是 MSD 更好, 是 RMSD 根本跑不起来。所以 PLUMED `UNITS LENGTH=A` 下写到 COLVAR 的 `path.zzz` 列是 Å² (MSD), 这是原始数值。要在可解读的 Å 轴上画 (跟 JACS 2019 SI Fig 3 对齐), 取 `√(path.zzz)`。start.gro: raw `path.zzz = 1.68 Å² → √ = 1.30 Å` per-Cα RMSD deviation。完整单位链 + Codex 验证: `deliverables/week7_2026-04-24/08_figures/UNIT_AUDIT.md`。
 
 ### Downgrade phrase / 临时降级话术
 
