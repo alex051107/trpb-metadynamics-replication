@@ -152,12 +152,22 @@ def draw() -> dict[str, tuple[float, float, float]]:
     line_levels = np.arange(1.0, FES_MAX, 1.0)
     cmap = plt.get_cmap("jet")
 
-    cf = ax_a.contourf(pre.s_grid, pre.y_grid, pre_f, levels=levels, cmap=cmap)
+    # extend="max": F values > FES_MAX (panel a max ~28.6, panel b max ~18.0)
+    # render at the topmost color band, NOT as white. Without this, the high-F
+    # walls leak through as transparent white and the panels look unfilled.
+    cf = ax_a.contourf(pre.s_grid, pre.y_grid, pre_f, levels=levels,
+                       cmap=cmap, extend="max")
     ax_a.contour(pre.s_grid, pre.y_grid, pre_f, levels=line_levels,
                  colors="0.20", linewidths=0.28, alpha=0.55)
-    ax_b.contourf(post.s_grid, post.y_grid, post_f, levels=levels, cmap=cmap)
+    ax_b.contourf(post.s_grid, post.y_grid, post_f, levels=levels,
+                  cmap=cmap, extend="max")
     ax_b.contour(post.s_grid, post.y_grid, post_f, levels=line_levels,
                  colors="0.20", linewidths=0.28, alpha=0.55)
+    # Set both panels' background to the cmap's top color so any sub-pixel
+    # gaps still read as "high free energy" rather than "missing data".
+    top_color = cmap(0.99)
+    ax_a.set_facecolor(top_color)
+    ax_b.set_facecolor(top_color)
 
     style_axis(ax_a, show_ylabel=True)
     style_axis(ax_b, show_ylabel=False)
