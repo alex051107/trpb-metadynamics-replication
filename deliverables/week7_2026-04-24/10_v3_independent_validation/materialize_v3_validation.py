@@ -10,9 +10,15 @@ coordinate-only start.gro files from the sequence-aligned pilot trajectory.
   numpy.linspace(1.0, max_s_observed, 10) so the 10 walker seeds cover
   the FULL pilot path (including C-region s>=10) per SI quote (Codex R0.5):
   "extracted ten snapshots covering conformational space".
-  Tiered z-fallback added per Codex R4: window 9 ([target-Δ/2, target+Δ/2)
-  near max_s) often has <5 frames at z<1.0 — script tries strict z first,
-  relaxes ONLY high-s windows to z<1.5 if uniqueness fails.
+
+2026-04-25 PM v2 + Codex R8 cleanup:
+  Replaced tiered-z fallback with window-min-z (no ceiling).  PM directive:
+  "选择尽可能广的 SR + 每一个 sr 选一个相对 Z 比较小的".  Codex R8 verified
+  this is equivalent to v1 tiered output on current pilot data (every window
+  already has low-z candidates) but is conceptually cleaner: lowest-z is a
+  GEOMETRY-STABILITY heuristic (less off-path/wall stress at seed time),
+  NOT an equilibrium proof.  Hard assertions retained: unique times,
+  unique rounded s, s_std>=3.0, O/PC/C coverage, seed.z<2.5.
 """
 
 from __future__ import annotations
@@ -38,8 +44,12 @@ OUT_DEFAULT = BASE / "seqaligned_walkers_v3_validation"
 N_WALKERS = 10
 N_ATOMS = 39268
 
-# Z-fallback tiers (Codex R4): try strict first; relax only the failing window.
-Z_TIERS = (1.0, 1.5, 2.0, 2.45)
+# Hard upper-wall guard: if any window-min-z candidate is at/above the production
+# UPPER_WALLS AT=2.5, the seed itself is wall-stressed and the run will likely
+# degrade — assertion in assert_seed_suite() rejects these.
+Z_HARD_CAP = 2.5
+
+SELECTION_RULE = "window_min_z"  # Codex R8: PM v2 — pick min(z) in [target-Δ/2, target+Δ/2)
 
 
 @dataclass(frozen=True)
@@ -49,8 +59,8 @@ class Seed:
     time_ps: float
     s: float
     z: float
-    z_tier_used: float
-    candidates_at_strict_z: int = 0
+    selection_rule: str = SELECTION_RULE
+    candidates_in_window: int = 0
 
 
 def compute_targets(max_s: float, n: int = N_WALKERS) -> tuple[float, ...]:
@@ -117,14 +127,18 @@ def select_seeds(
     *,
     min_s_gap: float,
     min_time_gap_ps: float,
-    z_tiers: tuple[float, ...] = Z_TIERS,
 ) -> list[Seed]:
-    """Pick one seed per target with tiered z-fallback.
+    """Pick one seed per target via window-min-z (PM v2 / Codex R8).
 
-    Strategy (Codex R4): for each target window, try the strictest z-tier
-    first; if uniqueness/time-gap constraints fail, relax z to the next
-    tier ONLY for that window. This keeps low-s windows at z<1.0 while
-    allowing the C-region (high s, sparse low-z) to relax to z<1.5 or 2.0.
+    For each target window [target-Δ/2, target+Δ/2), gather ALL candidates
+    (no z ceiling) and sort by (z, |s-target|, time).  Pick the first
+    candidate that satisfies pairwise s-gap and time-gap uniqueness.
+
+    Lowest-z is a GEOMETRY-STABILITY heuristic: it picks the frame closest
+    to the supplied path at that s, hence less off-path/wall stress at the
+    moment the seed is grabbed.  It is NOT proof of equilibrium — a frame
+    with lowest z may still be a transient low-z crossing.  Hard cap
+    seed.z < Z_HARD_CAP enforced in assert_seed_suite().
     """
     seeds: list[Seed] = []
     delta = (targets[-1] - targets[0]) / (len(targets) - 1) if len(targets) > 1 else 1.0
@@ -133,41 +147,32 @@ def select_seeds(
         lo = max(0.0, target - half_window)
         hi = target + half_window if walker_id < len(targets) - 1 else float("inf")
 
-        # Count candidates at strictest z for manifest provenance
-        strict_z = z_tiers[0]
-        strict_count = sum(
-            1 for row in rows if lo <= row[1] < hi and row[2] <= strict_z
-        )
+        candidates = [row for row in rows if lo <= row[1] < hi]
+        if not candidates:
+            raise ValueError(
+                f"no COLVAR rows in window for target_s={target} [{lo}, {hi})"
+            )
+        candidates.sort(key=lambda row: (row[2], abs(row[1] - target), row[0]))
 
         picked: Seed | None = None
-        for tier in z_tiers:
-            candidates = [
-                row for row in rows
-                if lo <= row[1] < hi and row[2] <= tier
-            ]
-            candidates.sort(key=lambda row: (row[2], abs(row[1] - target), row[0]))
-            if not candidates:
-                continue
-            for time_ps, s_val, z_val in candidates:
-                if all(abs(s_val - seed.s) >= min_s_gap for seed in seeds) and all(
-                    abs(time_ps - seed.time_ps) >= min_time_gap_ps for seed in seeds
-                ):
-                    picked = Seed(
-                        walker_id=walker_id,
-                        target_s=float(target),
-                        time_ps=time_ps,
-                        s=s_val,
-                        z=z_val,
-                        z_tier_used=tier,
-                        candidates_at_strict_z=strict_count,
-                    )
-                    break
-            if picked is not None:
+        for time_ps, s_val, z_val in candidates:
+            if all(abs(s_val - seed.s) >= min_s_gap for seed in seeds) and all(
+                abs(time_ps - seed.time_ps) >= min_time_gap_ps for seed in seeds
+            ):
+                picked = Seed(
+                    walker_id=walker_id,
+                    target_s=float(target),
+                    time_ps=time_ps,
+                    s=s_val,
+                    z=z_val,
+                    selection_rule=SELECTION_RULE,
+                    candidates_in_window=len(candidates),
+                )
                 break
         if picked is None:
             raise ValueError(
                 f"could not select unique seed for target_s={target} in [{lo}, {hi})"
-                f" even after tiered z-fallback through {z_tiers}"
+                f" — {len(candidates)} candidates, all violated s-gap/time-gap"
             )
         seeds.append(picked)
     return seeds
@@ -196,9 +201,9 @@ def assert_seed_suite(seeds: list[Seed], *, min_s_gap_floor: float) -> None:
             f"seed pairwise s gap too small: min_pairwise={min_pairwise:.3f}"
             f" < floor {min_s_gap_floor:.3f}"
         )
-    if any(seed.z >= 2.5 for seed in seeds):
-        bad = [asdict(seed) for seed in seeds if seed.z >= 2.5]
-        raise AssertionError(f"seed at or beyond upper wall: {bad}")
+    if any(seed.z >= Z_HARD_CAP for seed in seeds):
+        bad = [asdict(seed) for seed in seeds if seed.z >= Z_HARD_CAP]
+        raise AssertionError(f"seed at or beyond upper wall (z>={Z_HARD_CAP}): {bad}")
     # Coverage: at least one seed in O (s<=2), one in PC (4<=s<=6), one in C (s>=10)
     s_values = [seed.s for seed in seeds]
     if not any(s <= 2.0 for s in s_values):
@@ -367,22 +372,20 @@ def write_bundle(args: argparse.Namespace, seeds: list[Seed]) -> None:
             for i, a in enumerate(seeds)
             for b in seeds[i + 1:]
         ),
-        "z_tiers_attempted": list(Z_TIERS),
-        "z_tier_used_per_walker": {
-            seed.walker_id: seed.z_tier_used for seed in seeds
-        },
-        "candidates_at_strict_z_per_walker": {
-            seed.walker_id: seed.candidates_at_strict_z for seed in seeds
+        "selection_rule": SELECTION_RULE,
+        "z_hard_cap": Z_HARD_CAP,
+        "candidates_in_window_per_walker": {
+            seed.walker_id: seed.candidates_in_window for seed in seeds
         },
     }
     (out_dir / "seed_manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     with (out_dir / "seed_manifest.tsv").open("w") as handle:
-        handle.write("walker_id\ttarget_s\ttime_ps\ts\tz\tz_tier\tstrict_candidates\n")
+        handle.write("walker_id\ttarget_s\ttime_ps\ts\tz\trule\tcandidates_in_window\n")
         for seed in seeds:
             handle.write(
                 f"{seed.walker_id:02d}\t{seed.target_s:.4f}\t{seed.time_ps:.1f}\t"
-                f"{seed.s:.4f}\t{seed.z:.4f}\t{seed.z_tier_used:.2f}\t"
-                f"{seed.candidates_at_strict_z}\n"
+                f"{seed.s:.4f}\t{seed.z:.4f}\t{seed.selection_rule}\t"
+                f"{seed.candidates_in_window}\n"
             )
 
 
@@ -422,7 +425,7 @@ def main() -> None:
     min_s_gap = delta * 0.5
     print(f"[INFO] TARGETS = {targets}")
     print(f"[INFO] window Δ = {delta:.4f}, half-window = {delta/2:.4f}, min_s_gap = {min_s_gap:.4f}")
-    print(f"[INFO] z-tiers (Codex R4 fallback): {Z_TIERS}")
+    print(f"[INFO] selection_rule={SELECTION_RULE}, z_hard_cap={Z_HARD_CAP}")
 
     seeds = select_seeds(
         rows,
@@ -432,12 +435,12 @@ def main() -> None:
     )
     assert_seed_suite(seeds, min_s_gap_floor=min_s_gap * 0.9)
 
-    print("walker_id target_s time_ps s z z_tier strict_candidates")
+    print("walker_id target_s time_ps s z rule candidates_in_window")
     for seed in seeds:
         print(
             f"{seed.walker_id:02d} {seed.target_s:7.4f} "
             f"{seed.time_ps:8.1f} {seed.s:7.4f} {seed.z:7.4f} "
-            f"{seed.z_tier_used:.2f} {seed.candidates_at_strict_z}"
+            f"{seed.selection_rule} {seed.candidates_in_window}"
         )
     print(f"s_std={statistics.pstdev(seed.s for seed in seeds):.4f}")
     print(

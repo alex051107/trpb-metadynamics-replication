@@ -1,0 +1,8 @@
+fes=reports/figures/codex_renders/data/production_early_fes_sumhills.dat
+out_png=reports/figures/production_fes_early_10walker.png
+out_pdf=reports/figures/production_fes_early_10walker.pdf
+finite_f_kcalmol_max=4.580670
+color_vmax=4.580670
+total_hills=846
+hills_counts=HILLS.0:109 HILLS.1:96 HILLS.2:110 HILLS.3:99 HILLS.4:101 HILLS.5:91 HILLS.6:108 HILLS.7:66 HILLS.8:66 HILLS.9:0
+convergence_grade=TENTATIVE

@@ -90,6 +90,48 @@ Auto-render watcher armed (background poll every 5 min). When `min(HILLS rows) >
 
 **Image to insert here when ready**: `reports/figures/production_fes_snapshot.png`. Caveat label: `convergence_grade=PROVISIONAL` (per Codex R5 §Q3c — drift > 0.5 kcal/mol over last 10 ns means NOT PASS yet; we ship as L0/L1 fingerprint, NOT TRAIN target).
 
+### 2.6 Codex Round 8 verdicts (2026-04-25 post-PM-feedback)
+
+**PM 看到 Codex R7 的 early production figure 后两个问题** → 全 dispatch Codex R8 干净上下文裁决：
+
+#### Q1 — production FES 是 production-only HILLS 还是与 initial 合并?
+
+**Verdict: production-only**, do NOT combine initial pilot HILLS into production FES sum.
+
+SI p.S3-S4 verbatim：
+> "The free energy landscape associated with the metadynamics CVs is estimated by summing the Gaussian potentials deposited by all walker replicas as a function of the CVs values."
+
+> "After an initial metadynamics run, we extracted ten snapshots ... Then, multiple-walkers metadynamics simulations with 10 replicas were computed."
+
+SI 描述的 construction 就是 (A) 只用 production HILLS。Initial MetaD 是 seed-discovery 阶段，不是 FEL evidence。我们项目额外约束：initial pilot 用 FALLBACK 合约（HEIGHT=0.3, BIASFACTOR=15），production 用 PRIMARY（0.15, 10）。WT-MetaD 理论要求单 biasfactor，混不可。
+
+→ `plot_production_fes_snapshot.py` 调用 `plumed sum_hills --hills HILLS.0,...,HILLS.9` (production only), no initial-pilot HILLS merging.
+
+#### Q2 — PM seed strategy v2 (window-min-z, no z ceiling) 是否要 scancel 重启?
+
+**Verdict: DO NOT scancel 45784112**.
+
+PM v2 directive: "选择尽可能广的 SR + 每一个 sr 选一个相对 Z 比较小的".
+
+Codex R8 用相同 pilot COLVAR 重新计算了 v1 (tiered) vs v2 (window-min-z, no ceiling)，发现：
+- 两套规则在 19.8 ns 本地 pilot 上 **seed 完全相同**：every window already has low-z candidates.
+- 本地 19.8 ns: walker_09 picks s=12.346, z_MSD=0.976 (z_RMSD≈0.99 Å).
+- Longleaf 22.8 ns（live）: walker_09 picks s=13.29, z_MSD=2.01（pilot under-sampling 高 s 区域，window-min-z 也救不了）.
+- 当前 production seeds 实际就是 v2 等价：wide linspace + low-z priority + 沉默退守。
+- Live 跑了 0.3 ns/walker 已经覆盖 s∈[1.0, 10.7]，没崩没塌. 不需要重启.
+
+**Caveat per Codex R8**: lowest-z 是 *geometry-stability heuristic*（seed 处 path-distance 小 → off-path/wall stress 小），**不是** equilibrium proof — 仍有可能选到 transient low-z crossing.
+
+#### Q2c — 概念清理 patch
+
+`materialize_v3_validation.py:select_seeds()` 仍按 R8 建议清理：
+- `Z_TIERS = (1.0, 1.5, 2.0, 2.45)` 删除.
+- 候选 = 全部 in-window，按 `(z, |s-target|, time)` 排.
+- `Seed.z_tier_used` → `Seed.selection_rule="window_min_z"`.
+- `Seed.candidates_at_strict_z` → `Seed.candidates_in_window`.
+- `Z_HARD_CAP = 2.5` 常量 + `assert_seed_suite()` 拒绝 z>=2.5.
+- 本地 19.8 ns pilot dry-run 验证：seeds byte-identical to R8 recompute.
+
 ---
 
 ## 3. Topic 3 — ML 转化 Demo (MetaD-Unique Descriptors)
@@ -145,8 +187,11 @@ Pilot 19.83 ns single-walker (fallback contract): F_min(O)=0, F_min(PC)=−1.50,
 | R0.5 | 20260425-150747 | SI literal protocol (10-walker workflow + Fig S4/S5) | Confirmed: 10 walkers from CV-diverse seeds; path NOT rebuilt; convergence diagnostic = ΔΔG-vs-time |
 | R4 | 20260425-153216 | A0 patch cross-audit | λ change safe (max \|Δs\|=0.054), TARGETS C-end fragile (tiered z fix), 5 hardening items |
 | R5 | 20260425-161301 | Production health + FES rendering + convergence criterion | Per-timepoint commands + sum_hills syntax + PASS thresholds |
+| R6 | 20260425-163XXX | Codex deck-quality figure rendering (Round 6 reusable plotter) | `beautiful-data-viz` skill PFC RMSD-axis FES + walker explore + 2-panel comparison |
+| R7 | 20260425-164142 | Codex z-axis fix + figure refinements (post-PM critique on z=Å² unit) | `production_fes_early_10walker_rmsd.{png,pdf}` + `walker_explore_progress.{png,pdf}` + 2-panel `comparison_pilot_vs_production_2panel` |
+| R8 | 20260425-164510 | SI HILLS construction + PM seed strategy v2 cross-audit | (Q1) production-only HILLS, do NOT mix initial pilot. (Q2) DO NOT scancel 45784112; v2 equivalent to v1 on current pilot. (Q2c) `select_seeds()` clean-up applied. |
 
-All 6 rounds archived in `deliverables/week8_2026-05-01/codex_consults/`.
+All 8 rounds archived in `deliverables/week8_2026-05-01/codex_consults/`.
 
 ---
 

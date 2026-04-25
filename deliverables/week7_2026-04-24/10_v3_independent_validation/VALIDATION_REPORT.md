@@ -90,8 +90,49 @@ This launches the smoke test (10-way array, 30 min wall, partition `volta-gpu`, 
 
 If any gate fails: STOP, post failure pattern as FP-035 candidate, do NOT proceed to production launch.
 
+## 2026-04-25 Codex Round 8 Addendum — window-min-z (PM v2)
+
+**PM directive after Codex R7 figures**: "选择尽可能广的 SR + 每一个 sr 选一个相对 Z 比较小的".
+
+Codex R8 verdict (transcript: `deliverables/week8_2026-05-01/codex_consults/codex_round8_seed_strategy_and_si_hills.md`):
+
+1. **Seed strategy**: window-min-z (no ceiling) is conceptually cleaner than tiered-z fallback. Lowest-z is a *geometry-stability heuristic* (less off-path/wall stress), NOT proof of equilibrium. Hard cap `seed.z < 2.5` retained to reject upper-wall starts.
+
+2. **Equivalence**: on local 19.8 ns pilot COLVAR (max_s=12.917), the window-min-z rule produces seeds byte-identical to v1 tiered output:
+
+```text
+walker_id target_s   time_ps        s        z   rule              candidates_in_window
+00          1.0000   14073.2   1.4400   0.2150   window_min_z      14180
+01          2.3241   17892.8   2.7180   0.2010   window_min_z      15810
+02          3.6481   14756.4   3.7660   0.1940   window_min_z      15487
+03          4.9722   17765.6   5.4180   0.1900   window_min_z      14704
+04          6.2963   14967.2   6.1880   0.1890   window_min_z      13141
+05          7.6203   14306.4   7.0440   0.2250   window_min_z      10105
+06          8.9444   12972.0   9.0240   0.3450   window_min_z      7612
+07         10.2685   13146.8   9.7160   0.5100   window_min_z      5702
+08         11.5925   12782.0  10.9640   0.6240   window_min_z      2291
+09         12.9166   11553.4  12.3460   0.9760   window_min_z      116
+```
+
+s_std=3.4417, min_pairwise_s=0.6926, z_range=[0.189, 0.976].
+
+3. **Production decision**: **DO NOT scancel 45784112**. Current production seeds (from Longleaf 22.8 ns pilot with TARGETS=[1.00..13.90]) are functionally equivalent to v2 — wide linspace + low-z priority — and live walkers already span s∈[1.0, 10.7] by 0.3 ns/walker. Restart only if persistent collapse, LINCS instability, or no C-region retention emerges after several ns/walker.
+
+4. **Code patch applied**: `materialize_v3_validation.py:select_seeds()` rewritten:
+   - `Z_TIERS = (1.0, 1.5, 2.0, 2.45)` removed.
+   - Candidates = all rows in `[lo, hi)` with NO z ceiling.
+   - Sort by `(z, abs(s-target), time)` (unchanged).
+   - `Seed.z_tier_used` field renamed to `Seed.selection_rule="window_min_z"`.
+   - `Seed.candidates_at_strict_z` renamed to `Seed.candidates_in_window`.
+   - `Z_HARD_CAP = 2.5` constant; `assert_seed_suite()` rejects any seed at/beyond UPPER_WALLS.
+   - Manifest TSV columns: `walker_id  target_s  time_ps  s  z  rule  candidates_in_window`.
+
+5. **Walker 09 caveat retained**: under window-min-z, current Longleaf production seed for walker_09 (max_s=13.90 → window [13.18, ∞)) still picks z=2.00 because no lower-z C-region frames exist in pilot. This is a *pilot under-sampling* issue, not a *selection-rule* issue. Mitigation: extend pilot to 30 ns post-deck (Codex R4 fallback) and re-materialize.
+
 ## Status
 
 - 2026-04-24 first materialization with TARGETS=[1..10] integer + λ=80: ✅ documented (preserved in git history)
-- 2026-04-25 SI-faithful re-materialization with widened TARGETS + λ=100.79: ✅ done, awaiting smoke test
-- Smoke test launch: pending Codex Round 4 NVT/grompp recommendations + PM go-ahead
+- 2026-04-25 SI-faithful re-materialization with widened TARGETS + λ=100.79 + tiered-z: ✅ done, smoke test PASS
+- 2026-04-25 PM v2 + Codex R8 cleanup (window-min-z, no ceiling): ✅ patched in materialize_v3_validation.py — equivalent seeds on current pilot, no rerun needed
+- Smoke test (45783311): ✅ PASS (10/10 walkers, 24 min wall, no LINCS, no exit-139)
+- Production launch (45784112): ✅ RUNNING since 16:06:22 — at 0.3 ns/walker, all 10 walkers active
