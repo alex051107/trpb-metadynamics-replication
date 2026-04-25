@@ -1,0 +1,386 @@
+# TrpB MetaDynamics Evaluation Proposal 的对抗式核查报告
+
+## Methodology claims
+
+**CLAIM A1**  
+**STATUS:** VERIFIED  
+**PRIMARY SOURCE:** arXiv / conference material on the term “Recurrent Neural Operator”; specific lineages include early RNO work on tipping-point forecasting, later materials-history surrogates, and temperature-aware variants.  
+**EVIDENCE QUOTE:** “novel recurrent neural operator (RNO)”; “Temperature-Aware Recurrent Neural Operator”; “history-dependent material behavior.”  
+**COUNTER-EVIDENCE SEARCHED:** 我专门搜了 exact phrase “recurrent neural operator” 与 protein / molecular dynamics / biomolecular 的组合，也搜了一般 scientific-computing 文献里对 RNO 的用法。  
+**COUNTER-EVIDENCE FOUND:** 没有发现一个由单篇 canonical paper 明确垄断、且你这次 proposal 默认沿用的统一 RNO 定义。  
+**CORRECTION IF CONTRADICTED:** —  
+**CONFIDENCE:** MEDIUM — 这是“术语谱系”判断，不是严格 citation-count 统计。 citeturn21search17turn2search1turn21search7
+
+**CLAIM A2**  
+**STATUS:** CONTRADICTED  
+**PRIMARY SOURCE:** arXiv IDs 和论文标题逐条核对。  
+**EVIDENCE QUOTE:** `2507.23428` 对应的是 “SS-NO: Linear Memory Neural Operator…”，不是你给出的 “MemNO”；`2407.00809` 对应 “Kernel Neural Operators”。  
+**COUNTER-EVIDENCE SEARCHED:** 我逐个核对了 `2303.02243`、`2505.20721`、`2508.18806`、`2507.23428`、`2407.00809`。  
+**COUNTER-EVIDENCE FOUND:** yes — 至少有一个 ID 被错指，整个 claim 失效。  
+**CORRECTION IF CONTRADICTED:** 这组 citation 不能原样沿用；`2507.23428` 不是 “MemNO”。如果要继续用，需要重新整理一版干净的 operator/memory 文献表。  
+**CONFIDENCE:** HIGH — 这是直接对 arXiv ID 的核查。 citeturn2search0turn2search1turn2search2turn2search3turn3search2
+
+**CLAIM A3**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** 针对 “recurrent neural operator” + protein / molecular dynamics / biomolecular / MD 的对抗式搜索结果。  
+**EVIDENCE QUOTE:** 搜索命中的 RNO 文献主要落在 climate/materials/viscoelasticity，不是 protein MD。  
+**COUNTER-EVIDENCE SEARCHED:** 我额外搜了 “history-aware dynamics”, “memory operator”, “delay ODE protein”, “recurrent neural operator biomolecular”。  
+**COUNTER-EVIDENCE FOUND:** no published protein-MD counterexample found; 但“零先例”这种 existence claim 不能被证明到 HIGH。  
+**CORRECTION IF CONTRADICTED:** 若后续发现 conference workshop 或 very-new preprint，用这个 claim 做 novelty 支柱会立刻变脆。  
+**CONFIDENCE:** MEDIUM — 我没有找到反例，但这是“没找到”，不是“证明不存在”。 citeturn21search0turn21search17turn20search3
+
+**CLAIM A4**  
+**STATUS:** VERIFIED  
+**PRIMARY SOURCE:** entity["organization","Nature Computational Science","journal"] article “Memory kernel minimization-based neural networks for discovering slow collective variables of biomolecular dynamics,” abstract and article metadata.  
+**EVIDENCE QUOTE:** “identification of optimal CVs by minimizing… memory kernels.”  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了它是否做 sequence conditioning、是否做 generative rollout、是否是 CV discovery。  
+**COUNTER-EVIDENCE FOUND:** no — 摘要直接支持“explicit memory-kernel minimization in CV space”；没有 sequence-conditioned generative dynamics 的描述。  
+**CORRECTION IF CONTRADICTED:** —  
+**CONFIDENCE:** HIGH — 摘要表述很直接。 citeturn9view4
+
+**CLAIM A5**  
+**STATUS:** CONTRADICTED  
+**PRIMARY SOURCE:** entity["organization","Proceedings of the National Academy of Sciences","journal"] article page and PubMed entry for AIGLE.  
+**EVIDENCE QUOTE:** “Pinchen Xie, Roberto Car, Weinan E.”  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了作者、年份、DOI。  
+**COUNTER-EVIDENCE FOUND:** yes — 不是 “Xie, Kou, Li”；正确是 Pinchen Xie、Roberto Car、Weinan E，DOI 也明确。  
+**CORRECTION IF CONTRADICTED:** AIGLE 应改引为 Xie, Car, E, PNAS 2024, DOI `10.1073/pnas.2308668121`。  
+**CONFIDENCE:** HIGH — 直接元数据核对。 citeturn11search0turn11search3
+
+**CLAIM A6**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** 针对 neural operator + ESM / pLM / protein dynamics 的对抗式搜索；以及 PLaTITO 原文。  
+**EVIDENCE QUOTE:** PLaTITO 确实用了 “protein language model (pLM) embeddings”；但它自己叫 “implicit transfer operators”，不是 FNO/DeepONet/RNO。  
+**COUNTER-EVIDENCE SEARCHED:** 我分别搜了 “ESM neural operator protein”, “DeepONet protein dynamics”, “FNO protein dynamics PLM”, “sequence-conditioned neural operator protein dynamics”。  
+**COUNTER-EVIDENCE FOUND:** 没找到一个已发表的、明确属于 FNO/DeepONet/RNO-variant 且又用 PLM/ESM embeddings 做 protein dynamics propagation 的反例；但找到了 PLaTITO 这种更宽泛的 operator-style dynamics paper。  
+**CORRECTION IF CONTRADICTED:** 你不能把这个 whitespace 说成 “没人做过 operator + PLM + dynamics” 的宽泛版本；只能说“在神经算子狭义范畴里，我没有找到明确先例”。  
+**CONFIDENCE:** MEDIUM — 搜索充分，但 negative claim 天生难到 HIGH。 citeturn20search3turn19search4turn9view0
+
+**CLAIM A7**  
+**STATUS:** CONTRADICTED  
+**PRIMARY SOURCE:** arXiv paper “Transfer Learning of Memory Kernels in Coarse-grained Modeling.”  
+**EVIDENCE QUOTE:** “transfer learning of memory kernels”; “different systems with varying concentrations and lengths of polymers.”  
+**COUNTER-EVIDENCE SEARCHED:** memory kernel + transfer learning；GLE + cross-system；kernel transfer + coarse-graining。  
+**COUNTER-EVIDENCE FOUND:** yes — 至少在 polymer implicit-solvent CG 里，memory-kernel transfer 已经被 demonstrat​ed。  
+**CORRECTION IF CONTRADICTED:** Arvind 方案的 novelty 不能建立在 “任何 physical system 都没人做过 transferable memory kernels” 上。最多只能说“在 proteins / sequence-conditioned enzyme dynamics 上还没看到成熟 demonstration”。  
+**CONFIDENCE:** HIGH — 这是直接反例。 citeturn22search7
+
+**CLAIM A8**  
+**STATUS:** VERIFIED  
+**PRIMARY SOURCE:** 你给定的 Slack proposal quote；以及 AIGLE / MZ literature 对 GLE 的 formal ingredients。  
+**EVIDENCE QUOTE:** AIGLE 需要 “force field, memory kernel, and noise generator… under the constraint of the fluctuation–dissipation theorem.”  
+**COUNTER-EVIDENCE SEARCHED:** 我检查了你给出的 proposal 文本是否出现 noise / random force / FDT consistency。没有。  
+**COUNTER-EVIDENCE FOUND:** no — 给定 quote 只说了 K(t−τ) conditioned on PLM embeddings，没有写 stochastic noise term，更没有写 FDT coupling。  
+**CORRECTION IF CONTRADICTED:** —  
+**CONFIDENCE:** HIGH — 这是“proposal text omission”而不是复杂解释。 citeturn11search5
+
+**CLAIM A9**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** APS PRL 131.177301, PRL 133.077301, arXiv 2310.18582.  
+**EVIDENCE QUOTE:** “state-dependent memory”; “many-body non-Markovian memory.”  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了 DOI/卷页/作者和论文主张。  
+**COUNTER-EVIDENCE FOUND:** yes, but of a different kind — 核心科学点是对的，引用却不干净：PRL 131.177301 是 Lyu & Lei 2023，不是你写的 Zhu；arXiv 2310.18582 后来对应的是 Ge et al. 的 state-dependent memory work。  
+**CORRECTION IF CONTRADICTED:** 可以保留“nonlinear/coarse observables generally induce state-dependent memory”这个科学判断，但必须重写 citation hygiene。  
+**CONFIDENCE:** HIGH — 论文身份和中心论点都可核对。 citeturn23search0turn23search17turn23search1
+
+## Protein-dynamics landscape claims
+
+**CLAIM B1**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** STAR-MD OpenReview page.  
+**EVIDENCE QUOTE:** “ICLR 2026 Poster”; “joint spatiotemporal attention.”  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了 venue、作者、架构描述。  
+**COUNTER-EVIDENCE FOUND:** no direct counterexample, but one attribute needs tightening — 它是 protein trajectory model with SE(3)-equivariant diffusion and spatiotemporal attention；“all-atom”如果按训练表示严格说并不精确，因为它生成为 backbone rigids + torsions，再做 all-atom quality evaluation。  
+**CORRECTION IF CONTRADICTED:** 更稳妥的写法是：STAR-MD 是 long-horizon protein trajectory model，使用 joint spatiotemporal attention，而不是 memory kernel。  
+**CONFIDENCE:** HIGH — OpenReview 元数据非常清楚。 citeturn25view0turn27view0
+
+**CLAIM B2**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** STAR-MD Tables 1 and 2.  
+**EVIDENCE QUOTE:** “0.43±0.01”; “0.44±0.01”; “0.46±0.01”; “0.31”, “0.26”, “0.23”.  
+**COUNTER-EVIDENCE SEARCHED:** 我定位了 exact table rows。  
+**COUNTER-EVIDENCE FOUND:** yes, partially — 这些数确实在 paper 里，但 paper 把它定义为 valid-frame conformational-coverage JSD in PC space of the reference trajectory，不是一个叫 “reference-PC” 的独立命名指标。  
+**CORRECTION IF CONTRADICTED:** 正确表述应是：STAR-MD 在 100 ns/240 ns/1 μs benchmarks 上的 PC-space JSD 大约为 0.43/0.44/0.46，对应 oracle 大约 0.31/0.26/0.23。  
+**CONFIDENCE:** HIGH — 表格定位明确。 citeturn27view0turn27view1
+
+**CLAIM B3**  
+**STATUS:** VERIFIED  
+**PRIMARY SOURCE:** ConfRover arXiv page / HTML / ByteDance-Seed repo；STAR-MD OpenReview page。  
+**EVIDENCE QUOTE:** “Project page: …/ConfRover”; “ConfRover”; “STAR-MD.”  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了作者重叠、project page lineage、组织归属。  
+**COUNTER-EVIDENCE FOUND:** no — 同一技术 lineage 很明显；作者有重叠，project page 路径也直接挂在 ConfRover 下。  
+**CORRECTION IF CONTRADICTED:** —  
+**CONFIDENCE:** HIGH — 系谱关系很直接。 citeturn24search0turn24search2turn24search4turn25view0
+
+**CLAIM B4**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** PLaTITO arXiv abstract and PDF.  
+**EVIDENCE QUOTE:** “pLM embeddings”; “out-of-distribution protein systems”; “p(xt+∆t | xt, S, T, ∆t).”  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了是否真用了 PLM、是否多-Δt、是否 cross-family。  
+**COUNTER-EVIDENCE FOUND:** yes, partially — PLM conditioning 和 multi-Δt operator 是明确的；“cross-family”在 abstract 里没有直接写成 family-level split，只写 unseen / OOD protein systems。  
+**CORRECTION IF CONTRADICTED:** 更稳健的说法是：PLaTITO 是 pLM-conditioned、OOD-transferable、multi-Δt implicit transfer operator；是否 “cross-family” 要看其 split 和 dataset analysis，而不能只看 abstract。  
+**CONFIDENCE:** HIGH for PLM + multi-Δt，MEDIUM for “cross-family”。 citeturn9view0turn9view1
+
+**CLAIM B5**  
+**STATUS:** VERIFIED  
+**PRIMARY SOURCE:** AlphaFlow paper abstract and introduction.  
+**EVIDENCE QUOTE:** “generative models of protein structure”; “equilibrium properties.”  
+**COUNTER-EVIDENCE SEARCHED:** 我检查它是否显式建模 correlated trajectory rollout。  
+**COUNTER-EVIDENCE FOUND:** no — AlphaFlow 学的是 ensemble / conformational landscape，不是 time-correlated trajectory generator。  
+**CORRECTION IF CONTRADICTED:** —  
+**CONFIDENCE:** HIGH — 文章自己就把 focus 放在 ensembles，不是 sequential dynamics forecast。 citeturn12view1turn14view1
+
+**CLAIM B6**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** MDGen arXiv abstract and experimental setup.  
+**EVIDENCE QUOTE:** “validated… on tetrapeptide simulations”; “reasonable ensembles of protein monomers”; “use… ATLAS dataset.”  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了 training/eval data。  
+**COUNTER-EVIDENCE FOUND:** yes, partially — MDGen 的核心 trajectory tasks 确实主要在 tetrapeptides；同时它也用了 ATLAS proteins 做 protein-level experiments。  
+**CORRECTION IF CONTRADICTED:** “ONLY on tetrapeptides + ATLAS; not on full enzymes” 太强。更准确是：trajectory-task validation 主要在 tetrapeptides，蛋白层面用了 ATLAS monomer proteins；没有看到专门的 enzyme-family training story。  
+**CONFIDENCE:** HIGH — 训练/实验描述是明文。 citeturn12view4turn14view0
+
+**CLAIM B7**  
+**STATUS:** CONTRADICTED  
+**PRIMARY SOURCE:** BioEmu GitHub repo and Microsoft publication page.  
+**EVIDENCE QUOTE:** “This repository contains inference code and model weights”; but also “The molecular dynamics training data… is available on Zenodo.”  
+**COUNTER-EVIDENCE SEARCHED:** 我专门找了 training-data availability。  
+**COUNTER-EVIDENCE FOUND:** yes — weights 的确 release 了，但 training MD data 也公开给出了 Zenodo links（CATH / Octapeptides / MegaSim）。  
+**CORRECTION IF CONTRADICTED:** 不能再说 “BioEmu-1 does NOT release training data; model weights only”。更准确是：BioEmu release 了 inference code、weights，以及至少部分/主要 MD training datasets 的 publicly linked resources。  
+**CONFIDENCE:** HIGH — GitHub README 直接写出来了。 citeturn17view0turn16view2
+
+**CLAIM B8**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** Nature Chemistry article abstract on transferable machine-learned coarse-grained model.  
+**EVIDENCE QUOTE:** “chemical transferability”; “new sequences not used during model parameterization.”  
+**COUNTER-EVIDENCE SEARCHED:** 我检查它是否 sequence-transferable，以及 paper 是否显式讨论 non-Markovian memory。  
+**COUNTER-EVIDENCE FOUND:** 文章明确是 transferable CG force field；但 “Markovian” 更多是从其常规 CG force-field / MD formulation 推断，不是摘要中被明说。  
+**CORRECTION IF CONTRADICTED:** 可说“sequence-transferable coarse-grained force field”；不要把 “Markovian” 当成它自报的 headline novelty。  
+**CONFIDENCE:** MEDIUM — transferable 没问题；Markovian 是合理推断，不是显式句子。 citeturn18search0
+
+**CLAIM B9**  
+**STATUS:** CONTRADICTED  
+**PRIMARY SOURCE:** PLaTITO abstract/PDF; MEMnets abstract.  
+**EVIDENCE QUOTE:** PLaTITO covers “pLM embeddings” and OOD transfer; MEMnets covers “memory kernel minimization”; 没有 metaD validation。  
+**COUNTER-EVIDENCE SEARCHED:** 我按四个轴重做了 coverage matrix：PLM-conditioned × explicit K(t−τ) × cross-family × metaD-validated。  
+**COUNTER-EVIDENCE FOUND:** yes — PLaTITO 大致覆盖 2 个半轴，MEMnets 大致覆盖 1 个轴；两者并集不到 80%，更接近 50–60%，而且 “metaD-validated” 几乎没被覆盖。  
+**CORRECTION IF CONTRADICTED:** whitespace 仍然存在，但没有你假设得那么窄，也没有被 “PLaTITO + MEMnets” 联手吃掉到 80%。  
+**CONFIDENCE:** HIGH — 这是直接按 paper claims 枚举。 citeturn9view0turn9view1turn9view4
+
+## Data claims
+
+**CLAIM C1**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** ATLAS NAR abstract/snippets; later citing papers summarizing ATLAS; FAIRsharing record for license.  
+**EVIDENCE QUOTE:** “1,390 protein chains”; “each simulated in triplicate for 100 ns.”  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了 count、replicates、timescale、license。  
+**COUNTER-EVIDENCE FOUND:** 1,390 和 triplicate 100 ns 可以确认；CC BY 4.0 由 FAIRsharing / mirrored metadata 支持；“non-membrane monomers”这个 exact phrase 我没在可访问摘要里完整看到。  
+**CORRECTION IF CONTRADICTED:** 更安全表述是：ATLAS 收录 1,390 protein chains，triplicate 100 ns，开放获取；不要把 “non-membrane monomers” 当作已精确核实的 part。  
+**CONFIDENCE:** MEDIUM-HIGH — 核心数字稳，但具体修饰词未全部直读到原文。 citeturn33search0turn33search4turn34search2
+
+**CLAIM C2**  
+**STATUS:** VERIFIED  
+**PRIMARY SOURCE:** mdCATH Scientific Data article and dataset card.  
+**EVIDENCE QUOTE:** “5,398 domains”; “five replicates each at five temperatures from 320 K to 450 K”; “over 62 ms.”  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了温度范围、replicate 数、总时长。  
+**COUNTER-EVIDENCE FOUND:** no.  
+**CORRECTION IF CONTRADICTED:** —  
+**CONFIDENCE:** HIGH — 文本直接给出。 citeturn30view1turn7search2turn7search3
+
+**CLAIM C3**  
+**STATUS:** VERIFIED  
+**PRIMARY SOURCE:** MISATO Nature Computational Science article.  
+**EVIDENCE QUOTE:** “19,443 protein–ligand structures”; “accumulating over 170 μs.”  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了 complexes 数和 aggregate simulation length。  
+**COUNTER-EVIDENCE FOUND:** no.  
+**CORRECTION IF CONTRADICTED:** —  
+**CONFIDENCE:** HIGH. citeturn30view2
+
+**CLAIM C4**  
+**STATUS:** CONTRADICTED  
+**PRIMARY SOURCE:** PLAS-20k PubMed abstract and article snippet from Nature search / ChemRxiv.  
+**EVIDENCE QUOTE:** “97,500 independent simulations on… 19,500 different protein-ligand complexes”; protocol snippet says “five independent minimized conformations” and a final “production run of 4 ns.”  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了 complexes 数、simulation count、single-run duration。  
+**COUNTER-EVIDENCE FOUND:** yes — 19,500 和 97,500 没问题，意味着 5 replicates/complex；但 “5 × 10 ns each” 不成立，公开 protocol snippet 指向的是 shorter production runs。  
+**CORRECTION IF CONTRADICTED:** 这个 dataset 不能被描述成 “19,500 complexes, 5×10 ns each”。  
+**CONFIDENCE:** HIGH — 数字和 protocol snippet 冲突很清楚。 citeturn31view0turn32search0turn32search3
+
+**CLAIM C5**  
+**STATUS:** VERIFIED  
+**PRIMARY SOURCE:** UniProt, CATH, InterPro/M-CSA and fold-type-II review material.  
+**EVIDENCE QUOTE:** “EC 4.2.1.20”; CATH entries show `3.20.20.70` and `3.40.50.1100`; TrpB is in “Fold Type II.”  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了 EC、CATH、fold-type terminology。  
+**COUNTER-EVIDENCE FOUND:** no substantive conflict.  
+**CORRECTION IF CONTRADICTED:** —  
+**CONFIDENCE:** HIGH. citeturn6search0turn6search5turn6search13turn8search0
+
+**CLAIM C6**  
+**STATUS:** UNVERIFIABLE  
+**PRIMARY SOURCE:** mdCATH paper / repo / dataset card were readable, but I could not get a searchable public index that definitively exposed whether superfamily `3.40.50.1100` is in the released domain list.  
+**EVIDENCE QUOTE:** N/A — 无法从 accessible public index 读到具体 superfamily list。  
+**COUNTER-EVIDENCE SEARCHED:** mdCATH paper, Hugging Face dataset card, GitHub repo, repo file `mdcath_domains.txt` path。  
+**COUNTER-EVIDENCE FOUND:** no definitive yes/no.  
+**CORRECTION IF CONTRADICTED:** 目前只能说 leakage risk plausible, not proven. 如果你要把 leakage 当 load-bearing risk，必须自己离线扫 domain list。  
+**CONFIDENCE:** LOW — 公开索引可访问性不足。 citeturn35view0turn36view0turn30view1
+
+**CLAIM C7**  
+**STATUS:** UNVERIFIABLE  
+**PRIMARY SOURCE:** 我核对了 ATLAS、mdCATH、MISATO、PLAS-20k。  
+**EVIDENCE QUOTE:** 这些公开大库要么是 protein/domain-diverse 但不 enzyme-focused，要么是 ligand-complex-focused 而非 enzyme-dynamics benchmark。  
+**COUNTER-EVIDENCE SEARCHED:** public protein/enzyme MD corpora across NAR / Sci Data / Nat Comput Sci lineages。  
+**COUNTER-EVIDENCE FOUND:** 没找到一个明显的单库同时满足 “enzyme-focused 且 family-diverse”；但“no single public corpus exists”仍然是难以彻底证明的否定命题。  
+**CORRECTION IF CONTRADICTED:** 你可以把它写成“我没找到一个现成的公开单库同时满足这两个条件”，不要写成逻辑上被证明的不存在。  
+**CONFIDENCE:** MEDIUM-LOW. citeturn33search0turn30view1turn30view2turn31view0
+
+**CLAIM C8**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** fold-type-II PLP allostery review; O-acetylserine sulfhydrylase structure/mechanism paper; threonine deaminase allostery paper.  
+**EVIDENCE QUOTE:** Fold Type II “encompasses numerous allosteric enzymes”; OASS “cycles through open and closed conformations.”  
+**COUNTER-EVIDENCE SEARCHED:** 我专门看了 OASS 与 threonine deaminase 是否真有 TrpB-like COMM-style dynamics。  
+**COUNTER-EVIDENCE FOUND:** yes, mixed — OASS 确有 open/closed catalytic-domain motion；但 threonine deaminase 的 regulation architecture 明显不同。把它们一概说成 “share COMM-like dynamics” 会夸大 leakage risk。  
+**CORRECTION IF CONTRADICTED:** 更合理的写法是：部分 PLP fold-II enzymes 存在 function-linked domain motions / allostery，但“TrpB COMM-like”不能泛化为整个 fold。  
+**CONFIDENCE:** MEDIUM. citeturn8search0turn8search1turn8search7
+
+## Evaluation and MetaD claims
+
+**CLAIM D1**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** Microsoft official BioEmu publication page.  
+**EVIDENCE QUOTE:** “predicts relative free energies with 1 kcal/mol accuracy.”  
+**COUNTER-EVIDENCE SEARCHED:** 我找了 exact Science-paper statement，但可直接访问的主要是 Microsoft official publication mirror。  
+**COUNTER-EVIDENCE FOUND:** no clear contradiction; 但我没有在可访问的 Science full text 中逐字定位到 “ΔΔG error < 1 kcal/mol vs experimental stabilities” 这句。  
+**CORRECTION IF CONTRADICTED:** 最稳妥的说法是：BioEmu 官方对外表述为 ~1 kcal/mol free-energy accuracy；不要冒进写成精确 benchmark threshold，除非你自己定位到 Science 正文或 supplement。  
+**CONFIDENCE:** MEDIUM. citeturn16view1
+
+**CLAIM D2**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** MDGen Table 2.  
+**EVIDENCE QUOTE:** torsion JSDs are `0.130`, `0.093`, `0.109`; 100-ns replicate oracle is `0.103`, `0.055`, `0.076`.  
+**COUNTER-EVIDENCE SEARCHED:** 我定位了 exact torsion-JSD table。  
+**COUNTER-EVIDENCE FOUND:** yes, partially — “near replicate-MD noise floor” 这个 qualitative judgment大体对，但你给的 quantitative band `~0.05–0.10` 不适用于全部 torsion metrics。  
+**CORRECTION IF CONTRADICTED:** 更准确是：MDGen torsion JSD 已接近 100-ns replicate baseline，但不统一落在 0.05–0.10 区间。  
+**CONFIDENCE:** HIGH. citeturn29view4
+
+**CLAIM D3**  
+**STATUS:** CONTRADICTED  
+**PRIMARY SOURCE:** STAR-MD metric definition and tables; uploaded Osuna/JACS 2019 target context; my independent analytic re-derivation under reasonable bimodal assumptions.  
+**EVIDENCE QUOTE:** STAR-MD 的 `0.46` comes from PC-space JSD on valid conformations in ATLAS long-horizon benchmarks, not TrpB PATH-CV free-energy histograms.  
+**COUNTER-EVIDENCE SEARCHED:** 我独立做了 analytic sanity check：如果把 target 分布近似为两个窄峰，uniform-vs-bimodal 的 JSD 对 binning、σ、是否取 scipy 的 sqrt-JS 非常敏感，完全可能从中等到很高；并且你把 TrpB 1D path-CV FES 和 STAR-MD 的 ATLAS PC-space JSD 直接类比。  
+**COUNTER-EVIDENCE FOUND:** yes — 这个 “STAR-MD’s 0.46 ≈ random” 比较是 apples-to-oranges。哪怕某个特定假设下 random baseline 数值碰巧接近，结论也不成立，因为 CV、normalization、histogram protocol、数据集层级都不同。  
+**CORRECTION IF CONTRADICTED:** 如果你真想用 “random baseline” 打机枪，必须在同一个 CV、同一个 binning、同一个 normalization、同一个 target enzyme 上重算。  
+**CONFIDENCE:** HIGH — 反驳点不是某个小数，而是 metric mismatch。 citeturn27view0turn27view1
+
+**CLAIM D4**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** dataset docs for ATLAS and mdCATH.  
+**EVIDENCE QUOTE:** ATLAS is a protein-chain database; mdCATH is built from capped CATH domains in water/ions.  
+**COUNTER-EVIDENCE SEARCHED:** 我检查了 dataset descriptions 是否 explicitly support ligand/cofactor trajectories。  
+**COUNTER-EVIDENCE FOUND:** 没发现这两个库以 holo / cofactor-bound trajectory corpus 的方式发布；但“contains zero cofactor/ligand-bound trajectories”作为精确全称命题，我无法在 accessible docs 里完全证明。  
+**CORRECTION IF CONTRADICTED:** 可写成“公开说明文档没有给出面向配体/辅因子绑定态的 trajectory coverage；若要当 hard constraint，需逐项 audit entries”。  
+**CONFIDENCE:** MEDIUM-LOW. citeturn33search0turn30view1
+
+**CLAIM D5**  
+**STATUS:** VERIFIED  
+**PRIMARY SOURCE:** 你上传的 JACS 2019 paper and SI; I reviewed the uploaded PDF locally.  
+**EVIDENCE QUOTE:** paper reports the COMM-domain open / partially closed / closed ensemble under path-CV metadynamics.  
+**COUNTER-EVIDENCE SEARCHED:** 我在上传 PDF 中核对了 O / PC / C naming、COMM-domain framing、PATHMSD/path-CV metadynamics setup。  
+**COUNTER-EVIDENCE FOUND:** no.  
+**CORRECTION IF CONTRADICTED:** —  
+**CONFIDENCE:** HIGH — 这是 reproduction target 本身，不存在歧义。  
+
+**CLAIM D6**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** AlphaFlow Table 1 and Table 5.  
+**EVIDENCE QUOTE:** per-target RMSF correlation is `0.85`; baseline RMWD is `2.61`, not `2.3`.  
+**COUNTER-EVIDENCE SEARCHED:** 我核对了 exact table values。  
+**COUNTER-EVIDENCE FOUND:** yes — RMSF `0.85` 是对的（对应 per-target RMSF correlation），但 RMWD 对 Alpha Flow baseline 更接近 `2.61`; 更低的数对应不同 variant or setup。  
+**CORRECTION IF CONTRADICTED:** 不能把 “RMWD ≈ 2.3 Å, Pearson RMSF 0.85” 当成同一个标准 AlphaFlow baseline 的精确配对数字。  
+**CONFIDENCE:** HIGH. citeturn28view3turn28view5
+
+## Recommendation claims
+
+**CLAIM E1**  
+**STATUS:** CONTRADICTED  
+**PRIMARY SOURCE:** 以上 load-bearing factual audit。  
+**EVIDENCE QUOTE:** benchmark 立论依赖的多个关键事实已经失败或未证成：A7、B7、B9、C4、D3、C6。  
+**COUNTER-EVIDENCE SEARCHED:** 我检查了这个 benchmark 是否还能作为一个“primary deliverable”成立。  
+**COUNTER-EVIDENCE FOUND:** yes — 最强反对理由不是 “MetaD 没价值”，而是：**当前 proposal 的 benchmark premise 过度依赖 CV-dependent FES、跨-paper metric analogy、以及未经清洗的 whitespace claims**。reviewer 完全可能说你在 benchmark 一个 protocol artifact，而不是 benchmark 一个 field-stable scientific target。  
+**CORRECTION IF CONTRADICTED:** 如果继续做，应该降级成 internal reproduction / diagnostic v0，而不是 SURF 的 primary summer bet。  
+**CONFIDENCE:** HIGH. citeturn22search7turn17view0turn9view0turn9view4turn31view0turn27view0turn27view1
+
+**CLAIM E2**  
+**STATUS:** CONTRADICTED  
+**PRIMARY SOURCE:** PLaTITO makes OOD claims across unseen protein systems; transferable-memory work shows transfer across different polymer systems/parameters; neither implies within-family mutation is a credible surrogate for cross-family.  
+**EVIDENCE QUOTE:** “out-of-distribution protein systems”; “different systems with varying concentrations and lengths.”  
+**COUNTER-EVIDENCE SEARCHED:** 我检查 mutation-as-perturbation 是否在 literature 中被当作 family-level generalization surrogate。  
+**COUNTER-EVIDENCE FOUND:** 没找到一个 primary-source 支持 “same checkpoint on four mutants” 可以替代 cross-family generalization。相反，直觉上 mutation-within-fold 通常比 cross-family easier。  
+**CORRECTION IF CONTRADICTED:** 这个测试最多是 **cross-mutation robustness**，不是可信的 **cross-family surrogate**。  
+**CONFIDENCE:** MEDIUM — 没有直接一篇 paper 用你这句话下判词，但现有 transfer literature 不支持这个 leap。 citeturn9view0turn22search7
+
+**CLAIM E3**  
+**STATUS:** PARTIALLY_VERIFIED  
+**PRIMARY SOURCE:** related systems: AIGLE, MEMnets, PLaTITO, ConfRover, STAR-MD.  
+**EVIDENCE QUOTE:** 相关 ingredients 各自都“exist”；但没有一篇 paper 同时展示 sequence conditioning + explicit transferable memory kernel + cross-family protein dynamics + TrpB/MetaD validation。  
+**COUNTER-EVIDENCE SEARCHED:** 我看了有没有“理论上直接杀死” Arvind 架构的结果。  
+**COUNTER-EVIDENCE FOUND:** 没有看到 theorem-level impossibility；但有两个足以 kill 立项的现实风险：其一，A7 已经表明 “transferable memory kernel” 不是全新；其二，A8 说明 proposal 尚未写出 FDT-consistent stochastic term，这意味着它距离一个 physically closed Mori–Zwanzig story 还很远。  
+**CORRECTION IF CONTRADICTED:** 这不是 vaporware，但也绝不是 “文献已强力背书的稳健 bet”。它是一个 **high-risk research bet**。  
+**CONFIDENCE:** MEDIUM. citeturn9view4turn11search5turn9view0turn25view0
+
+**CLAIM E4**  
+**STATUS:** CONTRADICTED  
+**PRIMARY SOURCE:** PLaTITO and MEMnets coverage matrix.  
+**EVIDENCE QUOTE:** PLaTITO already covers PLM-conditioned transferable dynamics; MEMnets covers explicit memory-kernel CV discovery; neither covers MetaD-grounded TrpB benchmark.  
+**COUNTER-EVIDENCE SEARCHED:** 我问的是：如果给 PLaTITO 再加一个 explicit memory-kernel head，还剩什么？  
+**COUNTER-EVIDENCE FOUND:** 很多还剩：ligand/cofactor-aware catalytic-state modeling、single-enzyme rare-state target definition、MetaD-grounded evaluation design、false-positive / protocol-dependence control、以及真正的 FDT-consistent stochastic closure。  
+**CORRECTION IF CONTRADICTED:** “PLaTITO covers ~80% whitespace” 不成立；即便给它加 memory head，也只是缩小 generic-method whitespace，不会自动替你解决 TrpB-specific benchmark validity。  
+**CONFIDENCE:** HIGH. citeturn9view0turn9view4
+
+## Load-bearing failures
+
+最致命的失败，不是某个小数点误差，而是以下几类：
+
+首先，**citation hygiene 已经出问题**。A2 和 A5 证明你现在手上的 operator/memory 文献表混入了错 ID、错作者、错 lineage。这种错误一旦进入 proposal，reviewer 或 PI 第一反应不会是“有意思”，而是“你们连相关工作都没 audit 干净”。citeturn2search0turn2search1turn2search2turn2search3turn11search0turn11search3
+
+其次，**novelty 叙事被夸大**。A7 直接推翻了“任何 physical system 都没人做过 transferable memory kernels”；B7 推翻了“BioEmu 只放权重不放数据”；B9 推翻了“PLaTITO + MEMnets 已覆盖 80% whitespace”的定量说法。也就是说，你不能再把这个 proposal 包装成一个建立在非常清晰白区上的研究机会。citeturn22search7turn17view0turn9view0turn9view4
+
+再次，**benchmark motivation 的 quantitative spine 不稳**。D3 是最关键的。你原来想把 STAR-MD 的 `0.46` 拉到 TrpB MetaD 的 path-CV FES 上，说“差不多等于 random”。这个类比现在不能成立，因为 metric definition 完全不一样。这个点一倒，整个 “TrpB-MetaD-Eval v0 is urgently needed because current SOTA is effectively random” 的话术就不能用了。citeturn27view0turn27view1
+
+最后，**data-side distinctiveness 也没有你预想得高**。C4 说明你对 ligand-bound public corpora 的把握本身不够精确；C6/C7/D4 说明你想依赖的 leakage / corpus gap 论点，目前关键部分还没被证明。也就是说，如果现在就把 summer 全压到 benchmark 上，你是在用一组还没 fully cleaned 的 premises 做主决策。citeturn31view0turn32search0turn35view0turn30view1turn30view2
+
+## Recommendation-level verdict and new risks
+
+基于这次红队核查，**我不建议把 SURF 的 primary deliverable 定成 “TrpB-MetaD-Eval v0”**。
+
+更准确的 verdict 是：**这个方向可以作为内部 diagnostic / scoping artifact 保留，但不值得在当前证据状态下被当成 summer 的主赌注**。原因不是 metadynamics 失去科学意义，而是：你现在用来支撑它“必须做、且值得主投”的几个 load-bearing claim 已经明显失效或未证成。citeturn22search7turn17view0turn9view0turn9view4turn27view0turn27view1
+
+如果一定要 salvage，这个项目只能被缩成更窄的一版：**一个严格范围限定的 TrpB reproduction-and-diagnostic package**。它的目标不应再是“证明 field-level whitespace + 形成 sequence-conditioned dynamics benchmark 新标准”，而应是三件更朴素但可 defend 的事：  
+其一，确认 Osuna/JACS 2019 的 TrpB MetaD target 在你们本地是否可 reproducible；  
+其二，确认评价指标是否对 CV choice / histogram binning / restraint/protocol 高敏；  
+其三，确认公开 dynamics models 在与你 target 真正同构的指标上到底多差，而不是借 ATLAS PC-space JSD 做跨任务类比。  
+
+我这次额外发现的新风险有四个。第一，**CV-dependence risk**：如果 free-energy topology 强依赖 path definition、reference frames、bias deposition choices，那么 reviewer 可直接质疑 benchmark object 是否 stable。第二，**metric mismatch risk**：现在最诱人的对比数字横跨不同 datasets、不同 CVs、不同 normalizations。第三，**leakage-audit incompleteness risk**：你目前没有证据证明 mdCATH / related corpora 对 TrpB fold leakage 的精确边界。第四，**scope-collapse risk**：一旦把 benchmark 做窄，paper-value 可能立刻下降成 “careful reproduction + protocol memo”，而不是你原先设想的 whitespace-defining deliverable。citeturn30view1turn27view0turn27view1turn35view0
+
+所以，结论非常直接：**whitespace 还在，但不在你原来那套叙事的位置上。**  
+它不在 “RNO nobody has done this” 这层。  
+也不在 “STAR-MD is basically random on TrpB-like objectives” 这层。  
+真正残余的 whitespace，更像是：**how to define a physically meaningful, protocol-robust, ligand/cofactor-aware, enzyme-specific rare-state benchmark without conflating CV artifacts with model failure**。这仍然是研究问题，但已经不是一个适合 SURF 学生在一个夏天里主押的宽 benchmark 项目了。
+
+## Papers actually read
+
+下面列的是我**实际打开并阅读过**的 primary sources，以及我依赖的 section / table / figure location。
+
+Maria-Solano et al., 2019, JACS, “Deciphering the Allosterically-driven Conformational Ensemble in Tryptophan Synthase Evolution.” 依赖部分：上传 PDF 中关于 COMM-domain open / partially closed / closed ensemble、PATHMSD/path-CV MetaD、simulation protocol 的 methods / figures。  
+Shoghi et al., 2026, ICLR 2026 poster / OpenReview, “Scalable Spatio-Temporal SE(3) Diffusion for Long-Horizon Protein Dynamics.” 依赖部分：OpenReview abstract；Table 1；Table 2；Table 22。 citeturn25view0turn27view0turn27view1turn27view2  
+Antoniadis et al., 2026, arXiv:2602.11216, “Protein Language Model Embeddings Improve Generalization of Implicit Transfer Operators.” 依赖部分：abstract；Figure 1 caption；Section 4 method framing with `p(xt+∆t | xt, S, T, ∆t)`。 citeturn9view0turn9view1  
+Jing, Berger, Jaakkola, 2024, ICML / arXiv:2402.04845, “AlphaFold Meets Flow Matching for Generating Protein Ensembles.” 依赖部分：abstract；introduction on ensembles vs trajectory; Table 1; Table 5; Appendix MD evaluations. citeturn14view1turn28view0turn28view3turn28view5  
+Jing et al., 2024, NeurIPS / arXiv:2409.17808, “Generative Modeling of Molecular Dynamics Trajectories.” 依赖部分：abstract；Section 4 experiments；Table 2 JSD values; Appendix B.3 JSD definition. citeturn14view0turn29view4turn29view2  
+Liu et al., 2025, Nature Computational Science, doi `10.1038/s43588-025-00815-8`, “Memory kernel minimization-based neural networks for discovering slow collective variables of biomolecular dynamics.” 依赖部分：abstract。 citeturn9view4  
+Xie, Car, E, 2024, PNAS, doi `10.1073/pnas.2308668121`, “Ab initio generalized Langevin equation.” 依赖部分：article metadata / abstract summary. citeturn11search0turn11search3turn11search5  
+Lyu and Lei, 2023, Phys. Rev. Lett. 131, 177301, “Construction of Coarse-Grained Molecular Dynamics with Many-Body Non-Markovian Memory.” 依赖部分：article title / summary. citeturn23search0  
+Ge, Zhang, Lei, 2024, Phys. Rev. Lett. 133, 077301, “Data-Driven Learning of the Generalized Langevin Equation with State-Dependent Memory.” 依赖部分：article title / abstract summary. citeturn22search12turn23search1  
+Vander Meersche et al., 2024, Nucleic Acids Research, “ATLAS: protein flexibility description from atomistic molecular dynamics simulations.” 依赖部分：abstract/database summary; metadata citing triplicate 100 ns and 1,390 chains. citeturn33search0turn33search4  
+Mirarchi, Giorgino, De Fabritiis, 2024, Scientific Data, doi `10.1038/s41597-024-04140-z`, “mdCATH: A Large-Scale MD Dataset for Data-Driven Computational Biophysics.” 依赖部分：abstract; dataset requirements; production setup. citeturn30view1turn7search2turn7search3  
+Siebenmorgen et al., 2024, Nature Computational Science, doi `10.1038/s43588-024-00627-2`, “MISATO: machine learning dataset of protein–ligand complexes for structure-based drug discovery.” 依赖部分：abstract; dataset construction section. citeturn30view2  
+Korlepara et al., 2024, Scientific Data, doi `10.1038/s41597-023-02872-y`, “PLAS-20k: Extended Dataset of Protein-Ligand Affinities from MD Simulations for Machine Learning Applications.” 依赖部分：PubMed abstract; protocol snippet from article search results. citeturn31view0turn32search0turn32search3  
+Lewis et al., 2025, Science / Microsoft official publication page, “Scalable emulation of protein equilibrium ensembles with generative deep learning.” 依赖部分：official abstract mirror; GitHub README training-data section. citeturn16view1turn16view2turn17view0  
+Charron et al., 2025, Nature Chemistry, doi `10.1038/s41557-025-01874-0`, “Navigating protein landscapes with a machine-learned transferable coarse-grained model.” 依赖部分：abstract. citeturn18search0  
+Ma et al., 2021, arXiv:2103.10578, “Transfer Learning of Memory Kernels in Coarse-grained Modeling.” 依赖部分：abstract. citeturn22search7

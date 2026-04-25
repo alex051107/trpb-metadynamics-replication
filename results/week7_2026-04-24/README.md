@@ -10,12 +10,12 @@ This directory contains only clean, English, publishable artefacts. Raw COLVAR t
 
 ![FES(s,z) side-by-side](sz_2d_distribution.png)
 
-- **Panel a** — Naive path (pre-FP-034): single-walker baseline job 45324928, 16 ns, 81 479 COLVAR frames. Walker is trapped at `s < 1.9` for the entire trajectory.
-- **Panel b** — Sequence-aligned path (post-FP-034): single-walker pilot job 45515869, 8 ns, 40 193 COLVAR frames. Walker explores `s = 1.00 → 12.87`; the red star marks the starting configuration (`s = 7.09, z = 1.68`), which is a soft-min artifact (see Technical Note below), not a biological assignment.
+- **Panel a** — Naive path (pre-FP-034): single-walker baseline job 45324928, 17.7 ns after the latest Longleaf sync. Walker is trapped at `s < 1.9` for the entire trajectory.
+- **Panel b** — Sequence-aligned path (post-FP-034): single-walker pilot job 45515869, 8.9 ns after the latest Longleaf sync. Walker explores `s = 1.00 → 12.87`; the red star marks the starting configuration (`s = 7.09, z = 1.68` in raw `p1.zzz`), which is a soft-min artifact (see Technical Note below), not a biological assignment.
 
 Identical `start.gro`, identical Miguel MetaD parameters, identical single-walker protocol — the **only** variable between the two panels is `path.pdb`.
 
-**Reproducibility**: the figure is regenerated from raw COLVAR data by [`../../reports/figures/plot_sz_distribution.py`](../../reports/figures/plot_sz_distribution.py). The free-energy surface uses `F(s,z) = -kT ln(p/p_max)` with `T = 350 K`, `kT = 0.696 kcal/mol`, clipped at 6 kcal/mol.
+**Reproducibility**: the current figure is regenerated from Longleaf HILLS files with PLUMED `sum_hills`, then rendered by [`../../reports/figures/plot_sz_si_sumhills.py`](../../reports/figures/plot_sz_si_sumhills.py). The colorbar uses the SI/main-paper `0-14 kcal/mol` range. The y-axis follows the SI-literal plotting convention: raw `p1.zzz` is shown with the paper's `RMSD Deviation (Å)` label.
 
 ---
 
@@ -83,7 +83,7 @@ near-equidistant `MSD_i` makes the numerator collapse to a weighted average of a
 
 | Artefact | Source |
 |---|---|
-| `sz_2d_distribution.png` | [`reports/figures/plot_sz_distribution.py`](../../reports/figures/plot_sz_distribution.py) |
+| `sz_2d_distribution.png` | [`reports/figures/plot_sz_si_sumhills.py`](../../reports/figures/plot_sz_si_sumhills.py), using PLUMED `sum_hills` grids generated on Longleaf |
 | `path_seqaligned_summary.txt` | [`replication/metadynamics/path_seqaligned/build_seqaligned_path.py`](../../replication/metadynamics/path_seqaligned/build_seqaligned_path.py) |
 | `pilot_45515869_stats.txt` | inline Python on `chatgpt_pro_consult_45558834/raw_data/pilot_45515869_COLVAR` |
 | `baseline_45324928_stats.txt` | inline Python on `chatgpt_pro_consult_45558834/raw_data/baseline_45324928_COLVAR` |

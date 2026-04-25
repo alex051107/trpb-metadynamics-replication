@@ -27,19 +27,39 @@ T = 350.0
 kT = kB * T
 FES_MAX = 6.0
 
+# JACS-2019-Fig3 convention: y-axis displays the per-Cα RMSD-scaled distance
+# from the path (in Å), not the raw path.zzz which PLUMED writes in Å² (MSD).
+# We take sqrt(zzz) to match the SI plotting convention while keeping the
+# physical content unchanged.
 S_RANGE = (0.5, 15.3)
-Z_RANGE = (0.0, 2.8)
+Z_RANGE = (0.0, 1.7)            # axis in Å (= sqrt of Å²)
 NS, NZ = 260, 160
 
-START_S, START_Z = 7.09, 1.68
+# start.gro projection. COLVAR row at t=0 has path.zzz = 1.68 Å² → 1.30 Å RMSD.
+START_S = 7.09
+START_Z_RAW_A2 = 1.68           # Å² (raw)
+START_Z_ANG = START_Z_RAW_A2 ** 0.5  # 1.296 Å on RMSD axis
+
+# UPPER_WALLS: AT=2.5 Å² → sqrt → 1.581 Å on RMSD axis
+UPPER_WALL_RAW_A2 = 2.5
+UPPER_WALL_ANG = UPPER_WALL_RAW_A2 ** 0.5
 
 
 def load_colvar(p: Path) -> tuple[np.ndarray, np.ndarray]:
+    """Return (s, z_in_angstrom).
+
+    PLUMED writes path.zzz in Å² (MSD).  We return its sqrt so downstream
+    plotting and statistics are in the RMSD scale used by JACS 2019 Fig 3.
+    """
     a = np.loadtxt(p, comments="#")
-    return a[:, 1], a[:, 2]
+    s = a[:, 1]
+    z_a2 = np.clip(a[:, 2], 0.0, None)      # guard tiny negative noise
+    z_ang = np.sqrt(z_a2)                    # Å² → Å (RMSD)
+    return s, z_ang
 
 
 def fes(s: np.ndarray, z: np.ndarray):
+    """KDE on the (s, z_RMSD) plane → free energy in kcal/mol."""
     kde = gaussian_kde(np.vstack([s, z]), bw_method=0.18)
     sx = np.linspace(*S_RANGE, NS)
     zx = np.linspace(*Z_RANGE, NZ)
@@ -62,19 +82,19 @@ def panel(ax, S, Z, F, tag: str, title: str, show_star: bool):
         colors="white", linewidths=0.45, alpha=0.5,
     )
 
-    # UPPER_WALLS dashed guide
-    ax.axhline(2.5, color="white", linestyle=(0, (4, 2)), linewidth=0.8, alpha=0.6)
+    # UPPER_WALLS guide line (drawn at sqrt(2.5 A^2) = 1.581 A on RMSD axis)
+    ax.axhline(UPPER_WALL_ANG, color="white", linestyle=(0, (4, 2)),
+               linewidth=0.8, alpha=0.6)
 
-    # start.gro star + short label beside it (no arrow)
+    # start.gro marker (s=7.09, z=1.30 A on RMSD axis)
     if show_star:
         ax.scatter(
-            [START_S], [START_Z], marker="*", s=340,
+            [START_S], [START_Z_ANG], marker="*", s=340,
             facecolor="#ff3d3d", edgecolor="white", linewidth=1.4, zorder=6,
         )
         ax.text(
-            START_S + 0.4, START_Z - 0.05, "start.gro",
+            START_S + 0.4, START_Z_ANG - 0.04, "start.gro",
             fontsize=9, color="white", va="center", ha="left",
-            path_effects=None,
             bbox=dict(facecolor="black", alpha=0.45, edgecolor="none",
                       boxstyle="round,pad=0.2"),
         )
@@ -82,13 +102,13 @@ def panel(ax, S, Z, F, tag: str, title: str, show_star: bool):
     # Combined tag + title (no overlapping large tag)
     ax.set_title(f"({tag})   {title}", fontsize=12.5, loc="left", pad=6, weight="bold")
 
-    ax.set_xlabel(r"path.s   (progression  1WDW  ⟶  3CEP,   MODEL 1 → 15)",
+    ax.set_xlabel(r"path.s   (progression  1WDW  $\rightarrow$  3CEP,   MODEL 1 $\rightarrow$ 15)",
                   fontsize=10.5)
-    ax.set_ylabel(r"path.z   (off-path deviation, Å$^2$)", fontsize=10.5)
+    ax.set_ylabel(r"path.z   (off-path RMSD, Å)", fontsize=10.5)
     ax.set_xlim(*S_RANGE)
     ax.set_ylim(*Z_RANGE)
     ax.set_xticks([1, 3, 5, 7, 9, 11, 13, 15])
-    ax.set_yticks([0, 0.5, 1.0, 1.5, 2.0, 2.5])
+    ax.set_yticks([0.0, 0.25, 0.50, 0.75, 1.00, 1.25, 1.50])
     ax.tick_params(direction="out", length=3.5, labelsize=9.5)
     for spine in ax.spines.values():
         spine.set_linewidth(0.9)

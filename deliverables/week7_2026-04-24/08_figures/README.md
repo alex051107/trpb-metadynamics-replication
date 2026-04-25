@@ -6,29 +6,35 @@ Reproducible figures for the Week-7 deliverable.
 
 | File | What it is |
 |---|---|
-| `plot_sz_distribution.py` | Primary script. Reads pilot + baseline COLVAR, builds FES via 2D gaussian KDE at T = 350 K, produces side-by-side figure. |
-| `sz_2d_distribution.png` | Headline figure: FES(s, z) naive vs sequence-aligned. The one figure that summarises the week. |
+| `plot_sz_si_sumhills.py` | Current SI-style script. Reads PLUMED `sum_hills` grids from Longleaf HILLS, uses SI-like axes and colorbar. |
+| `plot_sz_distribution.py` | Older diagnostic script. Reads pilot + baseline COLVAR and builds a 2D KDE occupancy surface, not the SI `sum_hills` FEL. |
+| `sz_2d_distribution.png` | Headline figure: SI-literal FEL(s, z) naive vs sequence-aligned, generated from HILLS via `plumed sum_hills`. |
 | `s_trend_slide.png` | 1D s(t) trace, pilot vs baseline overlay (used on slide 6). |
 | `sz_2d_pilot_jacs_style.png` | Pilot-only 2D density in JACS-2019-Fig3 style (used on slide 7). |
 
 ## Reproduction
 
 ```bash
-# Requires numpy, scipy, matplotlib
-python3 plot_sz_distribution.py
+# First generate the FES grids on Longleaf with PLUMED 2.9.2:
+plumed sum_hills --hills ../initial_single/HILLS \
+  --outfile fes_initial_single.dat --min 0.5,0.0 --max 15.5,2.8 \
+  --bin 300,140 --mintozero
+
+plumed sum_hills --hills ../initial_seqaligned/HILLS \
+  --outfile fes_initial_seqaligned.dat --min 0.5,0.0 --max 15.5,2.8 \
+  --bin 300,140 --mintozero
+
+# Then render locally:
+python3 plot_sz_si_sumhills.py
 ```
 
-The script expects COLVAR files at:
-```
-../../../chatgpt_pro_consult_45558834/raw_data/pilot_45515869_COLVAR
-../../../chatgpt_pro_consult_45558834/raw_data/baseline_45324928_COLVAR
-```
-(relative to this subdirectory inside the deliverable package).
+The Longleaf grids were generated in:
+`/work/users/l/i/liualex/AnimaLab/metadynamics/miguel_2026-04-23/analysis_si_style_figures/`.
 
 ## Design choices
 
-- **Viridis_r colormap** (yellow = populated, dark = unvisited) — colorblind-safe, perceptually uniform.
-- **`F = -kT ln(p / p_max)` clipped at 6 kcal/mol** — single-walker data is not a converged FES; 6 kcal/mol is low enough to show occupancy structure without implying barrier heights.
-- **Panel captions below each panel, not inside** — prevents overlap with the 2D density.
+- **PLUMED `sum_hills`, not COLVAR KDE** — matches the SI caption language that FELs are estimated by summing deposited Gaussian potentials.
+- **SI-literal y-axis** — raw `p1.zzz` is plotted with the paper's `RMSD Deviation (Å)` label to match the original visual convention.
+- **Colorbar 0-14 kcal/mol** — matches the SI/main-paper scale.
 - **`start.gro` marked with a red star on panel b** — with explicit `(s, z)` annotation so viewers know where the seed lives.
 - **`UPPER_WALLS z = 2.5` dashed line** — documents the bias cap that appears in the pilot data.
