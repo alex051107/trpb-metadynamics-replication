@@ -19,13 +19,32 @@
 
 ---
 
-## 1. Topic 1 — Initial Run + Unit Audit Wrap (Week 7 carried)
+## 1. Topic 1 — Initial Run (latest, post-FP-034 path realignment) + Unit Audit Wrap
 
-[Reuse `reports/figures/canonical_fes_si_style_1panel.png` from Week 7. UNIT_AUDIT.md verdict in `deliverables/week7_2026-04-24/08_figures/UNIT_AUDIT.md` Codex CCB 20260424-234500: PASS.]
+**Deck main figure**: `reports/figures/initial_pilot_latest_fes.png` (Codex render via `beautiful-data-viz` skill, frozen Longleaf snapshot 2026-04-25 17:26 EDT)
 
-Pilot 45699102 (single walker, FALLBACK contract HEIGHT=0.3, BIASFACTOR=15) reached 22.8 ns / max_s≈13.9 / 22.5% PC region by 2026-04-25 EOD.
+Pilot 45699102 (single walker, FALLBACK contract HEIGHT=0.3 kcal/mol, BIASFACTOR=15, T=350 K) — **latest 24.03 ns / max_s≈14.05 / 12,015 deposited Gaussians**. Axis units: y=z_RMSD (Å), x=s (dimensionless), color=ΔG (kcal/mol).
 
-Initial pilot's role per SI re-read (Codex Round 0.5 CCB 20260425-150747): "After an initial metadynamics run ... extracted ten snapshots covering conformational space ... 10 replicas." → 这就是我们 production 用的 seed-discovery 阶段。Initial pilot 不是 production evidence，是种子来源。
+### Path realignment evidence (before vs after FP-034)
+
+| | Before FP-034 (naive resid match) | After FP-034 (NW-aligned, this run) |
+|---|---|---|
+| 16 ns max_s reached | < 1.9 (stuck at O endpoint) | s=14.05 ≈ full Open→Closed path |
+| Identity (1WDW vs 3CEP, 112 res) | 6.2 % | 59.0 % (9.5×) |
+| ⟨MSD_adj⟩ on path | inflated 26× | self-consistent Branduardi λ=100.79 Å⁻¹ |
+| 24 ns explore | (would still be stuck) | s ∈ [1, 14.05], C-region count = 12,179 frames |
+
+**Path realignment is the single largest delta this campaign.** The FES contour above shows clear O / PC / C basins on a fully-explored path — none of this exists on the pre-FP-034 baseline.
+
+### Why this is NOT the SI Fig S2/S3 result yet
+
+SI Fig S2/S3 = **10-walker × 50 ns × shared HILLS** (≈500 ns aggregate sampling, PRIMARY contract HEIGHT=0.15, BIASFACTOR=10). What we're showing is the **upstream Initial pilot**: single walker, FALLBACK contract, 24 ns. This is the *seed-discovery stage* per Codex R0.5 SI re-read:
+
+> "After an initial metadynamics run, we extracted ten snapshots ... Then, multiple-walkers metadynamics simulations with 10 replicas were computed."
+
+The 10-walker production (45784112) is running now and will produce the SI-comparable FES once 10 ns/walker accumulates (ETA 2026-04-26 ~6 AM EDT, watcher armed). At that point the deck main figure swaps from this single-walker 24 ns to 10-walker production aggregate.
+
+UNIT_AUDIT.md verdict (Codex CCB 20260424-234500): PASS — λ=100.79 Å⁻¹ Branduardi self-computed, MSD↔RMSD axis-unit conventions confirmed across all artifacts, including this latest render.
 
 ---
 
@@ -134,7 +153,32 @@ Codex R8 用相同 pilot COLVAR 重新计算了 v1 (tiered) vs v2 (window-min-z,
 
 ---
 
-## 3. Topic 3 — ML 转化 Demo (MetaD-Unique Descriptors)
+## 3. Topic 3 — ML 转化（整体思路）
+
+### 3.0 4-tier 渐进式转化框架
+
+把 MetaD 输出按信息层级切 4 层，每一层在 ML 训练 pipeline 里**承担不同的 input role**——这是整套设计的骨架。
+
+```
+MetaD 原始输出
+  │
+  ├─→ L0 描述符层  ──────→ ML 输入特征 (input feature, always available)
+  │
+  ├─→ L1 状态标签层 ─────→ ML 分类目标 (soft pseudo-label, always available)
+  │
+  ├─→ L2 热力学层 ──────→ ML 监督回归目标 (regression target, gated on convergence PASS)
+  │
+  └─→ L3 候选排序层 ─────→ ML 输出 (final scoring, gated on L2 + activity proxy)
+```
+
+| 层 | 在 General Run pipeline 里是什么角色 | 需要的 input | 产出 artifact | 现在能不能给 |
+|---|---|---|---|---|
+| L0 | input feature (任何下游模型的 column) | `COLVAR.0..9` | `(s, z, time, walker, bias)` per frame | ✅ pilot 数据现在就有 |
+| L1 | classification pseudo-label | COLVAR + state-mask 阈值 (s≤2 / 4≤s≤6 / s≥10) | `state_pseudo ∈ {O, PC, C, off}` per frame | ✅ pilot 数据现在就有 |
+| L2 | supervised regression target (free energy per frame) | `HILLS.0..9` + `plumed sum_hills` + convergence diagnostics (ESS, block-bootstrap CI) | `fes_grid.npz` + `F_kcalmol` per frame | ❌ 等 production convergence PASS |
+| L3 | final ranking output | L2 + sequence embedding (GenSLM/ESM-2) + activity proxy (MMPBSA / k_cat / 手分箱) | `(F0_score, pathgate_score, combined_rank)` per sequence | ❌ 等 L2 + PM 选 activity proxy |
+
+**核心思想**：L0/L1 任何时候都能给（描述性，不需要 convergence），所以 V1 ship 至少不空手；L2/L3 是 **gate-controlled** 的——convergence_grade 不 PASS 就不开 gate，整套退化到 F0+L0+L1 research mode（kill-switch 设计）。
 
 ### 3.1 Three descriptors that GenSLM (sequence) + MMPBSA (single-frame) cannot produce
 

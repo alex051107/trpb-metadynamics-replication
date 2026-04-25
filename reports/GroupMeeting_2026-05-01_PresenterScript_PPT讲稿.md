@@ -40,17 +40,23 @@ Slide content: 5 topic bullets previewing the deck.
 
 ---
 
-## Slide 3 / 12 — Topic 1 wrap · Initial Run + Unit Audit (1 min)
+## Slide 3 / 12 — Topic 1 deck-main · Initial Run (24 ns, post-FP-034) (2 min)
 
-Slide content: Reuse `reports/figures/canonical_fes_si_style_1panel.png` (Week 7 SI Fig S2-style canonical FES) + 1 line UNIT_AUDIT verdict.
+Slide content: `reports/figures/initial_pilot_latest_fes.png` — single 2D contour, x=s (dim), y=z_RMSD (Å), color=ΔG (kcal/mol), 24.03 ns / max_s=14.05 / 12,015 Gaussians.
 
-**EN**: "Pilot 45699102 (single walker, FALLBACK contract HEIGHT=0.3, BIASFACTOR=15) reached 22.8 ns / max_s≈13.9 / 22.5% time in PC region by Week 7 close. Codex unit audit (CCB 20260424-234500) PASS — λ=100.79 Å⁻¹ Branduardi self-computed, MSD-vs-RMSD axis-unit conventions confirmed across all artifacts. Per Codex Round 0.5 SI re-read this week, Initial pilot is the seed-discovery stage per JACS 2019 SI: the 10 walker production seeds are extracted from this pilot's COLVAR, NOT from cMD. So Initial pilot's role is upstream — not production evidence."
+**EN**: "This is the latest Initial pilot FES — 24 nanoseconds of single-walker MetaD on the FP-034-corrected path, frozen this afternoon. Y-axis is z RMSD in Angstrom, x-axis is the path coordinate s dimensionless from 0.5 to 15.5, color is ΔG in kcal per mol. You can see clear O / PC / C basins separated along the path. Note: this is the FALLBACK contract — HEIGHT 0.3, BIASFACTOR 15 — the seed-discovery stage in the SI protocol, NOT the production FES yet."
 
-**中文**: "Pilot 45699102 (单 walker FALLBACK 合约 HEIGHT=0.3 BIASFACTOR=15) Week 7 close 时跑到 22.8 ns / max_s≈13.9 / 22.5% 时间在 PC region。Codex unit audit (CCB 20260424-234500) PASS —— λ=100.79 Å⁻¹ Branduardi 自算, MSD-vs-RMSD axis 单位 convention 全 artifact 一致。"
+**EN — before vs after framing**: "Before the FP-034 fix, the same path-CV stuck at s less than 1.9 over 16 nanoseconds — basically trapped at the Open endpoint. After the path realignment (NW alignment, 9.5× identity gain), the pilot now explores the full O-to-Closed path in 24 nanoseconds. The realignment is the single largest delta this campaign."
 
-"按本周 Codex Round 0.5 重读 SI 的结论, **Initial pilot 是 seed-discovery 阶段** —— JACS 2019 SI 描述的 10 walker production seed 是从这个 pilot 的 COLVAR 抽出来的, 不是从 cMD 抽。所以 Initial pilot 的角色是 upstream, 不是 production evidence。"
+**EN — why differs from SI**: "SI Fig S2 and S3 are 10-walker × 50 nanoseconds × shared HILLS — about 500 nanoseconds aggregate sampling on the PRIMARY contract HEIGHT 0.15 BIASFACTOR 10. What we're showing is the upstream Initial pilot — one walker, FALLBACK contract, 24 nanoseconds. The 10-walker production launched this morning (45784112), running now, and will produce the SI-comparable figure once 10 nanoseconds per walker accumulates — ETA tomorrow morning. The deck main figure will swap then."
 
-**Transition**: "下一页讲 Topic 2 production 推进。"
+**中文**: "这张是 Initial pilot 最新的 FES——FP-034 修复后的 path 上跑了 **24 ns 单 walker**, 今下午 frozen 出来的。**y 轴是 z 的 RMSD (Å), x 轴是 path coordinate s (无量纲, 0.5 到 15.5), color 是 ΔG (kcal/mol)**。可以清楚看到 **O / PC / C 三个 basin 沿 path 分开**。注意: 这是 **FALLBACK 合约**——HEIGHT=0.3, BIASFACTOR=15——SI 协议里的 **seed-discovery 阶段**, 不是 production FES。"
+
+**中文 — before vs after**: "FP-034 修复**之前**, 同一个 path-CV **跑 16 ns 卡在 s < 1.9** —— 基本困在 Open 端出不去。修复**之后** (NW alignment, identity 提升 9.5×), pilot 在 **24 ns 内 explore 完整 O→Closed path**。**这次 campaign 最大的单点 delta 就是 path realignment。**"
+
+**中文 — 为什么跟 SI 不一样**: "**SI Fig S2/S3 是 10-walker × 50 ns × shared HILLS, 大约 500 ns aggregate sampling, PRIMARY 合约 HEIGHT=0.15 BIASFACTOR=10**。我们这张是上游 **Initial pilot —— 单 walker, FALLBACK 合约, 24 ns**。**10-walker production 今早已经启动 (45784112), 正在跑, 等每个 walker 累积到 10 ns 就能出 SI-comparable 的图——ETA 明早**, deck 主图到时候 swap 过去。"
+
+**Transition**: "下一页讲 Topic 2 production 怎么从 v1/v2 失败一路修到 v3 PASS 的。"
 
 ---
 
@@ -126,17 +132,30 @@ Slide content: Production health table (10 walkers × HILLS row count + s-range)
 
 ---
 
-## Slide 8 / 12 — Topic 3 (1/3) · MetaD-unique descriptors framing (1.5 min)
+## Slide 8 / 12 — Topic 3 (1/3) · ML 转化 4-tier 整体思路 + descriptor framing (2 min)
 
-Slide content: 3-row table comparing what each lab can produce.
+Slide content: 4-row tier table (L0/L1/L2/L3) on top + 3-row descriptor framing on bottom.
 
-**EN**: "Three descriptors that the upstream sequence ML lab and the downstream binding-score lab cannot produce. Anything that requires biased physical sampling lives here. P(state) — fraction of frames in O / PC / C; needs sampling, not docking pose. Mean ⟨z_RMSD⟩|state — per-state geometric stability; needs trajectory, not single-frame energy. σ_s(t) — adaptive bias deposition shape; proxies sampling difficulty per region. None of these are derivable from a sequence embedding or a single MMPBSA score."
+**EN — 4-tier framework (15 s setup)**: "I split the MetaD-to-ML conversion into four tiers — each one feeds a different role in the general training pipeline. Tier zero is descriptors — input features. Tier one is state pseudo-labels — classification target. Tier two is free energy values — supervised regression target. Tier three is candidate ranking — final output. Tiers zero and one are always available because they're descriptive. Tiers two and three are gate-controlled — they only populate when convergence and activity proxy gates pass. If gates fail, the system degrades to F0-only research mode by design — that is the kill-switch wiring from Red Team Section 8."
 
-**EN — anti-overclaim**: "Critical caveat: V1 ships RAW frame counts, not Boltzmann-reweighted populations. Tiwary-Parrinello c(t) reweighting is a NotImplementedError stub, deferred to V2 once production FES converges. V1 acceptance criteria do NOT apply to reweighted values — V2 will need a separate criteria set."
+**EN — descriptor framing**: "For tier 0 specifically, three descriptors that the upstream sequence ML lab and the downstream binding-score lab cannot produce. P(state) — fraction of frames in O / PC / C; needs biased sampling, not docking pose. Mean z RMSD per state — per-state geometric stability; needs trajectory, not single-frame energy. Sigma_s of t — adaptive bias deposition shape; proxies sampling difficulty per region. None derivable from sequence embedding or single MMPBSA score."
 
-**中文**: "三个 descriptor, 上游 ANin 的 GenSLM (sequence) 和下游 Yu 的 MMPBSA (单帧 binding score) 都做不出来 —— **凡是需要 biased 物理采样才有的指标, 都属于 MetaD 专有信息层**。P(state): 每个状态下的 frame 占比; 需要 sampling, 不是 docking pose。⟨z_RMSD⟩|state: 状态内几何稳定性; 需要轨迹, 不是单帧能量。σ_s(t): adaptive bias deposit 形状; 表征每区域 sampling 难度。三个都不能从 sequence embedding 或 MMPBSA 单帧打分推出。"
+**EN — anti-overclaim**: "Critical caveat: V1 ships RAW frame counts, not Boltzmann-reweighted populations. Tiwary-Parrinello c-of-t reweighting is a NotImplementedError stub, deferred to V2 once production FES converges. V1 acceptance criteria do NOT apply to reweighted values."
+
+**中文 — 4-tier 框架**: "**MetaD 到 ML 的转化我切成 4 层, 每一层在 general training pipeline 里承担不同的 role**: **L0 描述符 → input feature, L1 状态标签 → classification target, L2 自由能 → supervised regression target, L3 候选排序 → final output**。L0/L1 任何时候都能给(描述性), L2/L3 是 **gate-controlled** —— convergence 和 activity proxy gate 不 PASS 就不开。Gate fail → 整套退化到 F0-only research mode, 这就是 RED_TEAM §8 三个 kill-switch 的 wiring。"
+
+**中文 — descriptor framing**: "**L0 这一层我具体演示三个 descriptor**, 上游 ANin (sequence) 和下游 Yu (单帧 binding) **都做不出**。P(state): 每个状态下的 frame 占比, 需要 biased sampling, 不是 docking pose。⟨z_RMSD⟩|state: 状态内几何稳定性, 需要轨迹, 不是单帧能量。σ_s(t): adaptive bias deposit 形状, 表征每区域 sampling 难度。三个都**不能从 sequence embedding 或 MMPBSA 单帧打分推出**——这是 MetaD 的不可替代价值。"
 
 **中文 — anti-overclaim**: "**关键 caveat: V1 ships 的是 raw frame count, 不是 Boltzmann-reweighted population**。Tiwary-Parrinello c(t) reweighting 是 NotImplementedError stub, 延到 V2 (production FES converged 后)。V1 验收标准**不适用于** reweighted value, V2 要单独验收。"
+
+**Slide table reference (4-tier)**:
+
+| 层 | 在 pipeline 里的 role | 输入 | 现在能给? |
+|---|---|---|---|
+| L0 | input feature | COLVAR | ✅ |
+| L1 | classification target | COLVAR + state mask | ✅ |
+| L2 | regression target | HILLS + sum_hills + ESS | ❌ gate convergence PASS |
+| L3 | final output | L2 + activity proxy + seq embed | ❌ gate L2 + PM Q1 |
 
 ---
 

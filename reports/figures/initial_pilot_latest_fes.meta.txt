@@ -1,0 +1,11 @@
+time_ns=24.0272
+max_s=14.0506
+max_s_window_count_s_ge_max_minus_0p5=48
+c_region_count_s_ge_10=12179
+hills_count=12015
+fes_path=/Users/liuzhenpeng/Desktop/UNC/暑研 /Caltech Interview/tryp B project/reports/figures/codex_renders/data/fes_initial_pilot_latest.dat
+colvar_path=/Users/liuzhenpeng/Desktop/UNC/暑研 /Caltech Interview/tryp B project/reports/figures/codex_renders/data/initial_pilot_latest_COLVAR
+hills_path=/Users/liuzhenpeng/Desktop/UNC/暑研 /Caltech Interview/tryp B project/reports/figures/codex_renders/data/initial_pilot_latest_HILLS
+z_axis=sqrt(path.zzz_A2) in Angstrom
+energy_unit=kcal/mol; sum_hills --kt 0.695
+fes_color_vmax_kcalmol=14.0
