@@ -1,14 +1,23 @@
-# Miguel contract (fallback single-walker) on SEQUENCE-ALIGNED path.
-# Path built 2026-04-23 after discovering naive resid-number mapping bug.
-# Our new path has <MSD_adj>=0.0228 A^2, Branduardi lambda=100.79 A^-2.
-# Miguel email value LAMBDA=80 is self-consistent on this path (26% denser
-# than his Branduardi target, kernel weight ratio 0.16 vs 0.10).
+# FALLBACK single-walker contract (HEIGHT=0.3, BIASFACTOR=15) on
+# SEQUENCE-ALIGNED path. Path built 2026-04-23 after FP-034 (naive
+# resid-number mapping bug); our new path has ⟨MSD_adj⟩=0.0228 Å².
+#
+# 2026-04-25 SI-faithfulness patch (Codex R0/R0.5/R4):
+#   λ corrected from Miguel email's literal 80 → 100.79 Å⁻², which is the
+#   Branduardi 2.3/⟨MSD_adj⟩ value computed on OUR seq-aligned path. Miguel's
+#   80 is path-specific to his denser path (kernel weight ratio 0.16 vs ours
+#   0.10). Codex R4 verified max |Δs(λ=80→100.79)| = 0.054 across pilot
+#   trajectory — well below half a TARGETS window (0.66), so existing seed
+#   picks under λ=80 remain valid under λ=100.79 production.
+#
+# Note: pilot 45699102 was launched with LAMBDA=80 (file state at that time);
+# this edit affects only future launches. See PARAMETER_PROVENANCE.md.
 
 UNITS LENGTH=A ENERGY=kcal/mol
 
 WHOLEMOLECULES ENTITY0=1-39268
 
-p1: PATHMSD REFERENCE=path_seqaligned_gromacs.pdb LAMBDA=80 NEIGH_STRIDE=100 NEIGH_SIZE=6
+p1: PATHMSD REFERENCE=path_seqaligned_gromacs.pdb LAMBDA=100.79 NEIGH_STRIDE=100 NEIGH_SIZE=6
 
 METAD ARG=p1.sss,p1.zzz ADAPTIVE=DIFF SIGMA=1000 SIGMA_MIN=0.1,0.01 HEIGHT=0.3 PACE=1000 BIASFACTOR=15.0 TEMP=350.0 GRID_MIN=0.5,0.0 GRID_MAX=15.5,2.8 GRID_BIN=300,100
 

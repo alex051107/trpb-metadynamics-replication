@@ -26,20 +26,36 @@
 
 ## Path CV parameters (`plumed.dat` PATHMSD line)
 
-### `LAMBDA = 379.77 nm⁻²`
+### `LAMBDA = 100.79 Å⁻²` (current SI-faithful value, post 2026-04-25 audit)
 
 | Field | Value |
 |-------|-------|
-| Source | SI-derived (formula) + Our-choice (MSD convention) |
-| SI formula | "The λ parameter was computed as 2.3 multiplied by the inverse of the mean square displacement between successive frames, 80." (SI p.S3) |
-| Our path's MSD_adj (per-atom) | 0.006056 nm² = 0.6056 Å² |
-| Our λ = 2.3 / MSD_adj | 379.77 nm⁻² |
-| Secondary verification | FP-022 self-consistency test (2026-04-08): frame_1 → s=1.09, frame_8 → s=8.00, frame_15 → s=14.91 |
-| Cross-check via 5DVZ projection | s(5DVZ) = 1.07 (O-like, correct) |
-| Cross-check via 4HPX (2026-04-16) | s(4HPX) = 14.91 (A-A state is C-like, correct per SI) |
-| PLUMED driver self-test | "Consistency check completed! Your path cvs look good!" ✓ |
-| **Known alternate interpretation of SI "80"** | summary.txt line 23-25 reads "80" as total SD Å² (not λ). Our total SD = 67.826 Å², ratio 0.85× vs 80 Å² — matches SI within 15%. If "80" is total SD, our λ follows from 2.3/per-atom-MSD = 379.77 (consistent). If "80" is λ directly (nm⁻²), our λ would be 4.75× too sharp — **but CV audit shows path is physically correct either way, so the ambiguity is moot for action.** See FP-027 for why this ambiguity misled diagnosis. |
-| Status | ✅ verified self-consistent for our path; cross-species structural projection (4HPX) confirms CV ordering |
+| Source | SI-derived (Branduardi 2.3/⟨MSD_adj⟩ formula applied to OUR seq-aligned path) |
+| SI formula | "The λ parameter was computed as 2.3 multiplied by the inverse of the mean square displacement between successive frames, 80." (SI p.S3) — the SI's literal "80" is path-specific to Maria-Solano's denser path; the prescription itself is the formula |
+| Our seq-aligned path's ⟨MSD_adj⟩ (per-atom, post FP-034) | 0.0228 Å² |
+| Our λ = 2.3 / ⟨MSD_adj⟩ | 100.79 Å⁻² |
+| Codex R0/R0.5/R4 verdict (2026-04-25, clean-context SI re-read) | SI-faithful Branduardi value on OUR path = 100.79; Miguel email's literal 80 is 26% under (kernel weight ratio 0.10 vs Miguel's 0.16); both within heuristic tolerance but 100.79 is the formula-correct value |
+| λ change impact (Codex R4 reprojection on pilot trajectory) | max \|Δs(λ=80→100.79)\| = 0.054, mean \|Δs\| = 0.0158 — well below half a TARGETS window (0.66) |
+| Status | ✅ active 2026-04-25 onward; all post-2026-04-25 plumed.dat files use LAMBDA=100.79 |
+
+### `LAMBDA = 80 Å⁻²` (Miguel email literal, 2026-04-23 to 2026-04-25)
+
+| Field | Value |
+|-------|-------|
+| Status | **[SUPERSEDED 2026-04-25 by Branduardi self-computation = 100.79 on our path]** |
+| Used by | pilot 45699102 (running at superseded value; Codex R4 verified existing seed picks remain valid under new λ); v3 validation bundle prior to 2026-04-25 patch |
+| Why superseded | Miguel's literal 80 derives from his denser path; SI's actual prescription is the Branduardi formula, which on our seq-aligned path gives 100.79 |
+| Provenance | Miguel email 2026-04-23, see `replication/metadynamics/miguel_2026-04-23/miguel_email.md` |
+
+### `LAMBDA = 379.77 nm⁻²` (legacy, pre-FP-034 path)
+
+| Field | Value |
+|-------|-------|
+| Status | **[SUPERSEDED 2026-04-23 by FP-034 fix; further superseded 2026-04-25 by 100.79 on seq-aligned path]** |
+| Why superseded | (1) FP-034: legacy value derives from naive resid-number-mapped path with ⟨MSD⟩ inflated 26× by cross-species mismatch; (2) 2026-04-25 audit: even on the legacy path, the SI formula gives a different number than 80; the right path-specific value on the post-FP-034 seq-aligned path is 100.79 Å⁻² |
+| Legacy formula | 2.3 / 0.6056 Å² = 379.77 nm⁻² (under nm-units convention) |
+| Preserved for | FP-022 / FP-027 / FP-034 audit traceability; do NOT reuse |
+| **Known alternate interpretation of SI "80"** (preserved for posterity) | summary.txt line 23-25 reads "80" as total SD Å² (not λ). Total SD interpretation 67.826 Å² matches SI's 80 within 15%; this argument is now superseded — Codex R0.5 confirmed SI's "80" is Maria-Solano's path-specific λ value, not a unit-ambiguous total SD |
 
 ### `REFERENCE = path_gromacs.pdb`
 

@@ -1,6 +1,20 @@
-# Miguel fallback (HEIGHT=0.3, BIASFACTOR=15) with λ corrected to
-# our path density (3.77 Å⁻² = 379.77 nm⁻²). See plumed_template.dat
-# header for λ derivation rationale.
+# [DEPRECATED 2026-04-25 — pre-FP-034 path; do NOT relaunch with this file]
+#
+# Original purpose: Miguel fallback contract (HEIGHT=0.3, BIASFACTOR=15)
+# on the OLD naive-mapping path (REFERENCE=path_gromacs.pdb), with
+# λ=3.77 Å⁻² derived from the OLD path's ⟨MSD⟩.
+#
+# Why deprecated:
+#   1. path_gromacs.pdb itself was invalidated by FP-034 (cross-species
+#      Pf vs St residue mismatch, +5 offset); replaced by
+#      replication/metadynamics/path_seqaligned/path_seqaligned_gromacs.pdb.
+#   2. λ=3.77 was computed on the OLD path's ⟨MSD⟩; on the new
+#      seq-aligned path the SI-faithful Branduardi value is 100.79 Å⁻².
+#
+# Live single-walker fallback (post-FP-034, post-SI-audit):
+#   replication/metadynamics/path_seqaligned/plumed.dat
+#
+# This file is preserved for FP-034 / FP-027 / FP-022 audit traceability.
 
 UNITS LENGTH=A ENERGY=kcal/mol
 

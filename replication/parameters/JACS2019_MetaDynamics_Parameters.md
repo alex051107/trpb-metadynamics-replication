@@ -5,7 +5,11 @@
 > **DOI**: 10.1021/jacs.9b03646
 > **Last verified**: 2026-04-02 (skeptic audit: 61 PASS, 15 WARN, 3 FAIL→fixed)
 >
-> **⚠️ 2026-04-23 Miguel Iglesias-Fernández email override**: the original author clarified the MetaD recipe directly; several SI re-reads documented earlier in this file are now superseded. See `replication/metadynamics/miguel_2026-04-23/miguel_email.md` for the authoritative contract, and Section 3 below for the updated live parameters (UNITS=A / kcal·mol⁻¹, ADAPTIVE=DIFF SIGMA=1000 steps, 10 walkers, λ=3.77 Å⁻² per our path density). FP-031/FP-032 in `replication/validations/failure-patterns.md` log the re-interpretation.
+> **⚠️ 2026-04-23 Miguel Iglesias-Fernández email override**: the original author clarified the MetaD recipe directly; several SI re-reads documented earlier in this file are now superseded. See `replication/metadynamics/miguel_2026-04-23/miguel_email.md` for the authoritative contract.
+>
+> **⚠️ 2026-04-25 Codex R0/R0.5/R4 SI cross-audit further refinement**: Miguel's literal `λ=80 Å⁻²` is path-specific to his denser path; SI's true prescription is the Branduardi formula `λ = 2.3/⟨MSD_adj⟩`, which on our seq-aligned path (post-FP-034, ⟨MSD_adj⟩=0.0228 Å²) gives **λ = 100.79 Å⁻²**. All live plumed.dat updated 2026-04-25. Old λ=80 (Miguel literal) and λ=3.77/379.77 (legacy pre-FP-034 path) marked **SUPERSEDED** in `PARAMETER_PROVENANCE.md`. Codex R4 verified seed picks under λ=80 remain valid for production at λ=100.79 (max \|Δs\| = 0.054 ≪ window-half 0.66).
+>
+> Section 3 live parameters: UNITS=A / kcal·mol⁻¹, ADAPTIVE=DIFF SIGMA=1000 steps, 10 walkers, **λ=100.79 Å⁻²** per Branduardi self-computation. FP-031/FP-032 in `replication/validations/failure-patterns.md` log the re-interpretation.
 >
 > **约定**：每个参数标注三列——SI 原值、我们的复刻值、状态。
 > 状态含义：✅ = 与 SI 一致 | ⚠️ = 有差异（已记录） | ❓ = SI 未报告
@@ -174,11 +178,13 @@
 | Path frames | 15 | 15 | ✅ | S3 |
 | Atoms | Cα of 97-184 + 282-305 | Cα of 97-184 + 282-305 | ✅ | S3 |
 | Interpolation | Linear (Cartesian) | Linear (Cartesian) | ✅ | S3 |
-| MSD (total SD, legacy ref) | 80 Å² | 67.826 Å² | ~15% 差异 | S3 |
-| **Per-atom MSD (PLUMED)** | ~0.71 Å² (80/112) | **0.6056 Å²** | ✅ 用于计算 λ | S3 |
-| **λ (PLUMED, correct)** | — | **3.7979 Å⁻² = 379.77 nm⁻²** | ✅ **FP-022 修复** | — |
+| MSD (total SD, legacy ref) | 80 Å² | 67.826 Å² (legacy) → 2.55 Å² (seq-aligned) | post-FP-034 mismatch resolved | S3 |
+| **Per-atom MSD (PLUMED, current)** | path-specific (formula, not number) | **0.0228 Å²** (seq-aligned, post-FP-034) | ✅ used for live λ | S3 |
+| **λ (current, SI-faithful, post 2026-04-25 audit)** | 2.3/⟨MSD_adj⟩ formula | **100.79 Å⁻²** | ✅ **active** | S3 |
+| ~~λ = 80 Å⁻²~~ (Miguel email literal) | path-specific instance | ~~80~~ | **[SUPERSEDED 2026-04-25 → 100.79 per Branduardi self-computation]** | — |
+| ~~λ = 3.77 Å⁻² = 379.77 nm⁻²~~ (legacy pre-FP-034) | n/a | ~~3.77~~ | **[SUPERSEDED 2026-04-23 by FP-034 fix; further superseded 2026-04-25]** | — |
 | ~~λ (total-SD, broken)~~ | 0.029 Å⁻² | ~~0.0339 Å⁻² = 3.391 nm⁻²~~ | ❌ **DO NOT USE** | — |
-| λ formula | 2.3 / MSD_per-atom | 同 | ✅ | S3 |
+| λ formula | 2.3 / ⟨MSD_adj per-atom⟩ | 同 | ✅ | S3 |
 | RMSD convention | — | **`RMSD ... SQUARED`** (必须) | ✅ **FP-022 修复** | — |
 
 > **⚠️ FP-022 (2026-04-08)**：之前的 λ = 3.391 nm⁻² 是用 "total SD" 约定（所有原子位移平方的总和）算出来的，但 PLUMED 的 `FUNCPATHMSD` 需要 "per-atom MSD" 约定（每原子位移平方的平均）。两种约定相差 N_atoms = 112 倍。
@@ -312,7 +318,7 @@
 
 | # | Parameter | SI / Miguel email | Ours | Severity | Resolution |
 |---|-----------|-------------------|------|----------|-----------|
-| 1 | Lambda (PATHMSD) | Miguel email: `LAMBDA=80 Å⁻²` for HIS denser path | `LAMBDA=3.77 Å⁻²` (= 379.77 nm⁻²) for our 15-frame / 112 Cα path | HIGH | ✅ resolved — Codex λ audit 2026-04-23, Branduardi textbook 2.3 / ⟨MSD⟩; Miguel's 80 not transferable (21× too sharp for our path density). See FP-032. |
+| 1 | Lambda (PATHMSD) | SI prescription: Branduardi `λ = 2.3/⟨MSD_adj⟩` formula (path-specific). Miguel literal 80 was for HIS path. | **`LAMBDA=100.79 Å⁻²`** (post 2026-04-25 audit — Branduardi self-computation on our post-FP-034 seq-aligned path; legacy 3.77/379.77 nm⁻² and Miguel literal 80 both **SUPERSEDED**) | HIGH | ✅ resolved 2026-04-25 — Codex R0/R0.5/R4 SI cross-audit confirmed SI's "80" is path-specific instance of the formula, not a universal constant. See PARAMETER_PROVENANCE.md for full audit chain. |
 | 2 | ADAPTIVE scheme | SI: "adaptive Gaussian width" (ambiguous) | `ADAPTIVE=DIFF SIGMA=1000` (time window, steps) | HIGH | ✅ resolved — Miguel 2026-04-23 email, FP-031 |
 | 3 | UNITS | SI reports Å / kcal·mol⁻¹ | `UNITS LENGTH=A ENERGY=kcal/mol` | HIGH | ✅ resolved — Miguel 2026-04-23 email |
 | 4 | Heat7 restraint | 未明确 | 10.0 | MEDIUM | 合理默认，待导师确认 |
