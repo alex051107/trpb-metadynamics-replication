@@ -64,6 +64,12 @@ UPPER_WALL_Z_RAW = 2.5
 
 
 def read_sumhills(path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Read PLUMED sum_hills grid, returning (s_grid, z_raw_grid, F_grid).
+
+    F_grid is in kcal/mol, clipped at FES_MAX. NaN/Inf are kept so the caller
+    can decide how to mask them (the previous nan_to_num that filled NaN with
+    FES_MAX painted unsampled regions at the colorbar maximum, hiding the
+    real basin structure on a short-pilot dataset)."""
     arr = np.loadtxt(path, comments="#")
     s = arr[:, 0]
     z_raw = arr[:, 1]
@@ -75,22 +81,104 @@ def read_sumhills(path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     s_grid = s.reshape(len(zs), len(xs))
     z_grid = z_raw.reshape(len(zs), len(xs))
     f_grid = f.reshape(len(zs), len(xs))
-    f_grid = np.nan_to_num(f_grid, nan=FES_MAX, posinf=FES_MAX, neginf=0.0)
-    return s_grid, z_grid, np.clip(f_grid, 0.0, FES_MAX)
+    return s_grid, z_grid, f_grid
+
+
+def read_colvar(path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return (t_ps, s, z_raw_A2) from a PLUMED COLVAR file."""
+    arr = np.loadtxt(path, comments="#")
+    return arr[:, 0], arr[:, 1], arr[:, 2]
 
 
 def read_colvar_stats(path: Path) -> dict[str, float]:
-    arr = np.loadtxt(path, comments="#")
-    s = arr[:, 1]
-    z = arr[:, 2]
+    t, s, z = read_colvar(path)
     return {
-        "n": float(len(arr)),
-        "ns": float(arr[-1, 0] / 1000.0),
+        "n": float(len(t)),
+        "ns": float(t[-1] / 1000.0),
         "s_min": float(np.min(s)),
         "s_max": float(np.max(s)),
         "z0": float(z[0]),
         "s0": float(s[0]),
     }
+
+
+def find_basins(
+    f_grid_masked: np.ndarray,
+    s_axis: np.ndarray,
+    z_axis: np.ndarray,
+    *,
+    f_threshold: float = 1.0,
+    min_separation_s: float = 2.0,
+) -> list[tuple[float, float, float]]:
+    """Locate FES basin minima within sampled regions.
+
+    Returns list of (s_center, z_center, F_min) sorted by s. Basin centroids
+    must be at least `min_separation_s` apart in s to count as distinct.
+    """
+    finite_mask = np.isfinite(f_grid_masked)
+    if not np.any(finite_mask):
+        return []
+
+    # 1D projection over z to find local minima in s
+    f_along_s = np.where(finite_mask, f_grid_masked, np.nan)
+    f_min_z = np.nanmin(f_along_s, axis=0)
+    z_argmin = np.nanargmin(np.where(finite_mask, f_along_s, np.inf), axis=0)
+
+    candidates = []
+    for i in range(1, len(s_axis) - 1):
+        if not np.isfinite(f_min_z[i]):
+            continue
+        if f_min_z[i] >= f_threshold:
+            continue
+        # Local minimum in s
+        left = f_min_z[i - 1] if np.isfinite(f_min_z[i - 1]) else np.inf
+        right = f_min_z[i + 1] if np.isfinite(f_min_z[i + 1]) else np.inf
+        if f_min_z[i] <= left and f_min_z[i] <= right:
+            s_val = float(s_axis[i])
+            z_val = float(z_axis[z_argmin[i]])
+            candidates.append((s_val, z_val, float(f_min_z[i])))
+
+    if not candidates:
+        return []
+
+    # Greedy: pick deepest, then exclude neighbours within min_separation_s
+    candidates.sort(key=lambda c: c[2])
+    accepted: list[tuple[float, float, float]] = []
+    for s_val, z_val, f_val in candidates:
+        if all(abs(s_val - s_acc) >= min_separation_s for s_acc, _, _ in accepted):
+            accepted.append((s_val, z_val, f_val))
+    accepted.sort(key=lambda c: c[0])
+    return accepted
+
+
+def build_sampled_mask(
+    colvar_path: Path,
+    s_axis: np.ndarray,
+    z_axis: np.ndarray,
+    *,
+    z_in_angstrom: bool,
+    min_frames: int = 3,
+    smooth_sigma: float = 1.2,
+) -> np.ndarray:
+    """Return a boolean mask, shape (len(z_axis), len(s_axis)).
+
+    True where the walker actually visited the (s, z) bin (>= min_frames after
+    a small Gaussian smooth so adjacent bins reachable by the kernel are kept).
+    The FES on unsampled bins is meaningless for short-pilot data, so the
+    caller paints them white to focus the eye on the actual basins.
+    """
+    from scipy.ndimage import gaussian_filter
+
+    _, s_col, z_col_a2 = read_colvar(colvar_path)
+    z_col = np.sqrt(np.clip(z_col_a2, 0.0, None)) if z_in_angstrom else z_col_a2
+    h, _, _ = np.histogram2d(
+        s_col, z_col,
+        bins=[len(s_axis), len(z_axis)],
+        range=[[s_axis.min(), s_axis.max()], [z_axis.min(), z_axis.max()]],
+    )
+    h = h.T  # shape (NZ, NS) to match F_grid
+    h_smooth = gaussian_filter(h, sigma=smooth_sigma)
+    return h_smooth >= min_frames
 
 
 def setup_axes(ax: plt.Axes, y_label: str, y_limit: tuple[float, float]) -> None:
@@ -145,17 +233,30 @@ def draw_pair(
     else:
         raise ValueError(transform)
 
+    # Apply sampled-region masks: paint bins the walker never visited as
+    # transparent so the eye focuses on real basin structure.
+    s_axis_a = s_a[0, :]
+    z_axis_a = z_a[:, 0]
+    s_axis_b = s_b[0, :]
+    z_axis_b = z_b[:, 0]
+    mask_a = build_sampled_mask(NAIVE_COLVAR, s_axis_a, z_axis_a,
+                                z_in_angstrom=(transform == "sqrt"))
+    mask_b = build_sampled_mask(SEQALN_COLVAR, s_axis_b, z_axis_b,
+                                z_in_angstrom=(transform == "sqrt"))
+    f_a_masked = np.where(mask_a, np.clip(np.nan_to_num(f_a, nan=FES_MAX), 0, FES_MAX), np.nan)
+    f_b_masked = np.where(mask_b, np.clip(np.nan_to_num(f_b, nan=FES_MAX), 0, FES_MAX), np.nan)
+
     plt.rcParams.update({
         "font.family": "DejaVu Sans",
         "axes.linewidth": 0.8,
         "savefig.dpi": 300,
     })
 
-    fig = plt.figure(figsize=(10.8, 4.25))
+    fig = plt.figure(figsize=(10.8, 4.6))
     gs = fig.add_gridspec(
         1, 3,
         width_ratios=[1.0, 1.0, 0.045],
-        left=0.065, right=0.935, top=0.78, bottom=0.17,
+        left=0.065, right=0.935, top=0.74, bottom=0.16,
         wspace=0.18,
     )
     ax_a = fig.add_subplot(gs[0, 0])
@@ -163,19 +264,27 @@ def draw_pair(
     cax = fig.add_subplot(gs[0, 2])
 
     levels = np.linspace(0.0, FES_MAX, 29)
-    cmap = plt.get_cmap("turbo")
+    cmap = plt.get_cmap("turbo").copy()
+    cmap.set_bad(color="white", alpha=1.0)
     norm = colors.Normalize(0.0, FES_MAX)
 
-    cf_a = ax_a.contourf(s_a, z_a, f_a, levels=levels, cmap=cmap, norm=norm, extend="max")
-    ax_a.contour(s_a, z_a, f_a, levels=np.arange(2, FES_MAX, 2),
-                 colors="black", linewidths=0.25, alpha=0.35)
-    cf_b = ax_b.contourf(s_b, z_b, f_b, levels=levels, cmap=cmap, norm=norm, extend="max")
-    ax_b.contour(s_b, z_b, f_b, levels=np.arange(2, FES_MAX, 2),
-                 colors="black", linewidths=0.25, alpha=0.35)
+    # Use pcolormesh on masked arrays so NaN bins render as white.
+    pm_a = ax_a.pcolormesh(s_a, z_a, np.ma.masked_invalid(f_a_masked),
+                           cmap=cmap, norm=norm, shading="auto")
+    cs_a = ax_a.contour(s_a, z_a, np.ma.masked_invalid(f_a_masked),
+                        levels=np.arange(1, FES_MAX, 1),
+                        colors="black", linewidths=0.25, alpha=0.30)
+    pm_b = ax_b.pcolormesh(s_b, z_b, np.ma.masked_invalid(f_b_masked),
+                           cmap=cmap, norm=norm, shading="auto")
+    cs_b = ax_b.contour(s_b, z_b, np.ma.masked_invalid(f_b_masked),
+                        levels=np.arange(1, FES_MAX, 1),
+                        colors="black", linewidths=0.25, alpha=0.30)
 
     for ax in (ax_a, ax_b):
-        ax.axhline(wall_y, color="white", linestyle=(0, (4, 2)), linewidth=0.8, alpha=0.75)
+        ax.axhline(wall_y, color="0.25", linestyle=(0, (4, 2)),
+                   linewidth=0.9, alpha=0.85)
         setup_axes(ax, y_label, y_limit)
+        ax.set_facecolor("white")
 
     ax_a.set_title(
         f"(a)  Naive path  (pre-FP-034, {stats_a['ns']:.1f} ns)",
@@ -202,7 +311,7 @@ def draw_pair(
         bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.70, edgecolor="none"),
     )
 
-    cbar = fig.colorbar(cf_b, cax=cax)
+    cbar = fig.colorbar(pm_b, cax=cax)
     cbar.set_ticks(np.arange(0, FES_MAX + 0.1, 2))
     cbar.set_label(r"$\Delta G$ (kcal mol$^{-1}$)", fontsize=9.5)
     cbar.ax.tick_params(labelsize=8.5)
