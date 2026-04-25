@@ -68,7 +68,7 @@ One row per kept COLVAR frame (after burn-in). Sample size: 10 walkers × 250 ns
 | `mask_O / mask_PC / mask_C / mask_off` | (301,141) | bool | — | geometry label |
 | `prob_reweighted` | (301,141) | f32 | ∑=1 | weight |
 | `convergence_grade` | dict | `{status: {PASS,PROVISIONAL,FAIL}, reason: str, ess_min: f32, block_ci_max: f32, max_weight_frac: f32}` | gate (per Codex audit 2026-04-25 fix) |
-| `meta` | dict | path_hash, λ, T, biasfactor, run_ids | provenance |
+| `meta` | dict | path_hash, λ, T, biasfactor, source_run_id (single run_id that produced this FES grid on the 10-walker ensemble; renamed from plural `run_ids` per Sub-agent audit 2026-04-25 finding #9 to avoid CV-grouping off-by-one) | provenance |
 
 ### 3.3 `joint_features.parquet`
 
@@ -123,12 +123,16 @@ One row = one (sequence, frame) pair.
 | `weight_w_t` | f32 | (0, ∞), ∑=1 after normalize | sample weight | yes |
 | `state_pseudo` | enum | {O,PC,C,off} | label (L1) | yes |
 | `state_reason` | str ∪ {null} | e.g. `pre_O_like`, `wall_clipped`; merged from former `pre_O` enum (Codex audit fix) | provenance | optional |
-| `state_mask_l2` | enum ∪ {null} | only set if `convergence_grade.status=PASS` | label (L2) | optional |
+| `state_mask_l2` | enum ∪ {null} | only set if `convergence_grade.status=PASS` AND ESS gates pass; otherwise null. Population rule (Sub-agent audit 2026-04-25 finding #2): convergence PASS + ESS PASS → mask populated; convergence PROVISIONAL → null + label_grade=EVAL_ONLY; convergence FAIL → null + label_grade=UNCERTAIN/REJECTED | label (L2) | optional |
 | `genslm_embed` | array[f32, dim=TBD] | see §4 | feature | optional |
 | `label_grade` | enum | {TRAIN,EVAL_ONLY,UNCERTAIN,REJECTED} | gate | yes |
 | `path_hash`, `mask_version` | str | — | provenance | yes |
 
 Range constraints enforced as Parquet column statistics + a `validate_joint(df)` function. Until L2 gates pass, every row carries `label_grade ∈ {EVAL_ONLY, UNCERTAIN}`.
+
+**state_pseudo regeneration trigger** (Sub-agent audit 2026-04-25 finding #3): state_pseudo enum updates only on re-alignment of PATHMSD reference geometry per FP-034. On any path-CV redefine, all `state_pseudo` rows must be recomputed from raw COLVAR; `mask_version` is incremented and old parquet files archived. Without this rule, geometry-redefined paths silently propagate stale state labels into L2 training.
+
+**valid_for_L0/L1 gate semantics** (Sub-agent audit 2026-04-25 finding #7): the boolean masks `valid_for_L0/L1` (declared in §3.1) are populated by `collect_metad_run()` from QC gates (NaN checks, state-bin entry, walker advancement). A row with `valid_for_L1=False` will be tagged `label_grade=REJECTED` by `validate_joint()`. Without this gate, the booleans are dead weight.
 
 **ML split unit (Codex Round 2 fix)**: split by `(sequence_id, run_id)` or `(sequence_id, intermediate)` — **NOT** `(sequence_id, walker_id)`. Walkers within the same MetaD run share the deposited bias and HILLS; they are not independent samples. Splitting at walker level under-estimates generalization error. The previous version (Round 1) had walker-level splits — this is now corrected.
 

@@ -4,6 +4,8 @@
 
 Yu Chen's group can now rerank any TrpB candidate FASTA against a converged WT path-CV reference in under one wall-clock day on a single workstation. Yu installs `pip install trpb-function-evaluator` (sources at `trpb_function_evaluator/` per `Convergence_Memo_v2_2026-04-24.md` §2.3) and runs `evaluator score-fasta GenSLM230_top30.fasta --against cartridge/WT_PfTrpB_FES_v1.npz --intermediate Ain`. Output is a CSV with columns `sequence_id, F0_score, pathgate_score, combined_rank, confidence_band, escalation_flag, ess_min, block_ci_max_kcalmol`. Yu's lab-meeting screenshot shows the top three rows are GenSLM-230 candidates whose F0 was middling but whose PathGate flagged a stable PC-basin occupancy that her MMPBSA pipeline missed. Yu's handoff quote: "It runs without me babysitting it, and the confidence band stops me from over-trusting any single number — that is the part I needed."
 
+> **Reweighting scope note (Sub-agent audit 2026-04-25 finding #10)**: state-occupancy and PathGate scores in V1 are computed from RAW (unreweighted) frame counts per `INTERFACE_DESIGN` §6. `reweight_to_unbiased()` (Tiwary-Parrinello c(t)) ships as a NotImplementedError stub in V1 and is deferred to V2. Once reweighting lands, state-occupancy scores will be recomputed; the §3 acceptance criteria do NOT apply to reweighted values and must be re-validated against a separate criteria set in the V2 PR/FAQ.
+
 ## §2 FAQ
 
 **Q1. Why trust pathgate when MetaD is not fully converged?** Every row carries `convergence_grade ∈ {PASS, PROVISIONAL, FAIL}` (`INTERFACE_DESIGN_2026-04-25.md` §3.2) and a `label_grade` (`MetaD_to_ML_Label_Contract_2026-04-25.md` §8). Non-PASS rows render grey and are excluded from `combined_rank` — censored, not silently inflated.

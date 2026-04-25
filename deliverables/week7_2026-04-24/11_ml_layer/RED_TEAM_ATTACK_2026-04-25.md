@@ -103,7 +103,7 @@ Three pre-declared outcomes. **Any trip → V1 ships F0-only; PathGate = researc
    - `n < 12` → no scalar proxy; V1 ranks bins only
    Action on TRAIN-proxy fail: success metric pivots to bin-agreement; PathGate = descriptor only.
 
-3. **PathGate–MMPBSA disjoint (§3 + adversarial)** — random-baseline note: with 30 candidates, two top-3 sets have ~28% probability of empty intersection by chance. So empty alone is NOT shocking. Trip only if **(a) `PathGate-top-3 ∩ MMPBSA-top-3 = ∅` on Yu's n=30** AND **(b) #2 trips** AND **(c) no independent activity adjudication is available** (literature k_cat or binned). Action: V1 = F0-only; no joint reranker.
+3. **PathGate–MMPBSA disjoint (§3 + adversarial)** — random-baseline note: with 30 candidates, two top-3 sets have ~28% probability of empty intersection by chance. So empty alone is NOT shocking. Trip only if **(a) `PathGate-top-3 ∩ MMPBSA-top-3 = ∅` on Yu's n=30** AND **(b) #2 trips** AND **(c) PM has not pre-registered a secondary activity adjudication source** (literature k_cat ≥ 5 measured values OR Yu hand-bins) **before week 2**. If pre-registered, the secondary source provides the tie-break and the kill-switch is waived. If NOT pre-registered, the kill-switch cannot be waived — V1 = F0-only; no joint reranker. (Sub-agent audit 2026-04-25 finding #6: the original "no independent adjudication is available" was an unsatisfiable precondition when activity_proxy=MMPBSA, because choosing MMPBSA implies k_cat is unavailable.)
 
 ```
 ┌──── KILL-SWITCH WIRING ─────────────────────────────┐
