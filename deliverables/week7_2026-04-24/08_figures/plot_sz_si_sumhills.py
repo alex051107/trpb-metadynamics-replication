@@ -21,9 +21,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import colors
 
-ROOT = Path(__file__).resolve().parents[2]
-FIG_DIR = ROOT / "reports" / "figures"
-DATA_DIR = FIG_DIR / "raw_data"
+HERE = Path(__file__).resolve().parent
+
+
+def find_repo_root(start: Path) -> Path:
+    for parent in (start, *start.parents):
+        if (parent / "reports" / "figures" / "raw_data").exists():
+            return parent
+    raise FileNotFoundError("could not locate reports/figures/raw_data from script path")
+
+
+REPO_ROOT = find_repo_root(HERE)
+FIG_DIR = HERE
+DATA_DIR = REPO_ROOT / "reports" / "figures" / "raw_data"
 
 NAIVE_FES = DATA_DIR / "fes_initial_single_sumhills.dat"
 SEQALN_FES = DATA_DIR / "fes_initial_seqaligned_sumhills.dat"
