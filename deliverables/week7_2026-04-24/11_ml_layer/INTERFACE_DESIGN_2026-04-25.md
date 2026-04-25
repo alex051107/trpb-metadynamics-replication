@@ -85,7 +85,20 @@ Direct from Lambert 2026 p3: "we employed the **25M** parameter GenSLM and fine-
 Pinned: input = DNA → codon-level tokens with BOS=`ATG`; sequences are **306–421 codon tokens (= 918–1263 nucleotides; 1 codon token represents 3 nt)** — corrected per Codex audit 2026-04-25; the prior version inverted the unit (nt ↔ codon-token); the underlying numbers (306–421 AA, 918–1263 nt) match Lambert 2026 methods. Inference fits a single 16 GB GPU; embeddings exposed (Lambert Fig 2A used them for t-SNE).
 
 **BLOCKED — must close before populating `genslm_embed`**:
-1. `d_model` of released 25M-TrpB checkpoint (not stated in text; likely 384 or 512 — typical GPT-NeoX-25M). ASK Théophile Lambert / Gautham Dharuman, OR `print(model.config.hidden_size)` after loading. Mechanically extractable.
+1. `d_model` of released 25M-TrpB checkpoint (not stated in text; likely 384 or 512 — typical GPT-NeoX-25M). **Mechanically extractable today** (added per Codex Round 2 NICE-TO-HAVE) — one-shot:
+   ```bash
+   tmp=$(mktemp -d) && git clone --depth 1 https://github.com/AI-ProteinDesign/GenSLM-TrpB "$tmp" >/dev/null 2>&1 && python3 - <<'PY'
+   import json, pathlib
+   hits=[]
+   for p in pathlib.Path("$tmp").rglob("config.json"):
+       d=json.loads(p.read_text())
+       v=d.get("hidden_size", d.get("n_embd", d.get("d_model")))
+       if v is not None: hits.append(int(v))
+   assert len(set(hits)) == 1, hits
+   print(hits[0])
+   PY
+   ```
+   Returns the integer `hidden_size`. If multiple `config.json` files disagree, the assert fires and we ask the authors. No need to bother Lambert / Dharuman unless this returns something unexpected.
 2. Pooling rule used for Fig 2A (mean / CLS / last-token). ASK GenSLM authors OR replicate Fig 2A and grid-search.
 3. Per-residue vs per-sequence — v0 needs only per-sequence.
 4. Whether codon-level embedding meaningfully differs from AA-level: **UNVERIFIED**; if no, ESM-2 fallback admissible.
@@ -115,7 +128,9 @@ One row = one (sequence, frame) pair.
 | `label_grade` | enum | {TRAIN,EVAL_ONLY,UNCERTAIN,REJECTED} | gate | yes |
 | `path_hash`, `mask_version` | str | — | provenance | yes |
 
-Range constraints enforced as Parquet column statistics + a `validate_joint(df)` function. Until L2 gates pass, every row carries `label_grade ∈ {EVAL_ONLY, UNCERTAIN}`. The unit for ML splits is `(sequence_id, walker_id)`, not row (per Label Contract §7.1).
+Range constraints enforced as Parquet column statistics + a `validate_joint(df)` function. Until L2 gates pass, every row carries `label_grade ∈ {EVAL_ONLY, UNCERTAIN}`.
+
+**ML split unit (Codex Round 2 fix)**: split by `(sequence_id, run_id)` or `(sequence_id, intermediate)` — **NOT** `(sequence_id, walker_id)`. Walkers within the same MetaD run share the deposited bias and HILLS; they are not independent samples. Splitting at walker level under-estimates generalization error. The previous version (Round 1) had walker-level splits — this is now corrected.
 
 ## §6 Function signatures
 
@@ -135,8 +150,8 @@ def collect_metad_run(
 
 def reweight_to_unbiased(
     df: pl.DataFrame,
-    biasfactor: float = 15.0,
-    T: float = 350.0,
+    biasfactor: float,             # REQUIRED — must come from run metadata, NOT a silent default. Was 15.0 default; Codex Round 2 caught this as a decision-level risk (production run might use different value)
+    T: float,                      # REQUIRED — same rationale; from run metadata
     method: str = "tiwary_parrinello_2015",
 ) -> pl.DataFrame:
     """Adds 'weight_w_t'. Asserts weights finite & positive.
@@ -185,7 +200,7 @@ All three return / mutate `pl.DataFrame`, so they compose:
 6. GenSLM granularity v0: (A) per-sequence, (B) per-residue, (C) both?
 7. Reweighting default: (A) Tiwary-Parrinello c(t), (B) Branduardi binless, (C) iterative WHAM?
 8. Grid: keep 301×141 — YES, or unify variants on coarser shared grid — NO?
-9. CV split unit: (A) `(sequence_id, walker_id)` — only L2-safe, (B) walker within sequence, (C) time-block?
+9. CV split unit (revised per Codex Round 2): (A) `(sequence_id, run_id)` — production-run level, walkers within a run NOT independent, (B) `(sequence_id, intermediate)` — only L2-safe across {Ain, Aex1, Q2}, (C) time-block within walker — leakage risk?
 10. `state_masks.json` format: (A) bin lists, (B) Shapely polygon, (C) numpy boolean grid?
 11. **Activity proxy** for L2/L3 supervised target (added 2026-04-25 per Codex audit — was the highest-leverage missing question; STATE digest §3 also flagged it): (A) Yu's MMPBSA rank, (B) experimental k_cat where available, (C) PM hand-binned activity class? Without this answer, the entire L2/L3 label contract stays blocked.
 

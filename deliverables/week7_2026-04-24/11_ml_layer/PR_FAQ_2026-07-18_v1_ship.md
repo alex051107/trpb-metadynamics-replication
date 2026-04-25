@@ -22,14 +22,19 @@ Yu Chen's group can now rerank any TrpB candidate FASTA against a converged WT p
 - Identical input → byte-identical CSV (seeded, per `INTERFACE_DESIGN` §5 row_id).
 - ≤8 GPU-h per escalation × ≤8 escalations = ≤64 GPU-h total for 30 candidates.
 - Convergence gate fires on broken HILLS: `tests/regression_on_known_variants.py` injects NaN-corrupted HILLS, evaluator returns `convergence_grade = FAIL`.
-- Sequence-aligned PATHMSD (FP-034 fix per `project_metad_ml_cartridge.md`; `Convergence_Memo_v2` §6 #3) exercised on WT + 1 variant in CI; naive-alignment baseline visibly broken.
+- **FP-034 regression test** (replaces "visibly broken" — Codex Round 2 fix to make this acceptance criterion operationally testable):
+  ```python
+  def test_naive_path_fails_fp034_regression():
+      assert project_s_range("naive_path") < 2.0     # walker stuck at s<2 on naive path
+      assert project_s_range("seqaligned_fp034") > 10.0   # corrected path opens s 1-12
+  ```
 
 ## §4 What got cut from V1
 
-- **L2/L3 supervised activity target** — `Label_Contract` §2 gates need a predeclared activity proxy; PM has not picked MMPBSA-rank vs k_cat vs binned (`STATE_OF_ML_THINKING_2026-04-25.md` §3 bullet 3). V1 ships descriptors + gated thermodynamic labels only.
+- **L2/L3 supervised activity target** — `Label_Contract` §2 gates need a predeclared activity proxy; PM has not picked MMPBSA-rank vs k_cat vs binned (`STATE_OF_ML_THINKING_2026-04-25.md` §3 bullet 3). **V1 ships L0/L1 descriptors only; L2 (FES values + state masks) is populated only if WT-Ain production FES carries `convergence_grade.status == PASS` per INTERFACE §3.2; otherwise PathGate row tags `EVAL_ONLY` and is NOT used in `combined_rank` (Codex Round 2 fix — earlier wording "ships gated thermodynamic labels" was overclaim relative to L2 blocked status)**.
 - **`genslm_embed` populated** — `INTERFACE_DESIGN` §4 BLOCKED #1 (d_model) and #2 (Fig 2A pooling). Fallback: V1 ships F0 + state pseudo-labels (L0/L1) without GenSLM; column dtype reserved.
 - **Aex1 / Q2 references** — variant FES count = 1 (WT-Ain only, `STATE_OF_ML_THINKING` §3).
-- **Frame-level random splits** — forbidden by `Label_Contract` §7.1; CV unit is `(sequence_id, walker_id)`.
+- **Frame-level random splits** — forbidden by `Label_Contract` §7.1. CV unit revised per Codex Round 2: `(sequence_id, run_id)` — walkers within a run share deposited bias / HILLS and are NOT independent samples.
 
 ## §5 What V1 ABSOLUTELY DOES NOT CLAIM
 
@@ -38,6 +43,7 @@ Yu Chen's group can now rerank any TrpB candidate FASTA against a converged WT p
 - **Does not generalize beyond PfTrpB-Ain.** Variant FES count = 1 (`STATE_OF_ML_THINKING` §3); no NdTrpB / Aex1 / Q2 shipped.
 - **Does not replace MMPBSA or wet-lab assays.** Escalation layer for false-positive reduction (`Convergence_Memo_v2` §2.1).
 - **No MetaD trajectory is ground truth.** Single-walker pilot stays diagnostic (`Label_Contract` §0); only PASS rows feed `combined_rank`.
+- **No claim that codon-level GenSLM embeddings add signal over protein LMs** (added per Codex Round 2). Lambert 2026 Fig 2A separates "natural vs generated", **not** "active vs inactive". Until ESM-2-650M-frozen and ProtBert-BFD ablation baselines are run on Yu's MMPBSA-30 set with a pre-registered Spearman test, GenSLM novelty is unsupported.
 
 ## §6 Top-of-mind unknowns going into V2
 

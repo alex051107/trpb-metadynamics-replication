@@ -2,11 +2,12 @@
 > 2026-04-25 | Targets: `STATE_OF_ML_THINKING_2026-04-25.md`, `INTERFACE_DESIGN_2026-04-25.md` | Method: 🔴 华为味 — 蓝军自攻击 + RCA. 自我批判先于发布。
 
 ```
-┌──── BLUE-TEAM PANEL ─────────────────────────────┐
-│ 8 vectors  3 CRIT  4 HIGH  1 MED                 │
-│ 4 hidden gates breached   3 kill-switches        │
-│ Verdict: SHIP V1 ONLY WITH §8 KILL-SWITCHES WIRED│
-└──────────────────────────────────────────────────┘
+┌──── BLUE-TEAM PANEL (post Codex R2 verification) ────┐
+│ 8 vectors  2 CRIT  5 HIGH  1 MED                     │
+│ 4 hidden gates breached   3 kill-switches            │
+│ §6 ESS measured 0.039–0.079: HIGH not CRIT           │
+│ Verdict: SHIP V1 ONLY WITH §8 KILL-SWITCHES WIRED    │
+└──────────────────────────────────────────────────────┘
 ```
 
 ## §0 Executive summary — 3 likeliest failures
@@ -65,11 +66,18 @@ Pre-register thresholds: block-CI half-width on ΔG_PC-O ≤ 0.5 kcal/mol; ESS_m
 
 ---
 
-## §6 Reweighting fragility (Tiwary–Parrinello) [CRITICAL]
-**Fail.** INTERFACE §6 gates `ESS > 0.05·N`, `max(w)/sum(w) < 0.01`. On the 19.8 ns pilot, the transient `max_s=12.87` at t=6085 ps (commit `7eb6dbb`) likely puts one frame in the weight tail — both gates probably already fail. Function "tags UNCERTAIN, does not raise" — UNCERTAIN-but-realistic rows ship silently.
-**Load-bearing.** L2 entirely. ESS is physics+protocol — failing pilot predicts failing 10-walker without protocol change.
-**Detect.** Run `reweight_to_unbiased()` **today** on the seq-aligned pilot COLVAR. If ESS/N < 0.02, pre-register v3 must hit ≥0.05 empirically before any L2 row is written.
-**Fix.** Best: relax gate to ESS/N ≥ 0.02 with `EVAL_ONLY`; confidence-weighted training. Acceptable: state-level integrals only. Nuclear: OPES raw counts; breaks INTERFACE §2 cadence.
+## §6 Reweighting fragility (Tiwary–Parrinello) [HIGH — downgraded from CRITICAL per Codex Round 2 measurement]
+**Fail.** INTERFACE §6 gates `ESS > 0.05·N`, `max(w)/sum(w) < 0.01`. Original blue-team prediction: the transient `max_s=12.87` at t=6085 ps (commit `7eb6dbb`) puts one frame in the weight tail and both gates "probably already fail."
+**Codex Round 2 EMPIRICAL measurement** (CCB `20260425-131225` ran naive `exp(β·bias)` ESS on local `longleaf_initial_seqaligned_COLVAR`):
+- ESS/N at 0 ns burn-in: **0.039**
+- ESS/N at 5 ns burn-in: **0.052**
+- ESS/N at 10 ns burn-in: **0.079**
+- max weight fraction: **0.00148**
+
+The "one transient frame dominates" story is **scaremongering**. The realistic picture is borderline ESS that crosses the 0.05 PROVISIONAL gate at ≥ 5 ns burn-in. State-wise ESS for high-s/C-like bins may still fail (Codex did not stratify by state), but global ESS is workable.
+**Load-bearing (revised).** Burn-in policy choice (PM_BRIEF Q5) and the per-state ESS gate (INTERFACE §6 reweight) are the operative knobs. Failing 10-walker production is no longer the predicted base case.
+**Detect.** Re-run `reweight_to_unbiased()` with proper Tiwary-Parrinello c(t) (not naive bias-only) on the seq-aligned pilot COLVAR + per-state stratification. Pre-register: TRAIN floor = `per-state ESS > 0.10·N_state` AND block-CI half-width on `ΔG_PC-O ≤ 1.5 kcal/mol`.
+**Fix.** Best: ship 5 ns burn-in default + per-state ESS gate (no scope expansion). Acceptable: state-level integrals only when global passes but per-state fails. Nuclear: OPES raw counts (breaks INTERFACE §2 cadence).
 
 ---
 
@@ -81,13 +89,21 @@ Pre-register thresholds: block-CI half-width on ΔG_PC-O ≤ 0.5 kcal/mol; ESS_m
 
 ---
 
-## §8 Kill-switches for V1
+## §8 Kill-switches for V1 (revised per Codex Round 2 — thresholds now defined with reference distributions)
 
-Three pre-declared outcomes. **Any trip → V1 ships F0-only; PathGate = research-mode.**
+Three pre-declared outcomes. **Any trip → V1 ships F0-only; PathGate = research-mode.** Each threshold is defined against a concrete reference distribution so it is falsifiable from data, not narrative.
 
-1. **D-Trp blindness (§1):** if `|Δs̄|, |Δz̄|, |ΔF_C| < 1σ` on n=2 Buller D-divergent variants → strip D-Trp claims.
-2. **MMPBSA recursion (§3):** if Yu's paired (MMPBSA, k_cat) gives |ρ| < 0.5 at n ≥ 12 → success metric pivots to bin-agreement; PathGate = descriptor only.
-3. **PathGate–MMPBSA disjointness:** if PathGate-top-3 ∩ MMPBSA-top-3 = ∅ on n=30 **and** §3 trips → V1 = F0-only; no joint reranker.
+1. **D-Trp blindness (§1)** — pre-condition: pick n=2 Buller/Hilvert variants with **measured D/L k_cat divergence ≥ 3×**. Reference distribution: WT-Ain **block-bootstrap** of (s, z, F_C) across walkers and 2-ns blocks, computing SD per metric. Trip if **all three** effect sizes satisfy `|Δ| < 0.5 · SD_WT_block` **OR** the bootstrap 95% CI of each `Δ` crosses zero. Action: strip D-Trp claims; PathGate scope = L-Trp only.
+   — Codex Round 2 caveat: n=2 alone is a red-flag screen, not a final kill-switch; the SD reference + activity-divergence pre-condition makes it falsifiable.
+
+2. **MMPBSA-truth recursion (§3)** — three-tier gate replacing the original single-trip:
+   - `n ≥ 12 paired (MMPBSA, k_cat)` AND `|Spearman ρ| < 0.6` → MMPBSA cannot be a TRAIN proxy; V1 reverts to bin-agreement only
+   - `0.6 ≤ |ρ| < 0.75` → MMPBSA is `EVAL_ONLY`, not TRAIN
+   - `|ρ| ≥ 0.75` → usable as TRAIN proxy
+   - `n < 12` → no scalar proxy; V1 ranks bins only
+   Action on TRAIN-proxy fail: success metric pivots to bin-agreement; PathGate = descriptor only.
+
+3. **PathGate–MMPBSA disjoint (§3 + adversarial)** — random-baseline note: with 30 candidates, two top-3 sets have ~28% probability of empty intersection by chance. So empty alone is NOT shocking. Trip only if **(a) `PathGate-top-3 ∩ MMPBSA-top-3 = ∅` on Yu's n=30** AND **(b) #2 trips** AND **(c) no independent activity adjudication is available** (literature k_cat or binned). Action: V1 = F0-only; no joint reranker.
 
 ```
 ┌──── KILL-SWITCH WIRING ─────────────────────────────┐
