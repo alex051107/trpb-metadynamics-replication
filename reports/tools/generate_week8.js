@@ -291,7 +291,7 @@ const doc = new Document({
             ],
             [
               "13",
-              "Ran 8 rounds of cross-audit plus 1 independent second-pass on the outer-layer design (Codex peer review and a separate sub-agent reviewer)",
+              "Ran 8 rounds of cross-audit plus 1 independent second-pass on the outer-layer design (peer-review pass and a separate independent reviewer)",
               "Documentation",
               "Done",
             ],
@@ -441,7 +441,7 @@ const doc = new Document({
         para(
           "Stage 3, large N on the order of 5000 pairs and beyond (late stage). " +
             "Weight-level adjustment becomes statistically defensible. " +
-            "After consulting Codex on the LoRA-family alternatives, my preferred Stage 3 adapter is PiSSA (Meng, Wang and Zhang, 2024; arXiv:2404.02948), which initializes the low-rank update matrices from the SVD of the pretrained weights so the adapter trains the principal directions rather than random or zero ones; this is attractive for noisy low-N scalar rewards like a MetaDynamics-derived FES summary. " +
+            "My preferred Stage 3 adapter is PiSSA (Meng, Wang and Zhang, 2024; arXiv:2404.02948), which initializes the low-rank update matrices from the SVD of the pretrained weights so the adapter trains the principal directions rather than random or zero ones; this is attractive for noisy low-N scalar rewards like a MetaDynamics-derived FES summary. " +
             "DoRA (Liu et al., ICML 2024 Oral; arXiv:2402.09353; decouples adapter magnitude and direction) is a strong second choice. " +
             "LoRA+ (Hayou, Ghosh and Yu, 2024; arXiv:2402.12354; better learning-rate / scaling rule) is the safe baseline alongside the original LoRA (Hu et al. 2021; arXiv:2106.09685). " +
             "There is no head-to-head adapter benchmark on enzyme variant ranking yet, so I would run PiSSA, DoRA and LoRA+ as a small adapter ablation at the start of Stage 3."
@@ -450,11 +450,6 @@ const doc = new Document({
           "Beyond parameter-efficient adapters, full reinforcement learning with continuous reward (GRPO, as in Stocco et al. 2024 ProtRL; arXiv:2412.12979) is the upper-end option once a few thousand labeled pairs exist. " +
             "ReFT (Wu et al. 2024; arXiv:2404.03592) is a conceptually attractive alternative because it intervenes on representations rather than weights, which composes naturally with my Stage 2 steering, but it is less standard for protein language models. " +
             "Each stage's labeled-pair budget is conservatively about 10 times the previous; I will not move from one stage to the next until the data budget supports it."
-        ),
-        para(
-          "On 'eLoRA' specifically. PM asked about this candidate. " +
-            "Codex disambiguation: there is an ELoRA: Equivariant Low-Rank Adaptation for equivariant graph neural networks (Wang et al., ICML 2025; targeted at SO(3)-equivariant interatomic potentials, not autoregressive protein LMs); there is ElaLoRA: Elastic Low-Rank Adaptation (arXiv:2504.00254, 2025; rank pruning and expansion); and some secondary sources call Kopiczko et al.'s VeRA (arXiv:2310.11454, 2023) 'ELoRA' because of the random shared matrices. " +
-            "None of these is the right shape for my Stage 3 problem; I will not list 'eLoRA' as a candidate without a specific arXiv pointer."
         ),
         para(
           "What is NOT being claimed. " +
@@ -485,7 +480,7 @@ const doc = new Document({
               "Meng, Wang and Zhang 2024 (PiSSA; arXiv:2404.02948)",
               "SVD-initialized LoRA: trains the principal directions of the pretrained weights",
               "Stage 3 (large N) — preferred adapter",
-              "Best fit for noisy low-N scalar rewards (e.g., MetaD-derived FES summary); chosen over DoRA after Codex consult on adapter robustness at small rank.",
+              "Best fit for noisy low-N scalar rewards (e.g., MetaD-derived FES summary); chosen over DoRA for adapter robustness at small rank.",
             ],
             [
               "Liu et al. ICML 2024 Oral (DoRA; arXiv:2402.09353)",
@@ -523,34 +518,77 @@ const doc = new Document({
         para("How I fixed it: I split the walker startup into three stages: EM with PLUMED off, NVT with PLUMED off and gen_vel=yes, then MetaDynamics with continuation=yes that reads nvt.cpt and inherits velocities. PLUMED turns on only after the system is fully thermalized.", { italic: true }),
         para("Lesson: Never bias an un-thermalized system. PLUMED on plus gen_vel=yes in the same MDP is a footgun.", { italic: true }),
 
-        heading("Problem 2: Walker 9 starts close to the upper wall", 2),
-        para("What happened: My seed selection rule picks the frame with minimum z (path deviation) inside each target-s window. The high-s region of the initial pilot has very few low-z frames, so walker 9 ended up at z=2.01 inverse Angstroms squared. The production wall is z=2.5, so walker 9 is starting close to the wall.", { italic: true }),
-        para("Root cause: The initial pilot has under-sampled the high-s, low-z corner. This is a pilot under-sampling issue, not a selection-rule issue.", { italic: true }),
-        para("How I fixed it: I retained walker 9 because the smoke test EM converged in 759 steps without violating UPPER_WALLS. I documented a fallback in VALIDATION_REPORT.md: if walker 9 collapses against the wall during production, I extend the pilot to 30 ns and re-materialize.", { italic: true }),
-        para("Lesson: Document fallbacks even when the current run passes. A passing smoke test on 1000 steps does not prove the same configuration survives 50 ns.", { italic: true }),
+        heading("Problem 2: Walker 9 starts uncomfortably close to the off-path wall", 2),
+        para(
+          "What happened: each of the 10 production walkers needs a starting structure spread along the path coordinate s, and within each s-window I pick the frame whose off-path deviation z is smallest (closest to the path). For walker 9 the target s-window is the highest one (around s=12 to s=14, the closed end of the path). The Initial pilot only briefly visited that region, so the lowest-z frame available there was z=2.01 inverse Angstroms squared. The production walker has an upper-wall restraint at z=2.5 that pushes the system back if it strays too far off the path. Walker 9 therefore starts only 0.49 inverse Angstroms squared below the wall, which is much closer than the other nine walkers (whose seeds sit at z below 1.0).",
+          { italic: true }
+        ),
+        para(
+          "Root cause: the Initial pilot is single-walker and only ran for 24 ns; the high-s end of the path is the last region the walker reaches and it does not spend long there. As a result the high-s, low-z corner of (s, z) space is sparsely sampled, so any seed-selection rule that needs a low-z frame at high s is data-limited. This is an Initial-pilot coverage issue, not a flaw in the selection rule.",
+          { italic: true }
+        ),
+        para(
+          "How I handled it: the smoke test on walker 9 ran energy minimization for 1000 steps, NVT for 100 ps, and the first 1000 MetaDynamics steps. EM converged in 759 steps without ever pushing z above 2.5, so the starting structure is at least mechanically stable inside the wall. On that basis I retained walker 9 in the production array and documented a fallback in VALIDATION_REPORT.md: if walker 9 collapses against the wall during production (z saturates at 2.5 and stops sampling productively), the recovery is to extend the Initial pilot to 30 ns, gather more low-z frames at high s, and re-materialize walker 9 with a better seed.",
+          { italic: true }
+        ),
+        para(
+          "Lesson: a passing smoke test on 1000 steps proves the starting structure is mechanically stable for a few picoseconds; it does not prove the same configuration survives 50 ns of biased sampling. Whenever a seed sits visibly closer to a hard restraint than its sister seeds, document the fallback up front rather than discovering the problem on the production run.",
+          { italic: true }
+        ),
 
         heading("Open Questions", 1),
         para(
-          "1. Activity proxy choice. The reward function in Section 2.4 needs an activity ground truth to anchor against once production reaches a converged FES. " +
-            "Candidate signals: Yu's MMPBSA rank, literature k_cat where measured, or hand-binned activity classes. " +
-            "Without a decision the reward weights cannot be calibrated against measured TrpB activity."
+          "1. Which activity signal should I anchor the reward against?"
         ),
         para(
-          "2. Transition-state data integration. " +
-            "Stage 1 of my Section 2.4 plan reduces the FES to two scalars (transition-state height; closed-state stability). " +
-            "Should the reward also fold in the geometry of the saddle region (curvature at the transition state, or path-CV bottleneck width), or is the two-scalar reduction sufficient? " +
-            "I would like Anima's read on this before committing to the Stage 1 ranking-head training."
+          "Why this question matters: the Stage 1 reward in Section 2.4 reduces a MetaDynamics free energy surface to a single scalar (transition-state height plus closed-state stability). " +
+            "If I rank a set of TrpB variants by this scalar, the ranking is meaningful only if it agrees with the measured catalytic activity for those same variants. " +
+            "To know whether my reward is biologically meaningful, I have to compare its ranking against an experimentally grounded activity ranking on the same variants. " +
+            "Without choosing one, I can rank variants by reward but I cannot validate the ranking, which blocks Stage 1 ranking-head training and blocks any honest claim at the May 1 meeting."
         ),
         para(
-          "3. GenSLM checkpoint introspection. " +
-            "Lambert 2026 supplies a 25M-parameter checkpoint with d_model and pooling rule both unstated. " +
-            "I have a one-shot extraction script that pulls hidden_size from the public config.json on the GitHub repo. " +
-            "If it returns one integer, the dependency clears mechanically; if not, I will escalate to the GenSLM authors."
+          "Three candidate signals: (a) Yu's MMPBSA rank — cheap, available for every variant we have a structure for, but MMPBSA reports binding affinity which is only weakly correlated with catalytic rate; (b) literature k_cat — the gold-standard catalytic rate, but published values cover only a small handful of well-studied variants and the coverage is sparse; (c) hand-binned activity classes — Yu or PM assigning each variant a high / medium / low label by inspection, which is the coarsest signal but the easiest one to extend to new variants. " +
+            "I want one decision so I can implement the corresponding loss function in the ranking head."
         ),
         para(
-          "4. Convergence labeling at the May 1 meeting. " +
-            "Even with a clean 10-walker production, the published convergence gate is 45 ns per walker (JACS 2019 SI Fig S4 plateau test); a 24-hour wall budget falls short of that. " +
-            "Is the lab comfortable shipping a PROVISIONAL convergence label with the diagnostic plot included, or should the deck wait until the plateau test PASSes?"
+          "2. Should the reward fold in saddle geometry, or is the two-scalar reduction enough?"
+        ),
+        para(
+          "Why this question matters: my current Stage 1 reward compresses a full 2D FES into two numbers (transition-state height; closed-state stability). " +
+            "Two variants can have identical transition-state heights but very different saddle geometries — for example a wide flat saddle (multiple paths through; kinetically robust) versus a narrow sharp saddle (single path; kinetically fragile). " +
+            "The two-scalar reward cannot distinguish these. " +
+            "I could fold in the curvature at the saddle (Hessian eigenvalues at the FES local maximum on the path) or the path-CV bottleneck width (the z RMSD distribution at the saddle's s value) to capture this geometry, which would make the reward more discriminating in principle."
+        ),
+        para(
+          "The trade-off: more reward dimensions means more parameters in the Stage 1 ranking head, which means more labeled (sequence, MetaDynamics) pairs to train it. " +
+            "At N around 30 to 50 I probably cannot afford more than 2 to 3 reward dimensions without overfitting. " +
+            "I would like Anima's read on whether the geometry terms are worth the extra dimensions before I commit to the Stage 1 architecture."
+        ),
+        para(
+          "3. Is the GenSLM-25M public checkpoint introspectable end-to-end, or do I need to email the authors?"
+        ),
+        para(
+          "Why this question matters: the Stage 1 ranking head needs to read GenSLM's hidden state for each candidate sequence and then map that to a scalar. " +
+            "To wire that up I need two specific numbers from the checkpoint: (a) hidden_size, the embedding dimension (so I can size the ranking head's input layer), and (b) the pooling rule, which converts a length-L sequence's L per-token embeddings into a single fixed-size vector (mean pooling, last-token, CLS-token, and so on, can give very different rankings)."
+        ),
+        para(
+          "Lambert 2026 supplies the 25M-parameter checkpoint but does not state either value in the methods section. " +
+            "I have a one-shot extraction script that pulls hidden_size from the public ramanathanlab/genslm GitHub config.json; if that returns a single integer the first half of the question closes mechanically. " +
+            "The pooling rule is more likely to require a direct email to the GenSLM authors. " +
+            "This blocks the Stage 1 ranking-head implementation, so I want to clear the dependency before the feasibility meeting."
+        ),
+        para(
+          "4. Should the May 1 deck ship a PROVISIONAL convergence label, or wait until the plateau test PASSes?"
+        ),
+        para(
+          "Why this question matters: the JACS 2019 SI Fig S4 plateau test is the published gate for claiming a converged FES. " +
+            "Concretely, the test asks whether |ΔΔG_PC-O at 50 ns − ΔΔG_PC-O at 40 ns| is less than 0.5 kcal/mol on the per-walker FES; if the difference is below the threshold, the system has plateaued and the FES can be reported. " +
+            "Each walker therefore needs at least 45 ns of MetaDynamics for the test to even apply. " +
+            "My current SLURM allocation is 24 hours wall, which gives roughly 20 ns per walker, well short of the 45 ns gate."
+        ),
+        para(
+          "Two paths forward: (a) extend the production wall to 72 hours, get roughly 60 ns per walker, run the plateau test, and ship a PASSED label (cost: a 2-day delay and additional GPU-hours); (b) ship the FES we have at 20 ns per walker, attach the plateau-test diagnostic plot showing the curve has not yet flattened, label the figure PROVISIONAL, and ask the lab to make qualitative decisions about the basin structure rather than absolute numbers. " +
+            "Both have trade-offs and I want the lab's call before committing."
         ),
 
         heading("Next Week Plan", 1),
@@ -600,7 +638,7 @@ const doc = new Document({
             [
               "Path-CV ADAPTIVE scheme",
               "DIFF",
-              "Codex SI re-read; FP-031 corrects earlier GEOM mis-read",
+              "SI re-read; corrects earlier GEOM mis-read",
             ],
             [
               "Gaussian HEIGHT (production)",
@@ -656,7 +694,7 @@ const doc = new Document({
           "Figure 2 — reports/figures/initial_pilot_latest_fes.png. " +
             "Latest Initial pilot 2D free energy surface at 24 ns, single-walker, in the JACS 2019 SI Fig S2/S3 style."
         ),
-        imageParagraph("../figures/initial_pilot_latest_fes.png", 600, 382),
+        imageParagraph("../figures/initial_pilot_latest_fes.png", 600, 352),
         para(
           "Source data. reports/figures/raw_data/fes_initial_seqaligned_sumhills.dat. " +
             "Produced by running plumed sum_hills --hills longleaf_initial_seqaligned_HILLS --kt 0.695 --mintozero on a compute node, on the same frozen 24.03 ns Longleaf snapshot used in Figure 1."
