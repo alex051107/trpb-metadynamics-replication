@@ -351,26 +351,13 @@ const doc = new Document({
             "I logged the case as FP-034 with the rule that any future path-builder script must assert sequence identity above 50 percent before writing the path file."
         ),
 
-        heading("2. v3 design and why three stages were needed", 2),
+        heading("2. v3 walker startup is split into three stages", 2),
         para(
-          "The v2 10-walker run launched directly from coordinate-only start.gro files with continuation=no, gen_vel=yes, and PLUMED biasing turned on at the same time. " +
-            "All 10 walkers crashed inside 12 minutes with LINCS bond-stress on atoms 4463 through 4465. " +
-            "The root cause is that PLUMED started depositing path-CV bias before the velocities had Maxwell-Boltzmann thermalized at 350 K."
+          "v2 crashed inside 12 minutes because the walker MDP initialized velocities (gen_vel=yes) and turned PLUMED biasing on at the same step; the bonds had not yet thermalized at 350 K when the bias started pushing, LINCS could not satisfy the constraints, and the integrator exited with code 139. " +
+            "v3 separates the two events: energy minimization with PLUMED off, then 100 ps NVT with PLUMED still off and gen_vel=yes (this is where velocities are actually initialized), then MetaDynamics with continuation=yes so the velocities and box are inherited from nvt.cpt and PLUMED only turns on at this final stage."
         ),
         para(
-          "Bond-stressed atoms cannot satisfy LINCS constraints under sudden bias and the integrator gives up with exit code 139."
-        ),
-        para(
-          "The v3 design splits the walker startup into three stages. " +
-            "Stage 1 is energy minimization for 1000 steps with PLUMED off. " +
-            "Stage 2 is NVT for 100 ps with PLUMED still off and gen_vel=yes, which initializes velocities at 350 K. " +
-            "Stage 3 is MetaDynamics with continuation=yes so that the velocities and box from nvt.cpt are inherited. " +
-            "PLUMED turns on for the first time at this stage."
-        ),
-        para(
-          "The smoke test (SLURM 45783311) ran 10 walkers for 1000+1000+1000 steps as a 30-minute sanity check. " +
-            "All 10 walkers passed: EM Maximum force in the range 938 to 986 kJ/mol/nm, 0 LINCS warnings, 0 atoms 4463 to 4465 errors, HILLS deposited at 1 hill per 2 ps, and 0 exit code 139. " +
-            "The production array launched immediately after the smoke pass."
+          "The smoke test (SLURM 45783311, 30-minute sanity run on all 10 walkers) passed cleanly: zero LINCS warnings, zero exit-139s, HILLS deposited at the expected 1 hill per 2 ps. The production array launched immediately afterward."
         ),
 
         heading(
