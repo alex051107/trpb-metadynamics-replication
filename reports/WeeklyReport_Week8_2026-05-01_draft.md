@@ -44,7 +44,7 @@ This week was about getting the Initial pilot to actually explore the open-to-cl
 | 8 | Re-read JACS 2019 SI for the 10-walker protocol; corrected three drifts in our local replica (LAMBDA derivation, seed-target spacing, materializer source) | Documentation | Done |
 | 9 | Rewrote the production materializer to extract walker seeds from the Initial pilot COLVAR file, not from the conventional MD trajectory | Setup | Done |
 | 10 | Wrote select_seeds with a window-min-z rule that picks the frame closest to the path inside each target s-window | Setup | Done |
-| 11 | Designed the MetaDynamics-to-GenSLM outer layer (kinetic-agility reward, LoRA adapter, DPO fine-tune); see Section 2.4 | Documentation | Draft |
+| 11 | Drafted the MetaDynamics-to-GenSLM outer layer (Kramers/Boltzmann reward from MetaD-FES; GenSLM-25M kept frozen; ranking model on top); see Section 2.4 | Documentation | Draft |
 | 12 | Wrote a 12-slide bilingual presenter script for the May 1 group meeting | Documentation | Done |
 | 13 | Rendered the latest Initial pilot FES at 24 ns (Codex render via the lab's preferred plotting skill) | Analysis | Done |
 | 14 | Rendered the before-vs-after path realignment trajectory comparison figure (Codex) | Analysis | Done |
@@ -83,6 +83,14 @@ This subsection is preliminary. The 10-walker production has only been running a
 
 **What is NOT being claimed.** The reward weights have not yet been calibrated against measured TrpB k_cat values; that calibration is a near-term task once production gives me one or two converged free energy surfaces. The small-N steering approach has not yet been benchmarked on GenSLM specifically; the simplest baseline (just rerank GenSLM's outputs by a generic protein-language-model likelihood) needs to be measured first, and the more elaborate approach earns its compute budget only if it beats that baseline. The Phase 2 deliverable depends on choosing an activity proxy (MMPBSA rank, literature k_cat, or hand-binned classes), which is one of the open questions for the May 1 meeting.
 
+**How my plan compares to other recent work.** Three lines of work define the relevant landscape:
+
+| Work | Method | Relation to my plan |
+|---|---|---|
+| Yang et al. NeurIPS 2025 (SGPO) | 30-shot Bayesian / GP surrogate on top of GenSLM embeddings, benchmarked on TrpB | I follow the same spirit (small-N, no fine-tune); the difference is that my reward source is a MetaDynamics free energy surface rather than wet-lab activity, which lets me score variants we have not run experimentally. |
+| Stark et al. 2024 (ProtRL) | GRPO reinforcement-learning fine-tune of an ESM-style protein LM | They have data volumes I do not have. RL-based fine-tune is on the table only after the labeled set is materially larger than my 30 to 50. |
+| ByteDance 2025 (STAR-MD, arXiv 2602.02128) | Sequence-to-MD diffusion plus coarse-graining | This is orthogonal: STAR-MD generates approximate MD trajectories from a sequence; I run real MetaDynamics on a fixed sequence and feed the MetaDynamics output into a sequence model. STAR-MD's generative MD is still early-stage by the authors' own benchmarks; using ground-truth PLUMED MetaD output gives a more trusted reward at the cost of compute. |
+
 ## Section 3: Problems Encountered and How I Solved Them
 
 ### Problem 1: 10-walker production crashed inside 12 minutes with LINCS bond-stress
@@ -109,7 +117,7 @@ This subsection is preliminary. The 10-walker production has only been running a
 
 1. **Activity proxy choice.** Without a primary activity signal (Yu's MMPBSA rank, literature k_cat, or hand-binned activity classes), the supervised target for the proxy model and the DPO reward is undefined. This blocks Phase 2 end-to-end. Resolves with one decision from the lab.
 
-2. **Proxy data volume.** 30 to 50 (sequence, MetaD-output) training pairs is small for an 11-output regression head, even with LoRA. The Explore task running in parallel will report whether published examples of LoRA on N less than 200 protein-property regression exist; this informs whether to keep 11 targets or collapse to a single kinetic-barrier-plus-occupancy scalar.
+2. **Proxy data volume.** 30 to 50 (sequence, MetaD-output) training pairs is small for any multi-output regression head. The plan I want to commit to is to keep GenSLM frozen and put a small ranking model (ridge or Gaussian-process-style surrogate) on top of GenSLM embeddings, following the Yang 2025 NeurIPS recipe rather than fine-tuning weights. Open question for the lab: do we want to collapse the MetaDynamics output to a single kinetic-barrier-plus-occupancy scalar, or keep two to three separate scores and let the surrogate combine them?
 
 3. **Wall-clock budget for production.** A 24-hour wall budget gives roughly 20 ns per walker. The published convergence diagnostic (JACS 2019 SI Fig S4 / S5) needs 45 ns per walker for the `|delta-delta-G(50ns) - delta-delta-G(40ns)|` plateau test to apply. Do I extend wall to 72 hours or accept a partial-converged ship for the May 1 deck?
 
@@ -125,9 +133,9 @@ This subsection is preliminary. The 10-walker production has only been running a
 
 1. Monitor production 45784112 to 10 ns per walker; auto-render the SI-comparable production FES via `plumed sum_hills` on a compute node.
 2. Confirm the full pipeline runs end-to-end: production simulation, post-processing, FES rendering, walker-explore tracking, into the deck. The goal for next week is "the pipeline is plumbed from raw HILLS to a labeled figure with no manual steps."
-3. After the 10-walker production confirms the pipeline, schedule a meeting with the lab on the MetaDynamics-to-GenSLM outer-layer feasibility (LoRA proxy, DPO loop, activity-proxy choice). The goal is alignment on whether the design is worth building under realistic data constraints.
+3. After the 10-walker production confirms the pipeline, schedule a meeting with the lab on the MetaDynamics-to-GenSLM outer-layer feasibility (frozen GenSLM with a ranking-model head, activity-proxy choice, no fine-tune). The goal is alignment on whether the design is worth building under realistic data constraints.
 4. Run the GenSLM `hidden_size` extraction on the public checkpoint. If it returns one integer, BLOCKED #1 closes mechanically; if it does not, escalate to the GenSLM authors.
-5. Apply the parallel-research findings on LoRA + small-N protein regression to the proxy-model architecture before the feasibility meeting.
+5. Apply the parallel-research findings on small-N protein-property regression (GP surrogate, ridge regression, plug-and-play steering) to the ranking-model architecture before the feasibility meeting.
 
 ## Section 6: Key Simulation Parameters
 
@@ -154,6 +162,7 @@ Author-clarified parameters that the SI does not state numerically (the producti
 
 1. `reports/figures/before_after_fp034.png` — before-vs-after comparison of the Initial pilot s-vs-time trajectory. Left panel: the pre-realignment baseline, walker stuck at s less than 1.9 over 17 ns. Right panel: the current 24 ns Initial pilot, walker explores s = 1 to 14.05 across the full open-to-closed path.
 2. `reports/figures/initial_pilot_latest_fes.png` — latest Initial pilot 2D FES at 24 ns, single-walker, in the JACS 2019 SI Fig S2/S3 style. x-axis: s (path coordinate, dimensionless). y-axis: z RMSD in Angstroms (square root of the raw MSD). Color: ΔG in kcal/mol. The figure differs from the published Fig S2 because (a) the published figure aggregates 10 walkers over 50 ns each (~500 ns total), and (b) my pilot is single-walker at 24 ns of the upstream fallback contract; the overall shape and basin assignments are consistent.
+3. `reports/figures/production_walker_explore.png` — 10-panel s(t) per walker for the 10-walker production array (SLURM 45784112), one panel per walker. At the snapshot used to render this figure (April 25, 17:40 EDT, ~2.5 h after production launch), each walker's COLVAR file recorded 0.87 to 1.10 ns of MetaDynamics, all 10 HILLS files were being written, and the average was 0.96 ns per walker. The figure is the file-based progress check; it will be re-rendered closer to the deck deadline once production has accumulated more nanoseconds per walker.
 
 ## Section 8: References
 

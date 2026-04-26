@@ -142,7 +142,7 @@ const doc = new Document({
             ["Date", "May 1, 2026"],
             [
               "Week",
-              "Week 8: SI-faithful 10-walker production + ML cartridge V1 contract",
+              "Week 8: Path realignment unblocks Initial pilot, 10-walker production launched, MetaD-to-GenSLM staged plan drafted",
             ],
           ]
         ),
@@ -170,24 +170,33 @@ const doc = new Document({
         ),
         para("  [7] Compare with published results    NEXT"),
         para(
-          "Phase 2: Apply to GenSLM-designed enzymes (V1 ship target 2026-07-18)"
+          "Phase 2: Apply MetaDynamics output to score / fine-tune GenSLM"
         ),
         para("Phase 3: Build reward function for design loop (V2)"),
 
         heading("Summary", 1),
         para(
-          "This week the central focus was getting the 10-walker MetaDynamics production stage to actually run under the published protocol. " +
-            "The first launch (v1) was cancelled because all 10 walkers used the same starting frame and stayed trapped at the open conformation. " +
-            "The second launch (v2) crashed within 12 minutes with LINCS bond-stress on three atoms."
+          "The flagship result this week is that the Initial pilot finally ran correctly under the author-supplied parameters (HEIGHT=0.3 kcal/mol fallback contract, BIASFACTOR=15) for 24 ns and reached max_s=14.05 along the open-to-closed path coordinate. " +
+            "Before this week, the same pilot was stuck at s less than 1.9 over 17 ns despite identical engine settings."
         ),
         para(
-          "I diagnosed both root causes and built a v3 design that adds an energy minimization plus 100 ps NVT pre-equilibration before the MetaDynamics phase. " +
-            "The smoke test passed on all 10 walkers and the production array (SLURM 45784112) is running now."
+          "The unblock came from rebuilding the reference path with a proper sequence alignment between the two source structures. " +
+            "The published protocol uses two different species in the same path: 1WDW (P. furiosus TrpB) is the only available high-resolution open-state crystal, and 3CEP (S. typhimurium TrpB) is the only available high-resolution closed-state crystal — there is no single-species crystal pair that covers both endpoints, so the path is necessarily inter-species. " +
+            "The two β-subunits are not the same length: 3CEP carries five extra N-terminal residues (a vestigial signal-peptide region of the bacterial enzyme that the archaeal enzyme does not have). " +
+            "My original path-builder paired residues by raw residue number, so 1WDW residue 97 was paired with 3CEP residue 97 instead of 3CEP residue 102. " +
+            "Across the 112 selected COMM-domain Cα positions this matched non-homologous residues; sequence identity dropped to 6.2 percent and the open-to-closed RMSD inflated to 10.89 Å. " +
+            "The Branduardi formula λ = 2.3 / mean adjacent MSD then collapsed λ to 3.80 inverse Å, about 21 times below what the SI implies. " +
+            "After a Needleman-Wunsch realignment recovered the uniform +5 residue-number offset, sequence identity climbed to 59.0 percent, RMSD fell to 2.115 Å, and λ settled at 100.79 inverse Å on the realigned path. " +
+            "The pilot then unlocked, and the canonical Initial pilot 24 ns FES (Figure 2) is now in hand."
         ),
         para(
-          "The main unresolved question is whether the production run will reach the convergence gate by the May 1 group meeting. " +
-            "The honest answer is no: with a 24-hour wall budget I expect roughly 20 ns per walker by meeting time, well short of the 45 ns per walker that the SI convergence diagnostic needs. " +
-            "I will ship a PROVISIONAL early-stage figure with the convergence_grade flag set accordingly, and ask the lab whether to extend wall time or accept the PROVISIONAL ship."
+          "Building on the unblocked Initial pilot, I picked 10 starting frames spread across the realigned path coordinate by reading the Initial pilot COLVAR and selecting frames that minimized off-path deviation inside ten target s-windows. " +
+            "I launched the 10-walker production array under Miguel's primary contract (HEIGHT=0.15, BIASFACTOR=10, shared HILLS) as SLURM 45784112; the smoke test passed all 10 walkers, and the array has been running for around five hours. " +
+            "I have observed some LINCS warnings appearing mid-run on a subset of walkers and will spend next week debugging that signature."
+        ),
+        para(
+          "The other major block of work was drafting the MetaDynamics-to-GenSLM outer layer in Section 2.4. " +
+            "I plan to walk Prof. Anandkumar through the staged plan, the activity-proxy decision, and the transition-state data integration question in a short feasibility meeting next week before committing to Stage 1 implementation."
         ),
 
         heading("Work Done", 1),
@@ -262,13 +271,13 @@ const doc = new Document({
             ],
             [
               "12",
-              "Designed 4-tier ML conversion framework (L0 to L3) and wrote schemas",
+              "Drafted a staged MetaDynamics-to-GenSLM adjustment plan indexed by labeled-pair count (small N: ranking head over GenSLM embeddings; medium N: activation steering on the residual stream; large N: PiSSA adapter with DoRA / LoRA+ ablations or GRPO RL); see Section 2.4",
               "Documentation",
-              "Done",
+              "Draft",
             ],
             [
               "13",
-              "Conducted 8 rounds of cross-audit on ML schemas plus 1 independent second-pass",
+              "Ran 8 rounds of cross-audit plus 1 independent second-pass on the outer-layer design (Codex peer review and a separate sub-agent reviewer)",
               "Documentation",
               "Done",
             ],
@@ -280,7 +289,7 @@ const doc = new Document({
             ],
             [
               "15",
-              "Rendered the latest Initial pilot FES at 24 ns with proper RMSD axis units",
+              "Rendered two figures for the report: latest Initial pilot 24 ns FES with proper RMSD axis units, and the before-vs-after path realignment trajectory",
               "Analysis",
               "Done",
             ],
@@ -291,11 +300,12 @@ const doc = new Document({
         heading("What I Learned", 1),
 
         heading(
-          "1. FP-034 path realignment was the campaign's largest single-point delta",
+          "1. The reference path needed re-aligning before the Initial pilot would explore",
           2
         ),
         para(
           "The published path coordinate uses 15 frames between an open structure (1WDW chain B, P. furiosus TrpB) and a closed structure (3CEP chain B, S. typhimurium TrpB). " +
+            "The reason the path is necessarily inter-species is that 1WDW is the only available high-resolution open-state TrpB crystal in the PDB and 3CEP is the only available high-resolution closed-state TrpB crystal; no single species has crystals of both endpoints. " +
             "My original path-builder paired residues by raw residue number, so 1WDW residue 97 was paired with 3CEP residue 97."
         ),
         para(
@@ -389,19 +399,102 @@ const doc = new Document({
             "The functional form is the standard Kramers and Boltzmann combination from physical chemistry; the contribution is in using MetaDynamics output as the source of the two terms, not in inventing a new formula."
         ),
         para(
-          "The design constraint that frames everything else. " +
-            "By the time I am ready to plug this back into the GenSLM-25M sequence generator (Lambert et al. 2026), I will have on the order of 30 to 50 labeled (sequence, MetaDynamics-output) pairs, not thousands. " +
-            "That sample size rules out approaches that fine-tune the generator's weights directly. " +
-            "The plan I want to commit to is: leave GenSLM unchanged, treat the 30 to 50 labeled pairs as a preference direction that steers the generator's output at generation time, and grow the labeled set through an active-learning loop that adds new pairs after each round of MetaDynamics. " +
-            "Published precedents for small-N steering on protein language models came out in the last 12 months (Yang et al., NeurIPS 2025; Stark et al. 2024); I plan to walk through the choice between candidate methods at the feasibility meeting next week."
+          "The staged adjustment plan, indexed by data volume. " +
+            "GenSLM-25M is built and maintained by another lab member; my contribution is the rule for how the MetaDynamics-derived reward attaches to it. " +
+            "I want to propose a staged plan whose stage is decided by the size of the labeled (sequence, MetaDynamics-output) pair set, not by method preference. " +
+            "Every stage is conditional, in the sense that we only run a method whose statistical defensibility matches the available data budget."
+        ),
+        para(
+          "Stage 1, small N on the order of 30 to 50 pairs (where I am now). " +
+            "Keep GenSLM weights and activations frozen. " +
+            "Sample N candidate sequences from GenSLM, score each one with a ranking head (ridge regression or a Gaussian-process surrogate) trained on the labeled set in GenSLM's own embedding space, and ship the top-K to wet lab. " +
+            "The closest small-N protein-LM TrpB benchmark in the literature is SGPO (Yang et al., NeurIPS 2025; arXiv:2505.15093), which uses classifier-guided posterior sampling on a discrete-diffusion protein language model rather than a regression head over an autoregressive model. " +
+            "GenSLM is autoregressive, so my Stage 1 is the classical Bayesian-optimization-over-PLM-embeddings analogue of SGPO; the same small-N feasibility argument applies. " +
+            "No reinforcement learning, no weight updates."
+        ),
+        para(
+          "Stage 2, medium N on the order of 500 pairs (after one or two active-learning rounds). " +
+            "Switch from re-ranking-only to steering at generation time. " +
+            "Train a contrastive direction in GenSLM's hidden-state space (Turner et al. 2023 activation engineering; Zou et al. 2023 representation engineering), then add it to the residual stream during sampling so the generator probabilistically prefers high-reward sequences. " +
+            "GenSLM weights still stay frozen; the only learned object is one direction vector per layer (on the order of d_model floats per layer). " +
+            "The robustness property I want at this stage is that the steering can be turned off at inference time by zeroing the direction, recovering the original GenSLM."
+        ),
+        para(
+          "Stage 3, large N on the order of 5000 pairs and beyond (late stage). " +
+            "Weight-level adjustment becomes statistically defensible. " +
+            "After consulting Codex on the LoRA-family alternatives, my preferred Stage 3 adapter is PiSSA (Meng, Wang and Zhang, 2024; arXiv:2404.02948), which initializes the low-rank update matrices from the SVD of the pretrained weights so the adapter trains the principal directions rather than random or zero ones; this is attractive for noisy low-N scalar rewards like a MetaDynamics-derived FES summary. " +
+            "DoRA (Liu et al., ICML 2024 Oral; arXiv:2402.09353; decouples adapter magnitude and direction) is a strong second choice. " +
+            "LoRA+ (Hayou, Ghosh and Yu, 2024; arXiv:2402.12354; better learning-rate / scaling rule) is the safe baseline alongside the original LoRA (Hu et al. 2021; arXiv:2106.09685). " +
+            "There is no head-to-head adapter benchmark on enzyme variant ranking yet, so I would run PiSSA, DoRA and LoRA+ as a small adapter ablation at the start of Stage 3."
+        ),
+        para(
+          "Beyond parameter-efficient adapters, full reinforcement learning with continuous reward (GRPO, as in Stocco et al. 2024 ProtRL; arXiv:2412.12979) is the upper-end option once a few thousand labeled pairs exist. " +
+            "ReFT (Wu et al. 2024; arXiv:2404.03592) is a conceptually attractive alternative because it intervenes on representations rather than weights, which composes naturally with my Stage 2 steering, but it is less standard for protein language models. " +
+            "Each stage's labeled-pair budget is conservatively about 10 times the previous; I will not move from one stage to the next until the data budget supports it."
+        ),
+        para(
+          "On 'eLoRA' specifically. PM asked about this candidate. " +
+            "Codex disambiguation: there is an ELoRA: Equivariant Low-Rank Adaptation for equivariant graph neural networks (Wang et al., ICML 2025; targeted at SO(3)-equivariant interatomic potentials, not autoregressive protein LMs); there is ElaLoRA: Elastic Low-Rank Adaptation (arXiv:2504.00254, 2025; rank pruning and expansion); and some secondary sources call Kopiczko et al.'s VeRA (arXiv:2310.11454, 2023) 'ELoRA' because of the random shared matrices. " +
+            "None of these is the right shape for my Stage 3 problem; I will not list 'eLoRA' as a candidate without a specific arXiv pointer."
         ),
         para(
           "What is NOT being claimed. " +
             "The reward weights have not yet been calibrated against measured TrpB k_cat values; that calibration is a near-term task once production gives me one or two converged free energy surfaces. " +
-            "The small-N steering approach has not been benchmarked on GenSLM specifically. " +
-            "The simplest baseline (just rerank GenSLM's outputs by a generic protein-language-model likelihood) must be measured first; the more elaborate approach earns its compute budget only if it beats that baseline. " +
+            "Stage 2 and Stage 3 have not been benchmarked on GenSLM specifically. " +
+            "The simplest baseline (just rerank GenSLM's outputs by a generic protein-language-model likelihood) must be measured first; every more elaborate stage earns its compute budget only if it beats that baseline. " +
             "Phase 2 also depends on the activity-proxy decision (MMPBSA rank, literature k_cat, or hand-binned classes) called out in the open questions section."
         ),
+        para(
+          "How my plan compares to other recent work in this area:"
+        ),
+        makeTable(
+          ["Work", "Method", "Stage in my plan", "Relation"],
+          [
+            [
+              "Yang et al. NeurIPS 2025 (SGPO; arXiv:2505.15093)",
+              "Classifier-guided posterior sampling on a discrete-diffusion protein LM, benchmarked on TrpB at small N",
+              "Stage 1 (small N) — small-N feasibility precedent",
+              "Closest small-N protein-LM TrpB benchmark; their PLM is discrete-diffusion while GenSLM is autoregressive, so my Stage 1 is the BO-over-PLM-embeddings analogue of SGPO with the same small-N feasibility argument.",
+            ],
+            [
+              "Turner et al. 2023 (activation engineering / addition; arXiv:2308.10248); Zou et al. 2023 (representation engineering; arXiv:2310.01405)",
+              "Add a contrastively-derived steering vector to the residual stream at inference; weights stay frozen",
+              "Stage 2 (medium N)",
+              "The steering target is a contrastive direction trained on (high-reward, low-reward) pairs derived from MetaDynamics-derived reward.",
+            ],
+            [
+              "Meng, Wang and Zhang 2024 (PiSSA; arXiv:2404.02948)",
+              "SVD-initialized LoRA: trains the principal directions of the pretrained weights",
+              "Stage 3 (large N) — preferred adapter",
+              "Best fit for noisy low-N scalar rewards (e.g., MetaD-derived FES summary); chosen over DoRA after Codex consult on adapter robustness at small rank.",
+            ],
+            [
+              "Liu et al. ICML 2024 Oral (DoRA; arXiv:2402.09353)",
+              "Decomposes pretrained weights into magnitude and direction; LoRA only on direction",
+              "Stage 3 (large N) — second choice / ablation",
+              "Strong improvement over the original LoRA (Hu et al. 2021; arXiv:2106.09685) at low rank, but not protein-validated head-to-head against PiSSA on enzyme variant ranking.",
+            ],
+            [
+              "Hayou, Ghosh and Yu 2024 (LoRA+; arXiv:2402.12354)",
+              "Original LoRA with a better learning-rate / scaling rule",
+              "Stage 3 baseline / control",
+              "Cheap, stable and easy to debug at N≈5000; used as the control for the PiSSA / DoRA adapter ablation.",
+            ],
+            [
+              "Stocco et al. 2024 (ProtRL; arXiv:2412.12979)",
+              "wDPO + GRPO reinforcement learning of ZymCTRL family; produced low-nM EGFR binders",
+              "Stage 3 (large N, RL upper bound)",
+              "Recipe for the reinforcement-learning option once the labeled set is materially larger than my 30 to 50.",
+            ],
+            [
+              "ByteDance Seed et al. 2026 (arXiv:2602.02128)",
+              "Causal SE(3)-equivariant diffusion transformer that rolls out microsecond-scale all-atom protein trajectories from a sequence; not coarse-grained",
+              "Orthogonal",
+              "Generates approximate MD trajectories from a sequence; my plan runs ground-truth PLUMED MetaDynamics on a fixed sequence and feeds that MetaDynamics output back into a sequence model. Their generative MD is a complementary scaling lever, not a substitute for the reward source.",
+            ],
+          ]
+        ),
+        new Paragraph({ spacing: { after: 60 } }),
 
         heading("Problems Encountered and How I Solved Them", 1),
 
@@ -419,52 +512,49 @@ const doc = new Document({
 
         heading("Open Questions", 1),
         para(
-          "1. Activity proxy choice. Is the V1 supervised target Yu's MMPBSA rank, experimental k_cat where measured, or hand-binned activity classes? " +
-            "Without an answer, the L2 column is undefined and V1 ships descriptor-only."
+          "1. Activity proxy choice. The reward function in Section 2.4 needs an activity ground truth to anchor against once production reaches a converged FES. " +
+            "Candidate signals: Yu's MMPBSA rank, literature k_cat where measured, or hand-binned activity classes. " +
+            "Without a decision the reward weights cannot be calibrated against measured TrpB activity."
         ),
         para(
-          "2. Wall-clock budget for production. A 24-hour wall budget gives roughly 20 ns per walker. " +
-            "The published convergence gate is 45 ns per walker with the |delta-delta-G_PC-O(50ns) - delta-delta-G_PC-O(40ns)| less than 0.5 kcal/mol plateau test (JACS 2019 SI Fig S4). " +
-            "Do I extend wall to 72 hours, or accept a PROVISIONAL ship at 20 ns per walker for the May 1 deck?"
+          "2. Transition-state data integration. " +
+            "Stage 1 of my Section 2.4 plan reduces the FES to two scalars (transition-state height; closed-state stability). " +
+            "Should the reward also fold in the geometry of the saddle region (curvature at the transition state, or path-CV bottleneck width), or is the two-scalar reduction sufficient? " +
+            "I would like Anima's read on this before committing to the Stage 1 ranking-head training."
         ),
         para(
-          "3. GenSLM column populated or null in V1. Lambert 2026 supplies a 25M-parameter checkpoint with d_model and pooling rule both unstated. " +
-            "I have a one-shot extraction script that pulls hidden_size from any config.json on the GitHub repo. " +
-            "Is V1 narrative shape F0+state-pseudo-labels with GenSLM null, or delay V1 by 3 weeks for full populate?"
+          "3. GenSLM checkpoint introspection. " +
+            "Lambert 2026 supplies a 25M-parameter checkpoint with d_model and pooling rule both unstated. " +
+            "I have a one-shot extraction script that pulls hidden_size from the public config.json on the GitHub repo. " +
+            "If it returns one integer, the dependency clears mechanically; if not, I will escalate to the GenSLM authors."
         ),
         para(
-          "4. Walker 9 monitoring. If walker 9 collapses against UPPER_WALLS in the next 24 hours, the documented fallback is to extend the pilot to 30 ns and re-materialize. " +
-            "Is there a shorter-loop fallback the lab prefers?"
-        ),
-        para(
-          "5. Convergence grading at the May 1 meeting. " +
-            "Production cannot reach 45 ns per walker by May 1. " +
-            "The deck figure will carry convergence_grade=PROVISIONAL per JACS 2019 SI Fig S4 / S5 methodology. " +
-            "Is the lab comfortable shipping at PROVISIONAL with the kill-switch wiring documented, or should I delay the deck until convergence PASSes?"
+          "4. Convergence labeling at the May 1 meeting. " +
+            "Even with a clean 10-walker production, the published convergence gate is 45 ns per walker (JACS 2019 SI Fig S4 plateau test); a 24-hour wall budget falls short of that. " +
+            "Is the lab comfortable shipping a PROVISIONAL convergence label with the diagnostic plot included, or should the deck wait until the plateau test PASSes?"
         ),
 
         heading("Next Week Plan", 1),
         heading("Papers to read", 2),
         para(
-          "Lambert et al. 2026 (GenSLM-25M-TrpB): I have read the methods but want to fully resolve Fig 2A's t-SNE pooling rule before the V1 GenSLM-column decision."
+          "Lambert et al. 2026 (GenSLM-25M-TrpB): I have read the methods but want to fully resolve Fig 2A's pooling rule before the staged-plan feasibility meeting."
         ),
         heading("Tasks", 2),
         para(
-          "1. Monitor production 45784112 to 10 ns per walker (ETA 2026-04-26 morning EDT). " +
-            "Auto-render the SI-comparable production FES via plumed sum_hills on a compute node."
+          "1. Debug the 10-walker production. " +
+            "I have observed LINCS warnings appearing mid-run on a subset of walkers (around 1 to 3 ns into the MetaDynamics phase, distinct from the v2 startup-LINCS signature). " +
+            "Next week's first job is to localize the failure mode (most likely a bias-rate / time-step interaction with water settling in high-bias regions) and decide between a shorter time step, a lower Gaussian height, or a damped early-stage bias schedule."
         ),
         para(
-          "2. Land 3 remaining deck figures: 10-walker explore progress, before/after FP-034 comparison, and ML 4-tier schematic."
+          "2. Think through how to integrate transition-state data into the reward function. " +
+            "The reward I sketched in Section 2.4 reads two scalars off the FES (transition-state height between O and C, and closed-state stability). " +
+            "What I want to explore next week is whether the path-coordinate free-energy profile itself, including the geometry of the saddle region, can be folded into the reward — for example by adding a curvature term at the saddle, or by using the path-CV bottleneck width — without losing the small-N statistical defensibility argument from Stage 1."
         ),
         para(
-          "3. Run the GenSLM hidden_size one-shot extraction script. " +
-            "If it returns a single integer, populate INTERFACE BLOCKED #1 mechanically; if not, escalate to the GenSLM authors."
+          "3. Schedule a short feasibility meeting with Prof. Anandkumar to walk through the staged MetaDynamics-to-GenSLM plan (Stage 1 ranking head; Stage 2 activation steering; Stage 3 PiSSA / DoRA / LoRA+ ablation), the activity-proxy decision, and the transition-state-integration question above."
         ),
         para(
-          "4. Monitor convergence diagnostics: ESS per state, block-bootstrap CI, and the |delta-delta-G(t) - delta-delta-G(t-10)| plateau test from JACS 2019 SI Fig S4."
-        ),
-        para(
-          "5. Group meeting May 1: walk through the deck, surface the 5 PM decisions, get the activity-proxy answer."
+          "4. Continue Lambert et al. 2026 (GenSLM-25M-TrpB) reading; resolve Fig 2A's pooling rule before the feasibility meeting."
         ),
 
         heading("Key Simulation Parameters", 1),
@@ -528,6 +618,32 @@ const doc = new Document({
           "Author-clarified parameters that the SI does not state numerically (HEIGHT=0.15 vs FALLBACK 0.3, KAPPA=800, NEIGH_STRIDE, NEIGH_SIZE, SIGMA_MIN per axis, the upper-wall constants) are documented as 'author-clarified per Miguel email 2026-04-23' in the PLUMED template header."
         ),
 
+        heading("Attached Figures", 1),
+        para(
+          "Figure 1 — reports/figures/before_after_fp034.png. " +
+            "Two-panel side-by-side comparison of the Initial pilot s-vs-time trajectory."
+        ),
+        para(
+          "Source data. Left panel: pre-realignment baseline single-walker pilot COLVAR from before this week's path-builder fix (the legacy run that stayed at s less than 1.9 over 17 ns). " +
+            "Right panel: current 24 ns Initial pilot COLVAR (reports/figures/raw_data/longleaf_initial_seqaligned_COLVAR, frozen Longleaf snapshot 2026-04-25 11:49 EDT, 24.03 ns of MetaDynamics, 12,015 Gaussian deposits)."
+        ),
+        para(
+          "Transformation. From each COLVAR, read columns 1, 2 and 3 (time in ps, s in dimensionless path units, z in Angstroms squared) and plot s vs time in the corresponding panel. " +
+            "Horizontal dashed reference lines at s=2 (O boundary), s=6 (PC), s=10 (C). " +
+            "Per-panel annotation reports the walker's max(s) value."
+        ),
+        para(
+          "Figure 2 — reports/figures/initial_pilot_latest_fes.png. " +
+            "Latest Initial pilot 2D free energy surface at 24 ns, single-walker, in the JACS 2019 SI Fig S2/S3 style."
+        ),
+        para(
+          "Source data. reports/figures/raw_data/fes_initial_seqaligned_sumhills.dat. " +
+            "Produced by running plumed sum_hills --hills longleaf_initial_seqaligned_HILLS --kt 0.695 --mintozero on a compute node, on the same frozen 24.03 ns Longleaf snapshot used in Figure 1."
+        ),
+        para(
+          "Transformation. The .dat file is a regular grid of s, z, ΔG values. I plot it with matplotlib pcolormesh; x-axis is s (path coordinate, dimensionless), y-axis is z RMSD in Angstroms (computed as the square root of the raw MSD column z to give a length-scale axis), color is ΔG in kcal/mol with the colorbar capped at 30. " +
+            "The figure differs from the published Fig S2 because (a) Fig S2 aggregates 10 walkers over 50 ns each (~500 ns total), and (b) my pilot is single-walker at 24 ns of the upstream FALLBACK contract; the overall basin shape and assignments are consistent."
+        ),
         heading("References", 1),
         para(
           "1. Maria-Solano, M. A. et al. Enzyme conformational dynamics in the catalytic cycle of tryptophan synthase. JACS 141, 13049-13056 (2019). DOI: 10.1021/jacs.9b03646. Reference protocol I am replicating."
@@ -545,13 +661,37 @@ const doc = new Document({
           "5. Boehr, D. D. et al. The dynamic energy landscape of dihydrofolate reductase catalysis. Science 313, 1638-1642 (2006). DOI: 10.1126/science.1130258. Direct evidence linking conformational transition rates to catalytic activity."
         ),
         para(
-          "6. Yang, J. et al. Steering generative models with experimental data for protein fitness optimization. NeurIPS 2025. arXiv:2505.15093. Benchmarks plug-and-play steering on TrpB at small N; supports the no-fine-tune Phase 2 plan."
+          "6. Yang, J., Chu, W., Khalil, D., Astudillo, R., Wittmann, B. J., Arnold, F. H. and Yue, Y. Steering Generative Models with Experimental Data for Protein Fitness Optimization. NeurIPS 2025. arXiv:2505.15093. Plug-and-play classifier guidance / posterior sampling on discrete-diffusion protein language models, benchmarked on TrpB and CreiLOV at small N (~hundreds of labels). Supports the small-N feasibility for my Stage 1."
         ),
         para(
-          "7. Stark, P. et al. ProtRL: Guiding generative protein LMs with reinforcement learning. arXiv:2412.12979 (2024). Recipe for RL on protein LMs once the labeled set is large enough."
+          "7. Stocco, F., Artigues-Lleixa, M., Hunklinger, A., Widatalla, T., Guell, M. and Ferruz, N. Guiding Generative Protein Language Models with Reinforcement Learning. arXiv:2412.12979 (2024). Implements wDPO and GRPO RL fine-tuning of protein LMs (ZymCTRL family); produced low-nM EGFR binders. Reference recipe for my Stage 3 RL upper bound."
         ),
         para(
           "8. Lambert, S. M. et al. Generative protein language modeling for tryptophan synthase variants. arXiv (2026). Supplies the 25M GenSLM checkpoint that Phase 2 targets."
+        ),
+        para(
+          "9. ByteDance Seed and collaborators. Scalable Spatio-Temporal SE(3) Diffusion for Long-Horizon Protein Dynamics. arXiv:2602.02128 (Feb 2026). Causal SE(3)-equivariant diffusion transformer that rolls out microsecond-scale all-atom protein trajectories from a sequence. Discussed in Section 2.4 as orthogonal: their direction is sequence to MD trajectory; mine is MD trajectory to sequence-scoring reward."
+        ),
+        para(
+          "10. Turner, A. M., Thiergart, G., Leech, G., Udell, D., Vazquez, J. J., Mini, U. and MacDiarmid, M. Steering Language Models With Activation Engineering. arXiv:2308.10248 (Aug 2023; v4 retitled Activation Addition: Steering Language Models Without Optimization). Adds a contrastively-derived steering vector to the residual stream at inference; weights stay frozen. Reference recipe for my Stage 2."
+        ),
+        para(
+          "11. Zou, A., Phan, L., Chen, S. et al. Representation Engineering: A Top-Down Approach to AI Transparency. arXiv:2310.01405 (Oct 2023). Identifies and manipulates population-level internal representations to steer high-level concepts in language models. Companion reference for my Stage 2."
+        ),
+        para(
+          "12. Liu, S.-Y., Wang, C.-Y., Yin, H., Molchanov, P., Wang, Y.-C. F., Cheng, K.-T. and Chen, M.-H. DoRA: Weight-Decomposed Low-Rank Adaptation. ICML 2024 Oral. arXiv:2402.09353. Decomposes pretrained weights into magnitude and direction; LoRA only on direction. Preferred adapter for my Stage 3 weight-level adjustment."
+        ),
+        para(
+          "13. Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L. and Chen, W. LoRA: Low-Rank Adaptation of Large Language Models. arXiv:2106.09685 (June 2021); ICLR 2022. The original low-rank adapter recipe that PiSSA, DoRA, and LoRA+ refine."
+        ),
+        para(
+          "14. Meng, F., Wang, Z. and Zhang, M. PiSSA: Principal Singular Values and Singular Vectors Adaptation of Large Language Models. arXiv:2404.02948 (2024). Initializes the LoRA matrices from the SVD of the pretrained weights so the adapter trains principal directions instead of random/zero updates. Preferred Stage 3 adapter for my plan."
+        ),
+        para(
+          "15. Hayou, S., Ghosh, N. and Yu, B. LoRA+: Efficient Low Rank Adaptation of Large Models. arXiv:2402.12354 (2024). Provides a corrected learning-rate / scaling rule for the original LoRA decomposition; used as the safe baseline alongside the original LoRA."
+        ),
+        para(
+          "16. Wu, Z., Arora, A., Wang, Z. et al. ReFT: Representation Finetuning for Language Models. arXiv:2404.03592 (2024). Discussed in Section 2.4 as a representation-level alternative that composes naturally with my Stage 2 activation steering."
         ),
       ],
     },
