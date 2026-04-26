@@ -692,52 +692,52 @@ const doc = new Document({
         ),
         heading("References", 1),
         para(
-          "1. Maria-Solano, M. A. et al. Enzyme conformational dynamics in the catalytic cycle of tryptophan synthase. JACS 141, 13049-13056 (2019). DOI: 10.1021/jacs.9b03646. Reference protocol I am replicating."
+          '1. Maria-Solano et al. "Enzyme conformational dynamics in the catalytic cycle of tryptophan synthase." The Osuna paper I am replicating.'
         ),
         para(
-          "2. Branduardi, D., Gervasio, F. L. and Parrinello, M. From A to B in free energy space. J. Chem. Phys. 126, 054103 (2007). DOI: 10.1063/1.2432340. Defines the path-CV LAMBDA = 2.3 / mean adjacent MSD."
+          '2. Branduardi, Gervasio and Parrinello. "From A to B in free energy space." Defines the path-CV λ formula used on the realigned path.'
         ),
         para(
-          "3. Tribello, G. A. et al. PLUMED 2: New feathers for an old bird. Comput. Phys. Commun. 185, 604-613 (2014). DOI: 10.1016/j.cpc.2013.09.018. The PLUMED engine I use for the bias."
+          '3. Tribello et al. "PLUMED 2: New feathers for an old bird." The PLUMED engine I run the bias on.'
         ),
         para(
-          "4. Henzler-Wildman, K. and Kern, D. Dynamic personalities of proteins. Nature 450, 964-972 (2007). DOI: 10.1038/nature06522. Establishes that enzyme function is governed by inter-state transition rates, not single-state occupancy."
+          '4. Henzler-Wildman and Kern. "Dynamic personalities of proteins." Background for why inter-state transition rates govern enzyme function.'
         ),
         para(
-          "5. Boehr, D. D. et al. The dynamic energy landscape of dihydrofolate reductase catalysis. Science 313, 1638-1642 (2006). DOI: 10.1126/science.1130258. Direct evidence linking conformational transition rates to catalytic activity."
+          '5. Boehr et al. "The dynamic energy landscape of dihydrofolate reductase catalysis." Direct experimental link between conformational transition rates and catalytic activity.'
         ),
         para(
-          "6. Yang, J., Chu, W., Khalil, D., Astudillo, R., Wittmann, B. J., Arnold, F. H. and Yue, Y. Steering Generative Models with Experimental Data for Protein Fitness Optimization. NeurIPS 2025. arXiv:2505.15093. Plug-and-play classifier guidance / posterior sampling on discrete-diffusion protein language models, benchmarked on TrpB and CreiLOV at small N (~hundreds of labels). Supports the small-N feasibility for my Stage 1."
+          '6. Yang et al. "Steering Generative Models with Experimental Data for Protein Fitness Optimization." Closest small-N protein-LM TrpB benchmark; basis for Stage 1 small-N feasibility.'
         ),
         para(
-          "7. Stocco, F., Artigues-Lleixa, M., Hunklinger, A., Widatalla, T., Guell, M. and Ferruz, N. Guiding Generative Protein Language Models with Reinforcement Learning. arXiv:2412.12979 (2024). Implements wDPO and GRPO RL fine-tuning of protein LMs (ZymCTRL family); produced low-nM EGFR binders. Reference recipe for my Stage 3 RL upper bound."
+          '7. Stocco et al. "Guiding Generative Protein Language Models with Reinforcement Learning." RL fine-tuning recipe for protein LMs; reference for my Stage 3 RL upper bound.'
         ),
         para(
-          "8. Lambert, S. M. et al. Generative protein language modeling for tryptophan synthase variants. arXiv (2026). Supplies the 25M GenSLM checkpoint that Phase 2 targets."
+          '8. Lambert et al. "Generative protein language modeling for tryptophan synthase variants." Supplies the GenSLM-25M checkpoint that Phase 2 targets.'
         ),
         para(
-          "9. ByteDance Seed and collaborators. Scalable Spatio-Temporal SE(3) Diffusion for Long-Horizon Protein Dynamics. arXiv:2602.02128 (Feb 2026). Causal SE(3)-equivariant diffusion transformer that rolls out microsecond-scale all-atom protein trajectories from a sequence. Discussed in Section 2.4 as orthogonal: their direction is sequence to MD trajectory; mine is MD trajectory to sequence-scoring reward."
+          '9. ByteDance Seed et al. "Scalable Spatio-Temporal SE(3) Diffusion for Long-Horizon Protein Dynamics." Generative MD direction; discussed as orthogonal in Section 2.4.'
         ),
         para(
-          "10. Turner, A. M., Thiergart, G., Leech, G., Udell, D., Vazquez, J. J., Mini, U. and MacDiarmid, M. Steering Language Models With Activation Engineering. arXiv:2308.10248 (Aug 2023; v4 retitled Activation Addition: Steering Language Models Without Optimization). Adds a contrastively-derived steering vector to the residual stream at inference; weights stay frozen. Reference recipe for my Stage 2."
+          '10. Turner et al. "Steering Language Models With Activation Engineering" (later retitled "Activation Addition: Steering Language Models Without Optimization"). Reference for my Stage 2.'
         ),
         para(
-          "11. Zou, A., Phan, L., Chen, S. et al. Representation Engineering: A Top-Down Approach to AI Transparency. arXiv:2310.01405 (Oct 2023). Identifies and manipulates population-level internal representations to steer high-level concepts in language models. Companion reference for my Stage 2."
+          '11. Zou et al. "Representation Engineering: A Top-Down Approach to AI Transparency." Companion reference for Stage 2.'
         ),
         para(
-          "12. Liu, S.-Y., Wang, C.-Y., Yin, H., Molchanov, P., Wang, Y.-C. F., Cheng, K.-T. and Chen, M.-H. DoRA: Weight-Decomposed Low-Rank Adaptation. ICML 2024 Oral. arXiv:2402.09353. Decomposes pretrained weights into magnitude and direction; LoRA only on direction. Preferred adapter for my Stage 3 weight-level adjustment."
+          '12. Liu et al. "DoRA: Weight-Decomposed Low-Rank Adaptation." Second-choice Stage 3 adapter.'
         ),
         para(
-          "13. Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L. and Chen, W. LoRA: Low-Rank Adaptation of Large Language Models. arXiv:2106.09685 (June 2021); ICLR 2022. The original low-rank adapter recipe that PiSSA, DoRA, and LoRA+ refine."
+          '13. Hu et al. "LoRA: Low-Rank Adaptation of Large Language Models." The original LoRA decomposition.'
         ),
         para(
-          "14. Meng, F., Wang, Z. and Zhang, M. PiSSA: Principal Singular Values and Singular Vectors Adaptation of Large Language Models. arXiv:2404.02948 (2024). Initializes the LoRA matrices from the SVD of the pretrained weights so the adapter trains principal directions instead of random/zero updates. Preferred Stage 3 adapter for my plan."
+          '14. Meng, Wang and Zhang. "PiSSA: Principal Singular Values and Singular Vectors Adaptation of Large Language Models." Preferred Stage 3 adapter.'
         ),
         para(
-          "15. Hayou, S., Ghosh, N. and Yu, B. LoRA+: Efficient Low Rank Adaptation of Large Models. arXiv:2402.12354 (2024). Provides a corrected learning-rate / scaling rule for the original LoRA decomposition; used as the safe baseline alongside the original LoRA."
+          '15. Hayou, Ghosh and Yu. "LoRA+: Efficient Low Rank Adaptation of Large Models." Safe Stage 3 baseline.'
         ),
         para(
-          "16. Wu, Z., Arora, A., Wang, Z. et al. ReFT: Representation Finetuning for Language Models. arXiv:2404.03592 (2024). Discussed in Section 2.4 as a representation-level alternative that composes naturally with my Stage 2 activation steering."
+          '16. Wu et al. "ReFT: Representation Finetuning for Language Models." Representation-level alternative considered for Stage 2.'
         ),
       ],
     },
