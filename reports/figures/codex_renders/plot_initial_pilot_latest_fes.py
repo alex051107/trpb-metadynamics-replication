@@ -18,7 +18,8 @@ FES = ROOT / "raw_data" / "fes_initial_seqaligned_sumhills.dat"
 OUT_PNG = ROOT / "initial_pilot_latest_fes.png"
 OUT_PDF = ROOT / "initial_pilot_latest_fes.pdf"
 
-FES_MAX = 14.0
+FES_MAX = 12.0
+MASK_ABOVE = 12.0
 
 
 def read_surface(path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -92,31 +93,33 @@ def main() -> None:
     ax = fig.add_subplot(gs[0, 0])
     cax = fig.add_subplot(gs[0, 1])
 
-    cmap = plt.get_cmap("jet")
-    levels = np.linspace(0.0, FES_MAX, 29)
+    cmap = plt.get_cmap("jet").copy()
+    cmap.set_bad((0.96, 0.96, 0.96, 1.0))
+    shown = np.ma.masked_where(free > MASK_ABOVE, free)
+    levels = np.linspace(0.0, FES_MAX, 25)
     cf = ax.contourf(
         s_grid,
         z_grid,
-        free,
+        shown,
         levels=levels,
         cmap=cmap,
-        extend="max",
+        extend="neither",
     )
     ax.contour(
         s_grid,
         z_grid,
-        free,
+        shown,
         levels=np.arange(1.0, FES_MAX, 1.0),
         colors="0.18",
         linewidths=0.26,
         alpha=0.58,
     )
-    ax.set_facecolor(cmap(0.99))
+    ax.set_facecolor((0.96, 0.96, 0.96))
 
-    ax.set_xlim(1.0, 15.0)
-    ax.set_ylim(0.0, 2.5)
-    ax.set_xticks([1, 3, 5, 7, 9, 11, 13, 15])
-    ax.set_yticks([0.5, 1.0, 1.5, 2.0, 2.5])
+    ax.set_xlim(1.0, 13.0)
+    ax.set_ylim(0.3, 1.8)
+    ax.set_xticks([1, 3, 5, 7, 9, 11, 13])
+    ax.set_yticks([0.4, 0.8, 1.2, 1.6])
     ax.set_xlabel("Open-to-Closed Path", fontstyle="italic")
     ax.set_ylabel("RMSD Deviation (Å)", fontstyle="italic")
     ax.set_title("Initial pilot 24 ns free energy surface", pad=5)
