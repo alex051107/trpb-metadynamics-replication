@@ -681,7 +681,7 @@ const doc = new Document({
           "Figure 2 — reports/figures/initial_pilot_latest_fes.png. " +
             "Latest Initial pilot 2D free energy surface at 24 ns, single-walker, in the JACS 2019 SI Fig S2/S3 style."
         ),
-        imageParagraph("../figures/initial_pilot_latest_fes.png", 600, 352),
+        imageParagraph("../figures/initial_pilot_latest_fes.png", 600, 274),
         para(
           "Source data. reports/figures/raw_data/fes_initial_seqaligned_sumhills.dat. " +
             "Produced by running plumed sum_hills --hills longleaf_initial_seqaligned_HILLS --kt 0.695 --mintozero on a compute node, on the same frozen 24.03 ns Longleaf snapshot used in Figure 1."
