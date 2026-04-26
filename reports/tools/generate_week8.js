@@ -186,7 +186,7 @@ const doc = new Document({
         para(
           "Phase 2: Apply MetaDynamics output to score / fine-tune GenSLM"
         ),
-        para("Phase 3: Build reward function for design loop (V2)"),
+        para("Phase 3: Closed-loop generation with MetaDynamics reward"),
 
         heading("Summary", 1),
         para(
@@ -219,19 +219,19 @@ const doc = new Document({
           [
             [
               "1",
-              "Diagnosed v1 10-walker scancel: homogeneous-start failure (FP-030)",
+              "Diagnosed first 10-walker scancel: all walkers used the same starting frame and stayed at the open conformation",
               "Debug",
               "Done",
             ],
             [
               "2",
-              "Diagnosed v2 10-walker exit-139: LINCS atoms 4463 to 4465 plus missing velocity initialization",
+              "Diagnosed second 10-walker exit-139: LINCS bond-stress at startup because the MDP initialized velocities and turned PLUMED on at the same step",
               "Debug",
               "Done",
             ],
             [
               "3",
-              "Designed v3 3-stage flow: EM 1000 steps, then NVT 100 ps PLUMED-off, then MetaD with continuation=yes",
+              "Designed the current 3-stage walker startup: EM 1000 steps, then NVT 100 ps with PLUMED off, then MetaDynamics with continuation=yes",
               "Setup",
               "Done",
             ],
@@ -351,10 +351,10 @@ const doc = new Document({
             "I logged the case as FP-034 with the rule that any future path-builder script must assert sequence identity above 50 percent before writing the path file."
         ),
 
-        heading("2. v3 walker startup is split into three stages", 2),
+        heading("2. Walker startup needs three stages, not one", 2),
         para(
-          "v2 crashed inside 12 minutes because the walker MDP initialized velocities (gen_vel=yes) and turned PLUMED biasing on at the same step; the bonds had not yet thermalized at 350 K when the bias started pushing, LINCS could not satisfy the constraints, and the integrator exited with code 139. " +
-            "v3 separates the two events: energy minimization with PLUMED off, then 100 ps NVT with PLUMED still off and gen_vel=yes (this is where velocities are actually initialized), then MetaDynamics with continuation=yes so the velocities and box are inherited from nvt.cpt and PLUMED only turns on at this final stage."
+          "The earlier 10-walker attempt crashed inside 12 minutes because the walker MDP initialized velocities (gen_vel=yes) and turned PLUMED biasing on at the same step; the bonds had not yet thermalized at 350 K when the bias started pushing, LINCS could not satisfy the constraints, and the integrator exited with code 139. " +
+            "The fix separates the two events into three sequential runs: energy minimization with PLUMED off, then 100 ps NVT with PLUMED still off and gen_vel=yes (this is where velocities are actually initialized), then MetaDynamics with continuation=yes so the velocities and box are inherited from nvt.cpt and PLUMED only turns on at this final stage."
         ),
         para(
           "The smoke test (SLURM 45783311, 30-minute sanity run on all 10 walkers) passed cleanly: zero LINCS warnings, zero exit-139s, HILLS deposited at the expected 1 hill per 2 ps. The production array launched immediately afterward."
@@ -499,8 +499,8 @@ const doc = new Document({
 
         heading("Problems Encountered and How I Solved Them", 1),
 
-        heading("Problem 1: v2 10-walker LINCS exit code 139", 2),
-        para("What happened: All 10 walkers in production v2 crashed within 12 minutes. The Slurm logs all reported LINCS WARNING on atoms 4463 through 4465 followed by Fatal error and exit code 139.", { italic: true }),
+        heading("Problem 1: the earlier 10-walker run crashed with LINCS exit 139", 2),
+        para("What happened: in the earlier production attempt, all 10 walkers crashed within 12 minutes. The Slurm logs reported LINCS WARNING on a small set of bonded atoms followed by Fatal error and exit code 139.", { italic: true }),
         para("Root cause: The walker MDP had continuation=no plus gen_vel=yes plus PLUMED bias on. Velocities were being initialized at 350 K at the same step that the path-CV bias started pushing on the system. The bond-stressed coordinates could not satisfy LINCS constraints.", { italic: true }),
         para("How I fixed it: I split the walker startup into three stages: EM with PLUMED off, NVT with PLUMED off and gen_vel=yes, then MetaDynamics with continuation=yes that reads nvt.cpt and inherits velocities. PLUMED turns on only after the system is fully thermalized.", { italic: true }),
         para("Lesson: Never bias an un-thermalized system. PLUMED on plus gen_vel=yes in the same MDP is a footgun.", { italic: true }),
@@ -586,7 +586,7 @@ const doc = new Document({
         heading("Tasks", 2),
         para(
           "1. Debug the 10-walker production. " +
-            "I have observed LINCS warnings appearing mid-run on a subset of walkers (around 1 to 3 ns into the MetaDynamics phase, distinct from the v2 startup-LINCS signature). " +
+            "I have observed LINCS warnings appearing mid-run on a subset of walkers (around 1 to 3 ns into the MetaDynamics phase, distinct from the earlier startup-LINCS signature). " +
             "Next week's first job is to localize the failure mode (most likely a bias-rate / time-step interaction with water settling in high-bias regions) and decide between a shorter time step, a lower Gaussian height, or a damped early-stage bias schedule."
         ),
         para(
