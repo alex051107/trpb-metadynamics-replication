@@ -16,7 +16,21 @@ const {
   HeadingLevel,
   convertInchesToTwip,
   TableLayoutType,
+  ImageRun,
 } = docx;
+
+function imageParagraph(relPath, widthPx, heightPx) {
+  return new Paragraph({
+    spacing: { before: 120, after: 120 },
+    alignment: AlignmentType.CENTER,
+    children: [
+      new ImageRun({
+        data: fs.readFileSync(path.resolve(__dirname, relPath)),
+        transformation: { width: widthPx, height: heightPx },
+      }),
+    ],
+  });
+}
 
 // helpers
 const FONT = "Arial";
@@ -327,6 +341,11 @@ const doc = new Document({
             "The bug was silent for three weeks because the path file syntax was valid and PLUMED accepted it without complaint."
         ),
         para(
+          "While re-validating the path setup I also re-confirmed that the path-CV uses ADAPTIVE=DIFF (the differential sigma scheme that adapts based on local differences between adjacent path frames), not GEOM as I had earlier mis-read from the SI. " +
+            "The DIFF reading is the one that comes back consistently from a clean SI re-read and from the author email. " +
+            "I propagated the correction across the parameter-provenance docs (PARAMETER_PROVENANCE.md, JACS2019_MetaDynamics_Parameters.md) so the GEOM mis-read does not resurface in tutorials."
+        ),
+        para(
           "The only downstream symptom was that the single-walker pilot stayed trapped at s less than 1.9 over 16 ns. " +
             "After the realignment the same pilot now reaches s=14.05 at 24 ns and explores the full open-to-closed path. " +
             "I logged the case as FP-034 with the rule that any future path-builder script must assert sequence identity above 50 percent before writing the path file."
@@ -623,6 +642,7 @@ const doc = new Document({
           "Figure 1 — reports/figures/before_after_fp034.png. " +
             "Two-panel side-by-side comparison of the Initial pilot s-vs-time trajectory."
         ),
+        imageParagraph("../figures/before_after_fp034.png", 600, 279),
         para(
           "Source data. Left panel: pre-realignment baseline single-walker pilot COLVAR from before this week's path-builder fix (the legacy run that stayed at s less than 1.9 over 17 ns). " +
             "Right panel: current 24 ns Initial pilot COLVAR (reports/figures/raw_data/longleaf_initial_seqaligned_COLVAR, frozen Longleaf snapshot 2026-04-25 11:49 EDT, 24.03 ns of MetaDynamics, 12,015 Gaussian deposits)."
@@ -636,6 +656,7 @@ const doc = new Document({
           "Figure 2 — reports/figures/initial_pilot_latest_fes.png. " +
             "Latest Initial pilot 2D free energy surface at 24 ns, single-walker, in the JACS 2019 SI Fig S2/S3 style."
         ),
+        imageParagraph("../figures/initial_pilot_latest_fes.png", 600, 382),
         para(
           "Source data. reports/figures/raw_data/fes_initial_seqaligned_sumhills.dat. " +
             "Produced by running plumed sum_hills --hills longleaf_initial_seqaligned_HILLS --kt 0.695 --mintozero on a compute node, on the same frozen 24.03 ns Longleaf snapshot used in Figure 1."
