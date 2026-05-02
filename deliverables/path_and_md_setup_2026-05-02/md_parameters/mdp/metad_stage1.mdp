@@ -1,0 +1,51 @@
+; Tier 1.5 metad ramp stage 1
+; SI-deviation lineage:
+;   SI-literal unchanged: dt=0.002 ps, ref_t=350 K, h-bonds constraints, LINCS order 4,
+;                         ff14SB/TIP3P/topology/start structures/path geometry.
+;   Tier 1 retained:      lincs_iter=2, no timestep change, continuation semantics.
+;   Tier 1.5 change:      nsteps=1000000 gives 2.0 ns for this stage.
+; Numeric check:          nsteps * dt = 1000000 * 0.002 ps = 2000 ps = 2.0 ns.
+
+; Metadynamics stage:
+;   PLUMED on through the submit script.
+;   gen_vel=no; velocities and constraint history come from previous checkpoint.
+
+integrator              = md
+dt                      = 0.002
+nsteps                  = 1000000
+
+nstlog                  = 1000
+nstcalcenergy           = 1000
+nstenergy               = 1000
+nstxout                 = 0
+nstvout                 = 0
+nstfout                 = 0
+nstxout-compressed      = 5000
+compressed-x-grps       = System
+
+cutoff-scheme           = Verlet
+nstlist                 = 20
+rlist                   = 0.8
+
+coulombtype             = PME
+rcoulomb                = 0.8
+vdwtype                 = Cut-off
+rvdw                    = 0.8
+pme-order               = 4
+fourier-spacing         = 0.12
+
+pbc                     = xyz
+DispCorr                = no
+
+constraints             = h-bonds
+constraint-algorithm    = lincs
+lincs_iter              = 2
+lincs_order             = 4
+
+tcoupl                  = v-rescale
+tc-grps                 = System
+tau_t                   = 0.1
+ref_t                   = 350
+pcoupl                  = no
+continuation            = yes
+gen_vel                 = no

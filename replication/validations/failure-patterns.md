@@ -496,3 +496,33 @@
 | 防范措施 | (1) 任何跨物种 / 跨构建体的 PATHMSD 参考路径，**必须**先做序列比对（Needleman-Wunsch / BLAST / structural alignment）并得到 explicit residue-to-residue mapping，再据此提取 Cα 坐标。(2) `generate_path_cv.py` 的 sequence alignment 代码既然存在就必须 **wire up 到坐标提取**；只打印对齐结果不使用是 false comfort。(3) 所有 PDB 加载后第一步做 sanity check：相同 resid 在两个结构里的 AA identity > 50% 才能按 resid-number 对齐，否则必须走 NW mapping。(4) FP-024 style "UNVERIFIED" 标注应扩展覆盖"跨 PDB residue mapping convention"这一类。 |
 | 已修复 | ✅ 2026-04-23 新增 `replication/metadynamics/path_seqaligned/`：`build_seqaligned_path.py`（Claude）+ `verify_and_materialize_seqaligned_path.py`（Codex 独立实现）+ production `path_seqaligned_gromacs.pdb`（GROMACS system atom serial 保留）+ `VERIFICATION_REPORT.md`。Longleaf 作业 `45515869`（sequence-aligned pilot，LAMBDA=80 full Miguel contract）提交 11 min 后即已 max_s=8.94 @ t=110 ps，对比 old path 7.7 ns 只到 max_s=1.75 —— 500× 速度差，bug fix 定性确认。`generate_path_cv.py` 本身尚未重构，留待后续 PR 彻底修复或废弃该脚本。 |
 
+---
+
+## FP-036: `set -euo pipefail` 撞 conda env 的 GMXRC 自动 sourcing → 提交后 2 秒 exit 1
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-05-02 |
+| 发现者 | Claude (Tier 1.5 3-walker 提交后 sacct 看到 47341215 全 array 2 秒 FAILED) |
+| 受影响文件 | `/work/users/l/i/liualex/AnimaLab/metadynamics/miguel_2026-04-23/seqaligned_walkers_tier1p5/{submit_array_3walker.sh, submit_array_10walker.sh}`（Codex Tier 1.5 实现）|
+| 错误描述 | 提交脚本顶部 `set -euo pipefail` 后 `module load anaconda/2024.02; eval "$(conda shell.bash hook)"; conda activate trpb-md`。`trpb-md` env 在 activate 时自动 source `bin.AVX2_256/GMXRC`，而 GMXRC line 10 引用 `$shell`（用于 dispatch 到 `.bash`/`.csh`/`.zsh`），GMXRC.bash line 44 引用 `$GMXLDLIB`，两者均无 default。strict mode 下 unbound variable 立即触发 exit 1，gmx 还没机会执行。slurm log: `GMXRC: line 10: shell: unbound variable` + `GMXRC.bash: line 44: GMXLDLIB: unbound variable`。Job 47341215_{0,1,2} 全部 elapsed=00:00:02 ExitCode=1:0。 |
+| 正确事实 | conda 的 GROMACS package 在 activate-hook 中自动 source GMXRC，是为了把 `bin.AVX2_256` 加到 PATH + 设置 `$GMXLDLIB` 等。GMXRC 脚本本身不是 strict-mode-safe（依赖大量可选环境变量）。对 slurm 提交脚本的正确做法是在 `conda activate` 前后临时关闭 `-u`：`set +u; eval "$(conda shell.bash hook)"; conda activate trpb-md; set -u`。activate 完成后再恢复 strict mode，后续 `gmx`/`mdrun` 调用都正常。 |
+| 根因 | (1) Codex 在写 submit 模板时 default 加了 `set -euo pipefail`（合理的防御性编程默认值）但没意识到 conda env 的 activate hook 会执行 GMXRC（`-u` 不安全的第三方脚本）。(2) Code-review 阶段 superpowers:code-reviewer agent 关注的是 walltime / HILLS_DIR 这类逻辑正确性，**没有静态检查 strict mode 下的环境激活兼容性**——这是一类只在实际 srun 起来时才会暴露的运行时陷阱。(3) 历史上 v1 / Tier 1 用的旧 submit 模板没有 `set -u`（FP-022 时代写的更宽松脚本）所以从来没有撞过这个坑。 |
+| 防范措施 | (1) 任何包含 `conda activate` 的 slurm 提交脚本，**必须**用 `set +u; conda activate ENV; set -u` 包裹激活语句（`-e -o pipefail` 可以保留，只关 `-u`）。(2) 提交前 smoke test：`ssh longleaf "bash -c 'set -euo pipefail; module load anaconda/2024.02; set +u; eval \\\"\\\$(conda shell.bash hook)\\\"; conda activate trpb-md; set -u; which gmx; gmx mdrun -h \| grep plumed'"` 必须输出 binary 路径 + `-plumed` 标志，不输出就是激活失败，不要 sbatch。(3) Code-reviewer agent 应增加一条检查项：grep `conda activate` 周围 5 行内是否出现 `set +u`/`set -u` 配对，没有就 flag 为 ORANGE。 |
+| 已修复 | ✅ 2026-05-02 Claude 在两个 submit 脚本第 17-20 行插入 `set +u`/`set -u` 包裹；smoke-test 通过；resubmit 47344453 (3-walker) PENDING 中。Tier 1.5 launch log 在 `deliverables/week8_2026-05-01/fp035_bug_investigation/2026-04-30_consolidated/06_decision/F_tier1p5_3walker_launch_log.md` 同步记录。 |
+
+---
+
+## FP-037: 链式 MetaD 第一阶段的 plumed.dat 不能写 `RESTART` —— PLUMED 试图读不存在的 HILLS.<id>
+
+| 字段 | 内容 |
+|------|------|
+| 首次发现 | 2026-05-02 |
+| 发现者 | Claude (Tier 1.5 3-walker job 47344453 在 NVT 1 ns 完成后转 metad_stage1 时 metad_stage1.log 仅 18 KB 即 FAIL；slurm log 给出 PLUMED `ERROR in input to action METAD with label @4 : restart file ../HILLS_DIR_tier1p5/HILLS.0 not found`) |
+| 受影响文件 | `walker_NN/plumed_stage1.dat`（10 个 walker 全部）+ submit_array_3walker.sh 的 materialize_plumed 派生 `plumed_stage1_3w_active.dat`。Codex Tier 1.5 实现里 stage1-stage5 + prod 6 个 plumed.dat 都在第 1 行写了 `RESTART`。 |
+| 错误描述 | Codex 的 Tier 1.5 ramp 设计：5 个 chained MetaD 阶段，HEIGHT 从 0.03 → 0.15 kcal/mol 渐升。每个阶段 2 ns，通过 `gmx mdrun -t prev_stage.cpt -deffnm next_stage` 接续。Codex 的注释说："`RESTART` is present so chained 2 ns stages append HILLS/COLVAR." —— 思路对，但**第一阶段没有 prev HILLS 可以 append**。PLUMED 2.9.2 在 METAD action 里看到 `RESTART` 关键字（无论是 line-1 全局 RESTART 还是 METAD 里的局部 RESTART）后，会**主动尝试打开 `WALKERS_DIR/HILLS.<WALKERS_ID>` 读取既有 hills**，文件不存在就直接 `error()`，而不是把它当作 "fresh start" 处理。结果：47344453 全部 3 walker 在 NVT 完成后 metad_stage1 启动瞬间 FAIL，elapsed 1:06:49 / ExitCode 1:0。 |
+| 正确事实 | 链式 MetaD 的正确 RESTART 节奏：**stage1 不写 RESTART**（fresh deposition，HILLS.0 在该阶段被创建）；**stage2-5 + prod 都要 RESTART**（PLUMED 看到 RESTART 后 append 而非 overwrite，HILLS 文件累积单调增长）。GROMACS 的 `-cpi` / `-t .cpt` 与 PLUMED RESTART 是**完全独立**的两条 continuity 通道：GROMACS 通过 cpt 续接位置/速度，PLUMED 通过 RESTART 续接 hill stack。设计 chained ramp 时必须分清。 |
+| 根因 | (1) Codex 在 README 注释里写了一个 over-generalized 解释（"so chained 2 ns stages append"）但没区分链头和链中。(2) Code-review agent 拿到 6 个 plumed.dat 时没验证 stage1 是否需要 RESTART，只检查了 walltime / HILLS_DIR 这类提交脚本层面的逻辑。(3) PLUMED 2.9.2 的错误消息说"restart file not found"对新手来说指向 HILLS_DIR 权限/路径问题，不指向"你不该写 RESTART"——错误消息本身有 misleading 成分。 |
+| 防范措施 | (1) 任何 chained / staged MetaD 设计，**第一段 plumed.dat 必须没有 RESTART**。code-review 检查项必须显式包含 "first plumed in chain 不能有 RESTART"。(2) 在提交脚本里加 runtime 自检：`head -1 plumed_stage1.dat \| grep -q '^RESTART$' && exit 22`；这是 zero-cost 防御，且日志里能看到失败原因。(3) Codex 的 plumed.dat 注释要从 "RESTART is present so..." 改成 explicit 区分："stage1: 不写 RESTART (fresh hills)；stage2-5+prod: 写 RESTART (append to stage1 hills)"。(4) 所有 chained-restart 设计在 code-review 里强制画一个 "WHO writes hills first / WHO appends" 表，不画就是 ORANGE。 |
+| 已修复 | ✅ 2026-05-02 Claude 在 10 个 walker 的 `plumed_stage1.dat` 第 1 行删除 `RESTART`（保留 stages 2-5 + prod 的 RESTART）；新写 `submit_array_3walker_resume.sh` 复用已存在的 `nvt.gro/nvt.cpt`（avoid 重跑 NVT 1 ns 节省 1.5 hr），加 runtime guard 检查 `head -1 plumed_stage1.dat ≠ RESTART`；resume job 47349227 PENDING 中。Code-review GREEN。 |
+

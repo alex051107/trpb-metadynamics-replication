@@ -1,0 +1,251 @@
+-I: Adding /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/prep to search path.
+-I: Adding /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/lib to search path.
+-I: Adding /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/parm to search path.
+-I: Adding /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/cmd to search path.
+-f: Source /work/users/l/i/liualex/AnimaLab/replication/scripts/tleap_pftrps_ain.in.
+
+Welcome to LEaP!
+(no leaprc in search path)
+Sourcing: /work/users/l/i/liualex/AnimaLab/replication/scripts/tleap_pftrps_ain.in
+----- Source: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/cmd/leaprc.protein.ff14SB
+----- Source of /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/cmd/leaprc.protein.ff14SB done
+Log file: ./leap.log
+Loading parameters: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/parm/parm10.dat
+Reading title:
+PARM99 + frcmod.ff99SB + frcmod.parmbsc0 + OL3 for RNA
+Loading parameters: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/parm/frcmod.ff14SB
+Reading force field modification type file (frcmod)
+Reading title:
+ff14SB protein backbone and sidechain parameters
+Loading library: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/lib/amino12.lib
+Loading library: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/lib/aminoct12.lib
+Loading library: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/lib/aminont12.lib
+----- Source: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/cmd/leaprc.gaff
+----- Source of /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/cmd/leaprc.gaff done
+Log file: ./leap.log
+Loading parameters: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/parm/gaff.dat
+Reading title:
+AMBER General Force Field for organic molecules (Version 1.81, May 2017)
+----- Source: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/cmd/leaprc.water.tip3p
+----- Source of /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/cmd/leaprc.water.tip3p done
+Loading library: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/lib/atomic_ions.lib
+Loading library: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/lib/solvents.lib
+Loading parameters: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/parm/frcmod.tip3p
+Reading force field modification type file (frcmod)
+Reading title:
+This is the additional/replacement parameter set for TIP3P water
+Loading parameters: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/parm/frcmod.ions1lm_126_tip3p
+Reading force field modification type file (frcmod)
+Reading title:
+Li/Merz ion parameters of monovalent ions for TIP3P water model (12-6 normal usage set)
+Loading parameters: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/parm/frcmod.ionsjc_tip3p
+Reading force field modification type file (frcmod)
+Reading title:
+Monovalent ion parameters for Ewald and TIP3P water from Joung & Cheatham JPCB (2008)
+Loading parameters: /nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/dat/leap/parm/frcmod.ions234lm_126_tip3p
+Reading force field modification type file (frcmod)
+Reading title:
+Li/Merz ion parameters of divalent to tetravalent ions for TIP3P water model (12-6 normal usage set)
+Loading Mol2 file: ../parameters/mol2/Ain_gaff.mol2
+Reading MOLECULE named AIN
+Building topology.
+Building atom parameters.
+Loading parameters: ../parameters/frcmod/Ain.frcmod
+Reading force field modification type file (frcmod)
+Reading title:
+Remark line goes here
+Loading library: ../systems/pftrps_ain/Ain_gaff.lib
+Loading PDB file: ../systems/pftrps_ain/5DVZ_chainA_prepared.pdb
+  Added missing heavy atom: .R<LYS 20>.A<CG 8>
+  Added missing heavy atom: .R<LYS 20>.A<CD 11>
+  Added missing heavy atom: .R<LYS 20>.A<CE 14>
+  Added missing heavy atom: .R<LYS 20>.A<NZ 17>
+  Added missing heavy atom: .R<LYS 27>.A<CG 8>
+  Added missing heavy atom: .R<LYS 27>.A<CD 11>
+  Added missing heavy atom: .R<LYS 27>.A<CE 14>
+  Added missing heavy atom: .R<LYS 27>.A<NZ 17>
+  Added missing heavy atom: .R<GLU 132>.A<CG 8>
+  Added missing heavy atom: .R<GLU 132>.A<CD 11>
+  Added missing heavy atom: .R<GLU 132>.A<OE1 12>
+  Added missing heavy atom: .R<GLU 132>.A<OE2 13>
+  Added missing heavy atom: .R<GLU 177>.A<CG 8>
+  Added missing heavy atom: .R<GLU 177>.A<CD 11>
+  Added missing heavy atom: .R<GLU 177>.A<OE1 12>
+  Added missing heavy atom: .R<GLU 177>.A<OE2 13>
+  Added missing heavy atom: .R<LYS 243>.A<CG 8>
+  Added missing heavy atom: .R<LYS 243>.A<CD 11>
+  Added missing heavy atom: .R<LYS 243>.A<CE 14>
+  Added missing heavy atom: .R<LYS 243>.A<NZ 17>
+  Added missing heavy atom: .R<GLU 258>.A<CG 8>
+  Added missing heavy atom: .R<GLU 258>.A<CD 11>
+  Added missing heavy atom: .R<GLU 258>.A<OE1 12>
+  Added missing heavy atom: .R<GLU 258>.A<OE2 13>
+  Added missing heavy atom: .R<LYS 261>.A<CG 8>
+  Added missing heavy atom: .R<LYS 261>.A<CD 11>
+  Added missing heavy atom: .R<LYS 261>.A<CE 14>
+  Added missing heavy atom: .R<LYS 261>.A<NZ 17>
+  Added missing heavy atom: .R<GLU 325>.A<CG 8>
+  Added missing heavy atom: .R<GLU 325>.A<CD 11>
+  Added missing heavy atom: .R<GLU 325>.A<OE1 12>
+  Added missing heavy atom: .R<GLU 325>.A<OE2 13>
+  Added missing heavy atom: .R<LYS 329>.A<CG 8>
+  Added missing heavy atom: .R<LYS 329>.A<CD 11>
+  Added missing heavy atom: .R<LYS 329>.A<CE 14>
+  Added missing heavy atom: .R<LYS 329>.A<NZ 17>
+  Added missing heavy atom: .R<GLU 359>.A<CG 8>
+  Added missing heavy atom: .R<GLU 359>.A<CD 11>
+  Added missing heavy atom: .R<GLU 359>.A<OE1 12>
+  Added missing heavy atom: .R<GLU 359>.A<OE2 13>
+  Added missing heavy atom: .R<LYS 383>.A<CG 8>
+  Added missing heavy atom: .R<LYS 383>.A<CD 11>
+  Added missing heavy atom: .R<LYS 383>.A<CE 14>
+  Added missing heavy atom: .R<LYS 383>.A<NZ 17>
+  Added missing heavy atom: .R<CVAL 384>.A<OXT 17>
+  total atoms in file: 2942
+  Leap added 3046 missing atoms according to residue templates:
+       45 Heavy
+       3001 H / lone pairs
+Checking 'prot'....
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+The unperturbed charge of the unit (-3.999998) is not zero.
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.242 angstroms between nonbonded atoms HH11 and HG1
+-------  .R<ARG 100>.A<HH11 18> and .R<THR 179>.A<HG1 12>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.071 angstroms between nonbonded atoms OE1 and HH22
+-------  .R<GLU 132>.A<OE1 12> and .R<ARG 136>.A<HH22 22>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.436 angstroms between nonbonded atoms HZ1 and HZ1
+-------  .R<LYS 255>.A<HZ1 18> and .R<LYS 261>.A<HZ1 18>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.266 angstroms between nonbonded atoms HE2 and HZ1
+-------  .R<LYS 255>.A<HE2 15> and .R<LYS 261>.A<HZ1 18>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 0.549 angstroms between nonbonded atoms HD2 and HD3
+-------  .R<LYS 255>.A<HD2 12> and .R<LYS 261>.A<HD3 13>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.402 angstroms between nonbonded atoms HD2 and CD
+-------  .R<LYS 255>.A<HD2 12> and .R<LYS 261>.A<CD 11>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.260 angstroms between nonbonded atoms CD and HD3
+-------  .R<LYS 255>.A<CD 11> and .R<LYS 261>.A<HD3 13>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 0.976 angstroms between nonbonded atoms HD1 and HH
+-------  .R<HID 275>.A<HD1 10> and .R<TYR 301>.A<HH 15>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.237 angstroms between nonbonded atoms HG and H
+-------  .R<SER 346>.A<HG 9> and .R<GLY 372>.A<H 2>
+Checking parameters for unit 'prot'.
+Checking for bond parameters.
+Checking for angle parameters.
+check:  Warnings: 10
+Unit is OK.
+  Solute vdw bounding box:              53.518 64.914 49.709
+  Total bounding box for atom centers:  73.518 84.914 69.709
+  Solvent unit box:                     18.774 18.774 18.774
+  Total vdw box size:                   76.409 88.108 73.192 angstroms.
+  Volume: 492749.279 A^3 
+  Total mass 242284.408 amu,  Density 0.816 g/cc
+  Added 11095 residues.
+4 Na+ ions required to neutralize.
+Adding 4 counter ions to "prot" using 1A grid
+Grid extends from solute vdw + 1.37  to  7.47
+Resolution:      1.00 Angstrom.
+Solvent present: replacing closest with ion
+	 when steric overlaps occur
+Calculating grid charges
+(Replacing solvent molecule)
+Placed Na+ in prot at (-23.57, -5.42, -16.99).
+(Replacing solvent molecule)
+Placed Na+ in prot at (-19.74, -14.41, 15.87).
+(No solvent overlap)
+Placed Na+ in prot at (3.37, 28.00, -11.82).
+(Replacing solvent molecule)
+Placed Na+ in prot at (18.63, -24.56, 3.12).
+
+Done adding ions.
+Checking 'prot'....
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.242 angstroms between nonbonded atoms HH11 and HG1
+-------  .R<ARG 100>.A<HH11 18> and .R<THR 179>.A<HG1 12>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.071 angstroms between nonbonded atoms OE1 and HH22
+-------  .R<GLU 132>.A<OE1 12> and .R<ARG 136>.A<HH22 22>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.436 angstroms between nonbonded atoms HZ1 and HZ1
+-------  .R<LYS 255>.A<HZ1 18> and .R<LYS 261>.A<HZ1 18>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.266 angstroms between nonbonded atoms HE2 and HZ1
+-------  .R<LYS 255>.A<HE2 15> and .R<LYS 261>.A<HZ1 18>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 0.549 angstroms between nonbonded atoms HD2 and HD3
+-------  .R<LYS 255>.A<HD2 12> and .R<LYS 261>.A<HD3 13>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.402 angstroms between nonbonded atoms HD2 and CD
+-------  .R<LYS 255>.A<HD2 12> and .R<LYS 261>.A<CD 11>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.260 angstroms between nonbonded atoms CD and HD3
+-------  .R<LYS 255>.A<CD 11> and .R<LYS 261>.A<HD3 13>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 0.976 angstroms between nonbonded atoms HD1 and HH
+-------  .R<HID 275>.A<HD1 10> and .R<TYR 301>.A<HH 15>
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+Close contact of 1.237 angstroms between nonbonded atoms HG and H
+-------  .R<SER 346>.A<HG 9> and .R<GLY 372>.A<H 2>
+Checking parameters for unit 'prot'.
+Checking for bond parameters.
+Checking for angle parameters.
+check:  Warnings: 9
+Unit is OK.
+Checking Unit.
+Building topology.
+Building atom parameters.
+Building bond parameters.
+Building angle parameters.
+Building proper torsion parameters.
+Building improper torsion parameters.
+ total 1184 improper torsions applied
+Building H-Bond parameters.
+Incorporating Non-Bonded adjustments.
+Not Marking per-residue atom chain types.
+Marking per-residue atom chain types.
+  (Residues lacking connect0/connect1 - 
+   these don't have chain types marked:
+
+	res	total affected
+
+	CVAL	1
+	NMET	1
+	WAT	11092
+  )
+ (no restraints)
+Writing pdb file: ../systems/pftrps_ain/pftrps_ain_leap.pdb
+   printing CRYST1 record to PDB file with box info
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+ Converting N-terminal residue name to PDB format: NMET -> MET
+
+/nas/longleaf/rhel9/apps/amber/24p3/amber24gpu/bin/teLeap: Warning!
+ Converting C-terminal residue name to PDB format: CVAL -> VAL
+	Quit
+
+Exiting LEaP: Errors = 0; Warnings = 21; Notes = 0.

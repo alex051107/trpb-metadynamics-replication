@@ -1,0 +1,25 @@
+RESTART
+# Tier 1.5 metad ramp stage 2
+#
+# SI-deviation lineage:
+#   SI-literal unchanged: BIASFACTOR=10, PACE=1000 (=2 ps), TEMP=350,
+#                         ADAPTIVE=DIFF, SIGMA=1000, LAMBDA=100.79 A^-2,
+#                         KAPPA=800, NEIGH_STRIDE=100, WALKERS_RSTRIDE=3000,
+#                         UNITS LENGTH=A ENERGY=kcal/mol.
+#   Tier 1 retained:      GRID_MAX[p1.zzz]=5.0, GRID_BIN[p1.zzz]=180.
+#   Tier 1.5 ramp-up:     HEIGHT=0.06 kcal/mol (40% of SI 0.15).
+#   Walker scale:         WALKERS_N is 10 in staged files; submit_array_3walker.sh
+#                         materializes active copies with WALKERS_N=3 at launch.
+#   Restart safety:       RESTART is present so chained 2 ns stages append HILLS/COLVAR.
+
+UNITS LENGTH=A ENERGY=kcal/mol
+
+WHOLEMOLECULES ENTITY0=1-39268
+
+p1: PATHMSD REFERENCE=path_seqaligned_gromacs.pdb LAMBDA=100.79 NEIGH_STRIDE=100 NEIGH_SIZE=6
+
+METAD ARG=p1.sss,p1.zzz ADAPTIVE=DIFF SIGMA=1000 SIGMA_MIN=0.1,0.01 HEIGHT=0.06 PACE=1000 BIASFACTOR=10.0 TEMP=350.0 GRID_MIN=0.5,0.0 GRID_MAX=15.5,5.0 GRID_BIN=300,180 WALKERS_DIR=../HILLS_DIR_tier1p5 WALKERS_RSTRIDE=3000 WALKERS_ID=__WALKERS_ID__ WALKERS_N=10
+
+UPPER_WALLS ARG=p1.zzz AT=2.5 KAPPA=800 LABEL=uwall
+
+PRINT ARG=* STRIDE=100 FILE=COLVAR FMT=%8.4f
